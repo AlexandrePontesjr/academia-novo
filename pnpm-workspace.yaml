@@ -1,0 +1,19 @@
+packages:
+  - apps/*
+  - packages/*
+  - tests/*
+
+catalog:
+  "@types/node": ^24.19.1
+  drizzle-orm: ^0.45.3
+  eslint: ^10.12.0
+  pg: ^8.23.1
+  typescript: ~6.0.3
+  vitest: ^5.0.3
+  zod: ^4.6.5
+
+allowBuilds:
+  cpu-features: false
+  esbuild: true
+  protobufjs: false
+  ssh2: false

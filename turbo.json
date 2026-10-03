@@ -1,0 +1,28 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
+  "tasks": {
+    "lint": {},
+    "typecheck": {},
+    "build": {
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "build"
+      ]
+    },
+    "@academia/repo-tests#test": {
+      "cache": false
+    },
+    "@academia/web#typecheck": {
+      "dependsOn": [
+        "build"
+      ]
+    }
+  }
+}
