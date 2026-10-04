@@ -1,12 +1,15 @@
 import {
   auditLogsQuerySchema,
   changePasswordRequestSchema,
+  createStudentRequestSchema,
   createUserRequestSchema,
   loginRequestSchema,
   passwordConfirmationRequestSchema,
   resetPasswordRequestSchema,
+  studentsQuerySchema,
   twoFactorConfirmRequestSchema,
   twoFactorVerifyRequestSchema,
+  updateStudentRequestSchema,
   updateUserRequestSchema,
 } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
@@ -84,6 +87,28 @@ test('audit_logs_query_parameters_come_from_contract_schema', async () => {
   }
 });
 
+test('students_paths_and_query_parameters_come_from_contract_schema', async () => {
+  const names = ['q', 'status', 'cursor'];
+  const properties = JSON.parse(JSON.stringify(z.toJSONSchema(studentsQuerySchema).properties)) as Record<
+    string,
+    unknown
+  >;
+  expect(Object.keys(properties).sort()).toEqual([...names].sort());
+
+  const { paths } = await document();
+  expect(Object.keys(paths['/api/students'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/students/{id}'] ?? {}).sort()).toEqual(['delete', 'get', 'patch']);
+  const parameters = paths['/api/students']?.get?.parameters ?? [];
+
+  expect(parameters).toHaveLength(3);
+  expect(parameters.map((parameter) => parameter.name).sort()).toEqual([...names].sort());
+  for (const parameter of parameters) {
+    expect(parameter.in, parameter.name).toBe('query');
+    expect(parameter.required, parameter.name).not.toBe(true);
+    expect(parameter.schema, parameter.name).toEqual(properties[parameter.name]);
+  }
+});
+
 test('request_bodies_come_from_contract_schemas', async () => {
   const contracts: Array<[method: string, path: string, schema: z.ZodType]> = [
     ['post', '/api/auth/login', loginRequestSchema],
@@ -95,8 +120,10 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['post', '/api/users', createUserRequestSchema],
     ['patch', '/api/users/{id}', updateUserRequestSchema],
     ['put', '/api/users/{id}/password', resetPasswordRequestSchema],
+    ['post', '/api/students', createStudentRequestSchema],
+    ['patch', '/api/students/{id}', updateStudentRequestSchema],
   ];
-  expect(contracts).toHaveLength(9);
+  expect(contracts).toHaveLength(11);
 
   const { paths } = await document();
 

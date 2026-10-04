@@ -9,6 +9,7 @@ import {
   problemSchema,
   sessionResponseSchema,
   studentSchema,
+  studentsResponseSchema,
   twoFactorEnableResponseSchema,
   userSchema,
   usersResponseSchema,
@@ -18,6 +19,7 @@ import type { z } from 'zod';
 import { startApi } from './support/app.ts';
 import { refusingDatabaseUrl, startPostgres } from './support/servers.ts';
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
+import { createStudent, studentBody } from './support/students.ts';
 import { totpCode } from './support/totp.ts';
 
 let postgres: Awaited<ReturnType<typeof startPostgres>>;
@@ -267,4 +269,57 @@ test('cpf_check_digit_table', () => {
     expect(result.success, sent).toBe(true);
     expect(result.data?.cpf, sent).toBe(stored);
   }
+});
+
+test('students_bodies_match_contract_schemas', async () => {
+  const admin = await stack.session('admin');
+  const sessions = {
+    admin: admin.client,
+    reception: (await stack.session('reception')).client,
+    hr_finance: (await stack.session('hr_finance')).client,
+    instructor: (await stack.session('instructor')).client,
+  };
+  const created = await admin.client.post(
+    '/api/students',
+    studentBody(7001, { sex: 'female', email: 'contratada@exemplo.com', healthNotes: 'Observação', emergencyContactName: 'Contato', emergencyContactPhone: '1133334444' }),
+  );
+  const student = (await created.clone().json()) as { id: string };
+  await createStudent(admin.client, studentBody(7002));
+
+  const cases: Array<[route: string, status: number, schema: z.ZodType, response: Response]> = [
+    ['POST /api/students', 201, studentSchema, created],
+    ...(await Promise.all(
+      Object.entries(sessions).map(async ([role, client]) => [
+        `GET /api/students/:id (${role})`,
+        200,
+        studentSchema,
+        await client.get(`/api/students/${student.id}`),
+      ] as [string, number, z.ZodType, Response]),
+    )),
+    ['GET /api/students (admin)', 200, studentsResponseSchema, await sessions.admin.get('/api/students')],
+    ['GET /api/students (instructor)', 200, studentsResponseSchema, await sessions.instructor.get('/api/students')],
+  ];
+  expect(cases).toHaveLength(7);
+
+  for (const [route, status, schema, response] of cases) {
+    const body: unknown = await response.json();
+    const parsed = schema.safeParse(body);
+
+    expect(response.status, route).toBe(status);
+    expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+  }
+});
+
+test('cpf_taken_is_a_known_409_code', async () => {
+  const { client } = await stack.session('reception');
+  const first = await createStudent(client, studentBody(7003));
+
+  const response = await client.post('/api/students', studentBody(7004, { cpf: first.cpf }));
+  const body = (await response.json()) as Record<string, unknown>;
+
+  expect(response.status).toBe(409);
+  expect(body.code).toBe('cpf_taken');
+  expect(body.status).toBe(409);
+  expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+  expect(problemSchema.safeParse(body).success).toBe(true);
 });
