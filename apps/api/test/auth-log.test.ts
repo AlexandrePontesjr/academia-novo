@@ -1,5 +1,7 @@
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { AUTH_SECRET } from './support/app.ts';
+import { AUTH_SECRET, startApi } from './support/app.ts';
+import { createClient } from './support/client.ts';
+import { refusingDatabaseUrl } from './support/servers.ts';
 import { type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
 
@@ -24,6 +26,12 @@ function captureOutput() {
   };
   vi.spyOn(process.stdout, 'write').mockImplementation(capture);
   vi.spyOn(process.stderr, 'write').mockImplementation(capture);
+  // o Vitest intercepta o `console` antes de ele chegar a stdout/stderr: capturado à parte
+  for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+    vi.spyOn(console, method).mockImplementation((...args: unknown[]) => {
+      chunks.push(`${args.map((arg) => (arg instanceof Error ? arg.stack : String(arg))).join(' ')}\n`);
+    });
+  }
   return {
     text: () => chunks.join(''),
     lines: () =>
@@ -127,5 +135,43 @@ test('six_secrets_never_reach_the_log', async () => {
   for (const [name, value] of Object.entries(secrets)) {
     expect(value, name).toMatch(/\S/);
     expect(written.includes(value), `${name} no log`).toBe(false);
+  }
+});
+
+test('query_failures_log_no_parameters', async () => {
+  // uma sessão de verdade, assinada com o mesmo AUTH_SECRET, levada a uma API cujo banco recusa conexão
+  const user = await stack.seed();
+  const session = await stack.signIn(user);
+  const cookie = session.cookie();
+  const token = decodeURIComponent(cookie.slice(cookie.indexOf('=') + 1)).split('.')[0]!;
+  const email = 'digitado.com.banco.fora@exemplo.com';
+  const password = 'senha-com-banco-fora-9';
+  const down = await startApi(await refusingDatabaseUrl());
+  const output = captureOutput();
+
+  try {
+    const login = await createClient(down.url).post('/api/auth/login', { email, password });
+    const users = await createClient(down.url).get('/api/users', { headers: { Cookie: cookie } });
+    await settled(output, users.headers.get('x-request-id') ?? '');
+    vi.restoreAllMocks();
+
+    expect(login.status).toBe(500);
+    expect(users.status).toBe(500);
+  } finally {
+    vi.restoreAllMocks();
+    await down.close();
+  }
+
+  // as duas falhas foram registradas, com a consulta que falhou e sem os parâmetros dela
+  const written = output.text();
+  expect(written).toMatch(/Failed query: select [^\n]*users/);
+  expect(written).toMatch(/Failed query: select [^\n]*sessions/);
+  expect(token.length).toBeGreaterThanOrEqual(20);
+  for (const [name, value] of Object.entries({ email, password, token, cookie, AUTH_SECRET })) {
+    expect(written.includes(value), `${name} no log`).toBe(false);
+  }
+  // e tudo o que o processo escreveu é JSON, uma linha por registro
+  for (const line of written.split('\n').filter(Boolean)) {
+    expect(() => JSON.parse(line), line.slice(0, 80)).not.toThrow();
   }
 });

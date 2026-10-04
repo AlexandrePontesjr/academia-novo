@@ -2,6 +2,7 @@ import { type Database, schema } from '@academia/database';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins/two-factor';
+import { logBetterAuth } from './log-safe.ts';
 import { hashPassword, verifyPassword } from './password.ts';
 
 /**
@@ -28,6 +29,8 @@ export function createAuth(db: Database['db'], { secret, webOrigin }: AuthConfig
     baseURL: webOrigin,
     secret,
     telemetry: { enabled: false },
+    // sem isto o Better Auth escreve no console, fora do JSON e com os parâmetros das consultas
+    logger: { log: logBetterAuth },
     database: drizzleAdapter(db, { provider: 'pg', usePlural: true, schema }),
     advanced: {
       // o cookie sai sempre com `Secure`, também em http://localhost

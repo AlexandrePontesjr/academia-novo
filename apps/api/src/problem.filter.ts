@@ -2,6 +2,7 @@ import { STATUS_CODES } from 'node:http';
 import type { Problem } from '@academia/contracts';
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from '@nestjs/common';
 import type { Response } from 'express';
+import { describeError } from './log-safe.ts';
 
 type ProblemErrors = NonNullable<Problem['errors']>;
 
@@ -85,7 +86,7 @@ export class ProblemFilter implements ExceptionFilter {
           time: new Date().toISOString(),
           msg: 'unhandled exception',
           requestId,
-          error: exception instanceof Error ? exception.stack : String(exception),
+          error: describeError(exception),
         }) + '\n',
       );
     }

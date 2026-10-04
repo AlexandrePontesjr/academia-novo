@@ -92,3 +92,43 @@ test('origin_is_checked_before_body', async () => {
   expect(response.status).toBe(403);
   expect((await problem(response)).code).toBe('csrf_rejected');
 });
+
+test('origin_check_covers_every_spelling_the_router_dispatches', async () => {
+  // o roteador do Express não diferencia maiúsculas nem a barra final: estes caminhos chegam ao
+  // mesmo handler que `/api/test/probe`
+  const dispatched = ['/API/test/probe', '/Api/Test/Probe', '/api/test/probe/', '/API/TEST/PROBE/'];
+  for (const path of dispatched) {
+    const allowed = await stack.client().request('POST', path);
+    expect(allowed.status, `${path}, origem do web`).toBeLessThan(300);
+  }
+  expect(executed).toBe(dispatched.length);
+  executed = 0;
+
+  for (const path of dispatched) {
+    for (const origin of [FOREIGN, null]) {
+      const response = await stack.client().request('POST', path, { origin });
+
+      expect(response.status, `${path}, origem ${origin}`).toBe(403);
+      expect((await problem(response)).code, `${path}, origem ${origin}`).toBe('csrf_rejected');
+    }
+  }
+  // outras grafias não chegam a handler nenhum, com a origem que for
+  for (const path of ['//api/test/probe', '/%61pi/test/probe', '/api%2Ftest%2Fprobe']) {
+    const response = await stack.client().request('POST', path, { origin: FOREIGN });
+    expect(response.status, path).toBeGreaterThanOrEqual(400);
+  }
+  expect(executed).toBe(0);
+
+  const user = await stack.seed();
+  const login = await stack
+    .client()
+    .request('POST', '/API/auth/login', { body: { email: user.email, password: user.password }, origin: FOREIGN });
+  expect(login.status).toBe(403);
+  expect(login.headers.getSetCookie()).toEqual([]);
+  expect(await stack.query('select id from sessions where user_id = $1', [user.id])).toEqual([]);
+
+  const session = await stack.signIn(user);
+  const logout = await session.request('POST', '/API/auth/logout', { origin: FOREIGN });
+  expect(logout.status).toBe(403);
+  expect(await stack.query('select id from sessions where user_id = $1', [user.id])).toHaveLength(1);
+});
