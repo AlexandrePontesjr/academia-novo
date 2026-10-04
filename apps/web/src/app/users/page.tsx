@@ -12,7 +12,7 @@ const byName = new Intl.Collator('pt-BR');
 /** A lista em ordem alfabética de nome, `forbidden` quando a API recusa o perfil, ou `failed` quando ela não carrega. */
 async function loadUsers(): Promise<User[] | 'forbidden' | 'failed'> {
   try {
-    const response = await fetchApi('/api/users', (await headers()).get('cookie'));
+    const response = await fetchApi('/api/users', await headers());
     if (response.status === 403) return 'forbidden';
     if (response.status !== 200) return 'failed';
     const { users } = usersResponseSchema.parse(await response.json());

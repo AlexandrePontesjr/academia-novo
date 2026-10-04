@@ -8,7 +8,7 @@ import { readSession } from './lib/session.ts';
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const { session, setCookies } = await readSession(request.headers.get('cookie'));
+  const { session, setCookies } = await readSession(request.headers);
   // O destino é montado sobre o host que o navegador usou (`Host`, ou o que o proxy reverso
   // repassa), não sobre o endereço em que o servidor escuta: num container ele é 0.0.0.0.
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');

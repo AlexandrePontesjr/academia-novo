@@ -385,3 +385,4 @@ Cost: 0 provas além das 73 acima - as linhas descrevem o nível em que elas já
 - **Boundary:** C37 a C40, C42 e C43 fechados no commit `feat(database): add the append-only audit_logs table`. A C41, da mesma slice, depende da rota e fecha com a S6
 - **Boundary:** C1 a C29 fechados no commit `feat(api): record audit rows for user management and authentication`: o gravador (door 5), o vocabulário (door 3) e o `diff` (door 4)
 - **Boundary:** C30 a C34 fechados no commit `feat(api): take the audit ip from the forwarded address` (door 6)
+- **Boundary:** C35 e C36 fechados no commit `feat(web): forward the client ip and user agent to the api`

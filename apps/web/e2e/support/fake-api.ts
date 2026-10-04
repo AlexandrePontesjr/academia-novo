@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { Socket } from 'node:net';
 import type { Role, SessionResponse, User } from '@academia/contracts';
 import { test as base } from '@playwright/test';
@@ -7,6 +7,9 @@ import { FAKE_API_PORT } from '../../playwright.config.ts';
 export interface Recorded {
   method: string;
   path: string;
+  /** A query string, sem o `?`; vazia quando não há. */
+  query: string;
+  headers: IncomingHttpHeaders;
   body: unknown;
 }
 
@@ -86,9 +89,12 @@ export class FakeApi {
       req.on('data', (chunk: Buffer) => chunks.push(chunk));
       req.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8');
+        const [path = '', query = ''] = (req.url ?? '').split('?');
         const recorded: Recorded = {
           method: req.method ?? '',
-          path: (req.url ?? '').split('?')[0]!,
+          path,
+          query,
+          headers: req.headers,
           body: text ? JSON.parse(text) : undefined,
         };
         this.requests.push(recorded);

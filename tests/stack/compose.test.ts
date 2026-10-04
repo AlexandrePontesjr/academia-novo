@@ -110,6 +110,35 @@ describe('stack de pé', () => {
     expect(((await session.json()) as { user: { email: string } }).user.email).toBe(email);
   });
 
+  test('login_through_web_writes_audit_row_with_ip_and_user_agent', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const email = 'auditada.na.stack@exemplo.com';
+    const password = 'senha-da-stack-456';
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Auditada`,
+    );
+    expect(created.status, created.output).toBe(0);
+
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: stack.webOrigin,
+        'User-Agent': 'teste/1.0',
+        'X-Forwarded-For': '203.0.113.7',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+
+    // a linha é lida do banco da stack, não pela rota de consulta
+    const rows = stack.compose(
+      `exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "select ip, user_agent from audit_logs where action = 'auth.login_succeeded' and entity_id = (select id from users where email = '${email}')"`,
+    );
+    expect(rows.status, rows.output).toBe(0);
+    expect(rows.output.trim().split(/\r?\n/)).toEqual(['203.0.113.7|teste/1.0']);
+  });
+
   test('running_api_rejects_foreign_origin_and_anonymous', async () => {
     const foreign = await fetch(`${stack.webOrigin}/api/auth/login`, {
       method: 'POST',
