@@ -7,6 +7,8 @@ import { AuditLogsService } from './audit/audit-logs.service.ts';
 import { createAuth } from './auth.ts';
 import { AuthController } from './auth/auth.controller.ts';
 import { LoginThrottle } from './auth/throttle.ts';
+import { ConsentTermsController } from './consents/consent-terms.controller.ts';
+import { ConsentsService } from './consents/consents.service.ts';
 import { ColumnCipher } from './crypto.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
@@ -36,6 +38,7 @@ export class AppModule implements OnApplicationShutdown {
         UsersController,
         AuditLogsController,
         StudentsController,
+        ConsentTermsController,
         OpenApiController,
       ],
       providers: [
@@ -59,6 +62,11 @@ export class AppModule implements OnApplicationShutdown {
           provide: StudentsService,
           useFactory: (database: Database) =>
             new StudentsService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY)),
+          inject: [DATABASE],
+        },
+        {
+          provide: ConsentsService,
+          useFactory: (database: Database) => new ConsentsService(database.db),
           inject: [DATABASE],
         },
         {
