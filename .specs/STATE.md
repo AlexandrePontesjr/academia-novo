@@ -3,7 +3,8 @@
 ## Decisions
 
 AD-001 a AD-006 vêm do PRD. AD-007 a AD-012 são as doors do plano da `fundacao`, aprovado em
-2026-10-02; a forma literal de cada uma está em `features/fundacao/plan.md` (Landing). As
+2026-10-02; a forma literal de cada uma está em `features/fundacao/plan.md` (Landing). AD-013 a
+AD-015 são convenções que nasceram no Build da `fundacao` e que as próximas features herdam. As
 propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 | ID | Decision | Rationale | Status | Date |
@@ -20,13 +21,16 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 | AD-010 | `GET /health` é aberto e responde `200`/`503` com uma chave por dependência em `checks`; cada dependência nova acrescenta a sua | distingue processo de pé de dependência fora | active | 2026-10-02 |
 | AD-011 | Cada payload tem um único schema Zod em `packages/contracts`, usado pela API e pelo web | uma definição por campo | active | 2026-10-02 |
 | AD-012 | Vitest para unidade e integração, integração sempre contra Postgres real; Playwright para telas | banco simulado passa com SQL que o Postgres rejeita | active | 2026-10-02 |
+| AD-013 | Os pacotes de `packages/` são consumidos como código-fonte TypeScript, sem etapa de build; o app que os importa os empacota (esbuild na API, `transpilePackages` no web) e declara as dependências npm que eles usam em runtime | um clone limpo roda testes e typecheck sem build prévio | active | 2026-10-03 |
+| AD-014 | TypeScript fica em `~6.0` (catálogo do pnpm) até o `typescript-eslint` aceitar a 7 | o `typescript-eslint` 8.71 exige `typescript <6.1.0` | active | 2026-10-03 |
+| AD-015 | Cada app valida o ambiente por um schema Zod em `src/env.ts` e não sobe sem ele; toda chave obrigatória entra em `.env.example` (o teste `tests/repo` falha se faltar) | falha de configuração aparece na subida, nomeando a variável e sem imprimir valor | active | 2026-10-03 |
 
 ## Handoff
 
 **Feature**: fundacao
-**Where**: `plan.md` aprovado e `checks.md` validado (30 checks, profile light); nenhum check fechado, nenhum código
+**Where**: Build concluído - os 30 checks estão marcados em `checks.md`, cada um no commit que o satisfaz
 **In progress**: nada
-**Next step**: Build em sessão nova - `git init`, depois testes a partir dos checks, implementação, commits; ao último commit, despachar o Verifier
+**Next step**: Verifier independente sobre `c90611e..HEAD` com os 30 checks (profile light); a feature só termina quando `validate_verification.py fundacao` sair com 0. Depois, planejar `auth-rbac`
 **Blockers**: nenhum
-**Uncommitted**: a pasta ainda não é um repositório git; `.specs/` e o PRD entram no primeiro commit
-**Branch**: nenhum
+**Uncommitted**: nada
+**Branch**: main

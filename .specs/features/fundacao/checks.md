@@ -52,9 +52,11 @@ Status: concluído
 
 **C8** - Toda chave obrigatória dos schemas de ambiente de `apps/api` e `apps/web` aparece em `.env.example` (AC 5)
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "env_example_lists_every_required_key"`
+Status: concluído
 
 **C9** - `git check-ignore .env` sai com código 0 (AC 6)
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "dotenv_is_git_ignored"`
+Status: concluído
 
 **C10** - O serviço `postgres` da stack roda PostgreSQL de versão principal 18 (door 2)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "postgres_major_is_18"`
@@ -130,18 +132,23 @@ Status: concluído
 
 **C26** - Num clone limpo, depois de `pnpm install --frozen-lockfile`, `pnpm verify` sai com código 0 (AC 17)
 Proof: `pnpm --filter "./tests/stack" exec vitest run verify.test.ts -t "verify_exits_zero_on_clean_clone"`
+Status: concluído
 
 **C27** - `pnpm verify` executa as tarefas `lint`, `typecheck`, `test` e `build`; as quatro alcançam `apps/api` e `apps/web`, e `lint`, `typecheck` e `test` alcançam também `packages/contracts` e `packages/database` (AC 17, door 1)
 Proof: `pnpm --filter "./tests/stack" exec vitest run verify.test.ts -t "verify_runs_four_tasks_across_workspaces"`
+Status: concluído
 
 **C28** - Uma falha injetada em cada uma das tarefas `lint`, `typecheck`, `test` e `build` faz `pnpm verify` sair com código diferente de 0 (AC 18)
 Proof: `pnpm --filter "./tests/stack" exec vitest run verify.test.ts -t "verify_fails_on_each_broken_task"`
+Status: concluído
 
 **C29** - A configuração TypeScript resolvida de cada workspace tem `strict` igual a `true` e estende a base de `packages/config` (AC 19)
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "every_workspace_is_strict"`
+Status: concluído
 
 **C30** - `.github/workflows/ci.yml` existe, dispara em `push` e em `pull_request` e executa `pnpm verify` (AC 20)
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "ci_runs_verify_on_push_and_pr"`
+Status: concluído
 
 ## Coverage
 

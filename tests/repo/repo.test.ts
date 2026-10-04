@@ -1,0 +1,97 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expect, test } from 'vitest';
+import { parse as parseYaml } from 'yaml';
+import type { z } from 'zod';
+import { envSchema as apiEnvSchema } from '../../apps/api/src/env.ts';
+import { envSchema as webEnvSchema } from '../../apps/web/src/env.ts';
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+
+function requiredKeys(schema: z.ZodObject): string[] {
+  return Object.entries(schema.shape)
+    .filter(([, field]) => !(field as z.ZodType).safeParse(undefined).success)
+    .map(([key]) => key);
+}
+
+/** Todo diretório de workspace declarado em `pnpm-workspace.yaml` (padrões `pasta/*`). */
+function workspaceDirs(): string[] {
+  const { packages } = parseYaml(readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8')) as {
+    packages: string[];
+  };
+  return packages.flatMap((pattern) => {
+    expect(pattern).toMatch(/^[\w-]+\/\*$/);
+    const parent = pattern.slice(0, -2);
+    return readdirSync(join(repoRoot, parent), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && existsSync(join(repoRoot, parent, entry.name, 'package.json')))
+      .map((entry) => `${parent}/${entry.name}`);
+  });
+}
+
+test('env_example_lists_every_required_key', () => {
+  const example = readFileSync(join(repoRoot, '.env.example'), 'utf8');
+  const listed = example
+    .split(/\r?\n/)
+    .map((line) => /^([A-Z][A-Z0-9_]*)=/.exec(line)?.[1])
+    .filter((key) => key !== undefined);
+
+  const required = [...requiredKeys(apiEnvSchema), ...requiredKeys(webEnvSchema)];
+  expect(requiredKeys(apiEnvSchema).length).toBeGreaterThan(0);
+  expect(requiredKeys(webEnvSchema).length).toBeGreaterThan(0);
+
+  for (const key of required) {
+    expect(listed, `.env.example deve listar ${key}`).toContain(key);
+  }
+});
+
+test('dotenv_is_git_ignored', () => {
+  const result = spawnSync('git', ['check-ignore', '.env'], { cwd: repoRoot, encoding: 'utf8' });
+
+  expect(result.status, result.stderr).toBe(0);
+});
+
+test('every_workspace_is_strict', () => {
+  const dirs = workspaceDirs();
+  for (const expected of ['apps/api', 'apps/web', 'packages/config', 'packages/contracts', 'packages/database']) {
+    expect(dirs).toContain(expected);
+  }
+
+  // `packages/config` é a própria base: não tem código para compilar, só o tsconfig que os outros estendem
+  for (const dir of dirs.filter((d) => d !== 'packages/config')) {
+    const tsconfigPath = join(repoRoot, dir, 'tsconfig.json');
+    expect(existsSync(tsconfigPath), `${dir}/tsconfig.json`).toBe(true);
+
+    const declared = JSON.parse(readFileSync(tsconfigPath, 'utf8'));
+    expect(declared.extends, `${dir} estende a base`).toBe('@academia/config/tsconfig.base.json');
+
+    const shown = spawnSync('pnpm exec tsc --showConfig -p .', {
+      cwd: join(repoRoot, dir),
+      shell: true,
+      encoding: 'utf8',
+    });
+    expect(shown.status, `${dir}: ${shown.stdout}${shown.stderr}`).toBe(0);
+    const resolved = JSON.parse(shown.stdout);
+    expect(resolved.compilerOptions.strict, `${dir} strict`).toBe(true);
+  }
+
+  const base = JSON.parse(readFileSync(join(repoRoot, 'packages/config/tsconfig.base.json'), 'utf8'));
+  expect(base.compilerOptions.strict).toBe(true);
+});
+
+test('ci_runs_verify_on_push_and_pr', () => {
+  const path = join(repoRoot, '.github/workflows/ci.yml');
+  expect(existsSync(path)).toBe(true);
+
+  const workflow = parseYaml(readFileSync(path, 'utf8')) as {
+    on: Record<string, unknown> | string[];
+    jobs: Record<string, { steps: Array<{ run?: string }> }>;
+  };
+  const events = Array.isArray(workflow.on) ? workflow.on : Object.keys(workflow.on);
+  expect(events).toContain('push');
+  expect(events).toContain('pull_request');
+
+  const commands = Object.values(workflow.jobs).flatMap((job) => job.steps.map((step) => step.run ?? ''));
+  expect(commands.some((run) => /^pnpm verify\s*$/m.test(run))).toBe(true);
+});
