@@ -104,6 +104,51 @@ test('wrong_current_password_422', async () => {
   expect(await storedPassword(user.email)).toBe(before);
 });
 
+test('every_password_accepted_on_write_logs_in', async () => {
+  const { client: admin } = await stack.session('admin');
+  // o Better Auth mede em unidades UTF-16: o emoji vale 2, e o limite de 128 vale para as duas medidas
+  const fits = `${'a'.repeat(126)}😀`;
+  const overflows = `${'a'.repeat(127)}😀`;
+  let n = 0;
+
+  for (const [name, password, expected] of [
+    ['128 unidades', fits, true],
+    ['129 unidades', overflows, false],
+  ] as const) {
+    const tag = `emoji${++n}`;
+    const writes: Array<{ path: string; email: string; accepted: boolean }> = [];
+
+    const email = `${tag}.criada@exemplo.com`;
+    const created = await admin.post('/api/users', { name: 'Emoji', email, role: 'reception', password });
+    writes.push({ path: 'POST /api/users', email, accepted: created.status === 201 });
+
+    const target = await stack.seed();
+    const reset = await admin.put(`/api/users/${target.id}/password`, { password });
+    writes.push({ path: 'PUT /api/users/:id/password', email: target.email, accepted: reset.status === 204 });
+
+    const self = await stack.seed();
+    const changed = await (await stack.signIn(self)).put('/api/auth/password', {
+      currentPassword: self.password,
+      newPassword: password,
+    });
+    writes.push({ path: 'PUT /api/auth/password', email: self.email, accepted: changed.status === 204 });
+
+    const commandEmail = `${tag}.comando@exemplo.com`;
+    const command = createAdmin(stack.postgres.url, ['--email', commandEmail, '--name', 'Comando'], {
+      ADMIN_PASSWORD: password,
+    });
+    writes.push({ path: 'pnpm users:create-admin', email: commandEmail, accepted: command.status === 0 });
+
+    for (const { path, email: who, accepted } of writes) {
+      expect(accepted, `${path} com ${name}`).toBe(expected);
+      if (accepted) {
+        const response = await login(who, password);
+        expect(response.status, `${path} gravou a senha de ${name}, o login responde ${response.status}`).toBe(200);
+      }
+    }
+  }
+});
+
 test('password_length_bounds_on_three_routes', async () => {
   const { client: admin } = await stack.session('admin');
   const target = await stack.seed();

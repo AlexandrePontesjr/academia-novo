@@ -46,6 +46,22 @@ function wrongCode(totpUri: string) {
   return ['000000', '111111', '222222', '333333'].find((code) => !valid.includes(code))!;
 }
 
+test('long_wrong_password_422_on_enable_and_disable', async () => {
+  const { client } = await stack.session('reception');
+
+  for (const route of ['/api/auth/two-factor/enable', '/api/auth/two-factor/disable']) {
+    for (const length of [128, 129, 1000]) {
+      const response = await client.post(route, { password: 'x'.repeat(length) });
+      const body = await problem(response);
+
+      expect(response.status, `${route} com ${length}`).toBe(422);
+      expect(body.code, `${route} com ${length}`).toBe('validation_failed');
+      expect(body.errors?.map((error) => error.path), `${route} com ${length}`).toEqual(['password']);
+    }
+  }
+  expect(await twoFactorEnabled(client)).toBe(false);
+});
+
 test('enable_200_returns_uri_and_backup_codes', async () => {
   const { user, client } = await stack.session('reception');
 

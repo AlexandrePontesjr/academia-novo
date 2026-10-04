@@ -1,3 +1,4 @@
+import { PASSWORD_MAX_LENGTH } from '@academia/contracts';
 import { type Database, schema } from '@academia/database';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -55,7 +56,7 @@ export function createAuth(db: Database['db'], { secret, webOrigin }: AuthConfig
       enabled: true,
       disableSignUp: true,
       minPasswordLength: 12,
-      maxPasswordLength: 128,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
       password: {
         hash: hashPassword,
         verify: ({ hash, password }) => verifyPassword(hash, password),

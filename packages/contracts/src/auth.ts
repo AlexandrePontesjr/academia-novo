@@ -7,11 +7,22 @@ export type Role = z.infer<typeof roleSchema>;
 
 const required = (message: string) => z.string(message).min(1, message);
 
+/**
+ * Tamanho máximo da senha, o mesmo número em `maxPasswordLength` do Better Auth (`apps/api/src/auth.ts`).
+ * Ele mede em unidades UTF-16 (`String.length`) e o `.max()` do Zod conta pontos de código: um emoji
+ * vale 1 num e 2 no outro, e uma senha gravada pelo schema seria recusada no login. Por isso o
+ * máximo é conferido pela mesma medida do Better Auth.
+ */
+export const PASSWORD_MAX_LENGTH = 128;
+
+const maxPasswordLength = (value: string) => value.length <= PASSWORD_MAX_LENGTH;
+const PASSWORD_TOO_LONG = `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`;
+
 /** Senha nova: 12 a 128 caracteres, sem regra de composição. */
 export const newPasswordSchema = z
   .string('Informe a senha.')
   .min(12, 'A senha deve ter pelo menos 12 caracteres.')
-  .max(128, 'A senha deve ter no máximo 128 caracteres.');
+  .refine(maxPasswordLength, PASSWORD_TOO_LONG);
 
 /** 254 caracteres é o maior endereço que cabe num envelope SMTP (RFC 5321). */
 export const emailSchema = z
@@ -62,7 +73,7 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 
 /** Corpo de `two-factor/enable` e de `two-factor/disable`. */
 export const passwordConfirmationRequestSchema = z.object({
-  password: required('Informe a senha.'),
+  password: required('Informe a senha.').refine(maxPasswordLength, PASSWORD_TOO_LONG),
 });
 export type PasswordConfirmationRequest = z.infer<typeof passwordConfirmationRequestSchema>;
 
