@@ -1,0 +1,170 @@
+'use client';
+
+import {
+  createStudentRequestSchema,
+  type Student,
+  STUDENT_SEXES,
+  updateStudentRequestSchema,
+} from '@academia/contracts';
+import { Alert, Button, Label, Select } from '@academia/ui';
+import { useRouter } from 'next/navigation';
+import { useId, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { TextField } from '../../components/text-field.tsx';
+import { callApi, showFieldErrors, UNAVAILABLE } from '../../lib/api.ts';
+import { formatCpf, formatPhone, SEX_LABELS } from '../../lib/students.ts';
+
+interface FormValues {
+  name: string;
+  cpf: string;
+  birthDate: string;
+  sex: string;
+  email: string;
+  phone: string;
+  address: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  healthNotes: string;
+}
+
+const OPTIONAL = ['sex', 'email', 'address', 'emergencyContactName', 'emergencyContactPhone', 'healthNotes'] as const;
+
+function defaultsOf(student?: Student): FormValues {
+  return {
+    name: student?.name ?? '',
+    cpf: formatCpf(student?.cpf ?? ''),
+    birthDate: student?.birthDate ?? '',
+    sex: student?.sex ?? '',
+    email: student?.email ?? '',
+    phone: formatPhone(student?.phone ?? ''),
+    address: student?.address ?? '',
+    emergencyContactName: student?.emergencyContactName ?? '',
+    emergencyContactPhone: formatPhone(student?.emergencyContactPhone ?? ''),
+    healthNotes: student?.healthNotes ?? '',
+  };
+}
+
+/**
+ * O corpo da requisição com o que foi digitado: os quatro campos obrigatórios aparados e, dos
+ * opcionais, só os preenchidos. Na edição, o campo opcional em branco vai como `null`, que o limpa.
+ */
+function bodyOf(values: FormValues, editing: boolean): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    name: values.name.trim(),
+    cpf: values.cpf.trim(),
+    birthDate: values.birthDate,
+    phone: values.phone.trim(),
+  };
+  for (const key of OPTIONAL) {
+    // as observações de saúde seguem como digitadas: a ficha as devolve como foram enviadas
+    const value = key === 'healthNotes' ? values[key] : values[key].trim();
+    if (value.trim() !== '') body[key] = value;
+    else if (editing) body[key] = null;
+  }
+  return body;
+}
+
+/** Formulário de cadastro (`/students/new`) e de edição (`/students/<id>/edit`) de aluno. */
+export function StudentForm({ student }: { student?: Student }) {
+  const router = useRouter();
+  const sexId = useId();
+  const notesId = useId();
+  const [alert, setAlert] = useState<string>();
+  const form = useForm<FormValues>({ defaultValues: defaultsOf(student) });
+  const { errors, isSubmitting } = form.formState;
+
+  async function submit(values: FormValues) {
+    setAlert(undefined);
+    const body = bodyOf(values, student !== undefined);
+    // a mesma conferência que a API faz, antes de enviar
+    const checked = (student ? updateStudentRequestSchema : createStudentRequestSchema).safeParse(body);
+    if (!checked.success) {
+      const byPath = new Map<string, string>();
+      for (const issue of checked.error.issues) if (!byPath.has(issue.path.join('.'))) byPath.set(issue.path.join('.'), issue.message);
+      showFieldErrors(form, [...byPath].map(([path, message]) => ({ path, message })));
+      return;
+    }
+
+    const result = student
+      ? await callApi<Student>('PATCH', `/api/students/${student.id}`, body)
+      : await callApi<Student>('POST', '/api/students', body);
+
+    if (result.kind === 'ok') router.push(`/students/${student?.id ?? result.data.id}`);
+    else if (result.kind === 'validation') showFieldErrors(form, result.errors);
+    else if (result.kind === 'problem' && result.code === 'cpf_taken') {
+      form.setError('cpf', { message: 'Já existe um aluno com este CPF.' });
+    } else setAlert(result.kind === 'unavailable' ? UNAVAILABLE : 'Não foi possível concluir. Tente novamente.');
+  }
+
+  return (
+    <form noValidate className="grid max-w-xl gap-4" onSubmit={form.handleSubmit(submit)}>
+      {alert && <Alert variant="destructive">{alert}</Alert>}
+      <TextField label="Nome completo" autoComplete="off" error={errors.name?.message} registration={form.register('name')} />
+      <TextField label="CPF" inputMode="numeric" autoComplete="off" error={errors.cpf?.message} registration={form.register('cpf')} />
+      <TextField
+        label="Data de nascimento"
+        type="date"
+        error={errors.birthDate?.message}
+        registration={form.register('birthDate')}
+      />
+      <div className="grid gap-1.5">
+        <Label htmlFor={sexId}>Sexo</Label>
+        <Select
+          id={sexId}
+          aria-invalid={errors.sex ? true : undefined}
+          aria-describedby={errors.sex ? `${sexId}-error` : undefined}
+          {...form.register('sex')}
+        >
+          <option value=""></option>
+          {STUDENT_SEXES.map((sex) => (
+            <option key={sex} value={sex}>
+              {SEX_LABELS[sex]}
+            </option>
+          ))}
+        </Select>
+        {errors.sex && (
+          <p id={`${sexId}-error`} className="text-sm text-destructive">
+            {errors.sex.message}
+          </p>
+        )}
+      </div>
+      <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
+      <TextField label="Telefone" type="tel" autoComplete="off" error={errors.phone?.message} registration={form.register('phone')} />
+      <TextField label="Endereço" autoComplete="off" error={errors.address?.message} registration={form.register('address')} />
+      <TextField
+        label="Contato de emergência (nome)"
+        autoComplete="off"
+        error={errors.emergencyContactName?.message}
+        registration={form.register('emergencyContactName')}
+      />
+      <TextField
+        label="Contato de emergência (telefone)"
+        type="tel"
+        autoComplete="off"
+        error={errors.emergencyContactPhone?.message}
+        registration={form.register('emergencyContactPhone')}
+      />
+      <div className="grid gap-1.5">
+        <Label htmlFor={notesId}>Observações de saúde</Label>
+        <textarea
+          id={notesId}
+          rows={4}
+          aria-invalid={errors.healthNotes ? true : undefined}
+          aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+          {...form.register('healthNotes')}
+        />
+        {errors.healthNotes && (
+          <p id={`${notesId}-error`} className="text-sm text-destructive">
+            {errors.healthNotes.message}
+          </p>
+        )}
+      </div>
+      <div>
+        <Button type="submit" disabled={isSubmitting}>
+          Salvar
+        </Button>
+      </div>
+    </form>
+  );
+}
