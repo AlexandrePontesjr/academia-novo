@@ -7,10 +7,13 @@ import { AuditLogsService } from './audit/audit-logs.service.ts';
 import { createAuth } from './auth.ts';
 import { AuthController } from './auth/auth.controller.ts';
 import { LoginThrottle } from './auth/throttle.ts';
+import { ColumnCipher } from './crypto.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
 import { OpenApiController } from './openapi.controller.ts';
 import { ProblemFilter } from './problem.filter.ts';
+import { StudentsController } from './students/students.controller.ts';
+import { StudentsService } from './students/students.service.ts';
 import { AUTH, DATABASE, ENV } from './tokens.ts';
 import { UsersController } from './users/users.controller.ts';
 import { UsersService } from './users/users.service.ts';
@@ -32,6 +35,7 @@ export class AppModule implements OnApplicationShutdown {
         AuthController,
         UsersController,
         AuditLogsController,
+        StudentsController,
         OpenApiController,
       ],
       providers: [
@@ -49,6 +53,12 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: UsersService,
           useFactory: (database: Database) => new UsersService(database.db),
+          inject: [DATABASE],
+        },
+        {
+          provide: StudentsService,
+          useFactory: (database: Database) =>
+            new StudentsService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY)),
           inject: [DATABASE],
         },
         {
