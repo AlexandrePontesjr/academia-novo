@@ -180,7 +180,7 @@ Status: concluído
 | erro em qualquer rota, statuses (2) | 404 C11 · 500 C12 | - |
 | Postgres inacessível (2) | recusa conexão C3 · aceita e não responde C4 | - |
 | variável de ambiente rejeitada (2) | ausente C5 · inválida C6 | - |
-| `code` emitidos nesta feature (2) | `not_found` C11 · `internal_error` C12 | - |
+| `code` emitidos nesta feature (4) | `not_found` C11 · `internal_error` C12 · `bad_request` C32 · `request_timeout` C32 | - |
 | respostas com `X-Request-Id` (4) | C13, table-driven over all 4: 200, 503, 404, 500 | - |
 | campos da linha de log (5) | `requestId` C15 · `method` C15 · `path` C15 · `status` C15 · `durationMs` C15 | - |
 | serviços `healthy` (3) | `postgres` C1 · `api` C1 · `web` C1 | - |
