@@ -10,7 +10,7 @@ decisão.
 | # | Feature | O que alguém consegue fazer quando ela entra | Requisitos | Depende de | Estado |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `fundacao` | subir web + API + banco com um comando e saber, por um comando, se o repositório está são | §4 manutenibilidade, logs, segredos | - | concluída; verificação 33/33 na rodada 4 (`d060517`) |
-| 2 | `auth-rbac` | entrar com e-mail e senha (2FA para Administrador), e cada perfil só alcança o que pode | RF-01 a RF-04, gestão de usuários, CSRF, Argon2id | 1 | não iniciada |
+| 2 | `auth-rbac` | entrar com e-mail e senha (2FA para Administrador), e cada perfil só alcança o que pode | RF-01 a RF-04, gestão de usuários, CSRF, Argon2id | 1 | plano aprovado em 2026-10-03; checks em revisão |
 | 3 | `auditoria` | o Administrador consulta quem fez o quê; toda feature seguinte já nasce auditada | RF-24 a RF-26 | 2 | não iniciada |
 | 4 | `alunos` | cadastrar, buscar, editar e inativar alunos | RF-05, RF-07, RF-08 (inativação), RF-31 | 3 | não iniciada |
 | 5 | `consentimento` | registrar consentimento versionado e o responsável legal de menores | RF-06, RF-27 | 4 | não iniciada |
@@ -44,9 +44,9 @@ As questões do PRD §13, com a recomendação e o ponto em que cada uma passa a
 
 | Questão | Recomendação | Por quê | Trava |
 | --- | --- | --- | --- |
-| Uma academia ou várias (§13.1) | uma instalação por academia, sem `tenant_id` nas tabelas | multi-unidade é fase 3 (§1.4); a chave de foto do §5.1 já reserva o segmento `{tenant}`, que fica fixo | `auth-rbac` (primeiro schema) |
+| Uma academia ou várias (§13.1) | resolvida: uma instalação por academia, sem `tenant_id` nas tabelas (AD-016) | ver door 1 em `features/auth-rbac/plan.md` | - |
 | Drizzle ou Prisma (§13.6) | resolvida: Drizzle (AD-008) | ver door 2 em `features/fundacao/plan.md` | - |
-| Better Auth ou Auth.js (§13.6) | Better Auth | cobre sessão por cookie, TOTP e limite de tentativas (RF-01, RF-02, RF-04); a confirmar na documentação ao planejar `auth-rbac` | `auth-rbac` |
+| Better Auth ou Auth.js (§13.6) | resolvida: Better Auth, usado como biblioteca (AD-017) | ver door 2 em `features/auth-rbac/plan.md`; o limite de tentativas e o CSRF são código da aplicação (doors 8 e 11) | - |
 | Retenção de inativos e de fotos antigas (§13.2) | configurável, com o padrão de 30 dias da RF-16 para versões de foto | o prazo de inativos é decisão jurídica da academia | go-live de `privacidade` |
 | Hospedagem (§13.5) | VPS com Docker Compose + Caddy, como o §5 descreve | o provedor em si não muda o código | `operacao` |
 | Pagamentos (§13.3) | resolvida pelo próprio PRD: só registro manual (RF-21) | - | - |
@@ -56,12 +56,12 @@ As questões do PRD §13, com a recomendação e o ponto em que cada uma passa a
 
 | Lacuna | Feature |
 | --- | --- |
-| O contrato de erro declara `validation_failed` com `errors[]`, mas a `fundacao` não tem rota com entrada: falta fixar o status dessa resposta e prová-la | `auth-rbac` |
+| O contrato de erro declara `validation_failed` com `errors[]`, mas a `fundacao` não tem rota com entrada: falta fixar o status dessa resposta e prová-la | fechada em `auth-rbac`: `422` (AD-021); a prova é a C17 de `features/auth-rbac/checks.md` |
 | `students.guardian_id` aponta para uma tabela que o §6 não lista | `consentimento` |
-| RF-01 diz "2FA opcional (TOTP) obrigatório para Administrador": opcional para os demais perfis, obrigatório para Administrador | `auth-rbac` |
-| `users.role` guarda um perfil só; RF-09 fala em "vínculo opcional com usuário" - um funcionário pode ter mais de um perfil? | `auth-rbac` |
+| RF-01 diz "2FA opcional (TOTP) obrigatório para Administrador": opcional para os demais perfis, obrigatório para Administrador | fechada em `auth-rbac`: essa leitura foi confirmada (AC 24 e AC 25 do plano) |
+| `users.role` guarda um perfil só; RF-09 fala em "vínculo opcional com usuário" - um funcionário pode ter mais de um perfil? | fechada em `auth-rbac`: um perfil por usuário (AD-018); o vínculo com funcionário segue em `funcionarios` |
 | O fluxo do §5.1 e as RF-11 a RF-18 falam de aluno; a rota `/staff/:id/photo` existe - mesmas regras? | `foto-pipeline` |
-| O diagrama do §5 mostra navegador → Next.js → NestJS; upload multipart de 5 MB passa pelo Next ou vai direto à API na mesma origem? | `auth-rbac` (cookies) e `foto-pipeline` |
+| O diagrama do §5 mostra navegador → Next.js → NestJS; upload multipart de 5 MB passa pelo Next ou vai direto à API na mesma origem? | a parte de `auth-rbac` está fechada: o upload entra pela origem do web (AD-019). Segue aberta em `foto-pipeline` e `operacao`: quem o encaminha, o Next ou o proxy |
 | Processamento de imagem síncrono na API ou em fila no worker (o §5 deixa o Redis como opcional) | `foto-pipeline` |
 | "Regras de acesso" de um plano (RF-19) não têm formato definido | `planos-matriculas` |
 | Dependências externas do §12: termo de consentimento revisado por jurídico e DPO nomeado | go-live de `consentimento` |
