@@ -53,7 +53,7 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 ## Handoff
 
-**Feature**: alunos - Build concluído em 2026-10-04 (S0, S1 a S6, S9 sem C91, S7, S8 e C91), `pnpm verify` verde; rodada 1 do Verifier FAIL (gaps 1 a 8), correção em `3edfc0b`, checks C92 a C94 e rodada 2 scoped em curso
+**Feature**: alunos - Build concluído em 2026-10-04 (S0, S1 a S6, S9 sem C91, S7, S8 e C91), `pnpm verify` verde; Verifier PASS na rodada 2 scoped (`417bf8b`, 94/94 checks, 4 mutantes mortos), `validate_verification.py alunos` exit 0
 **Where**: 91 checks com prova rodada e verde; código em `apps/api/src/students`, `apps/api/src/crypto.ts`, `packages/contracts/src/students.ts`, migração `0003_students` e `apps/web/src/app/students`. Base da feature: `9c8128d`. Uma door nova no Build: a cifra amarra o valor ao `id` da linha (AD-034, door 5 do plano), achada pela C23; o `Flow` do plano foi atualizado (busca do navegador pelo repasse, cifra gravada logo após o insert). A C89 (stack no compose) passou em execução isolada; o `pnpm verify` não a roda
 **In progress**: nada
 **Next step**: Verifier independente, profile standard, rodada 2 scoped (`da2c543..HEAD`) com os 94 checks; o trabalho só acaba quando `validate_verification.py alunos` sair com 0. Itens sem dono, sem reprovar check, os mesmos de antes: Open question 1 da `auditoria` (go-live, `operacao`), C39 e C62 da `auditoria`, login que deixa linha em `sessions`, `ECONNRESET` sob carga, O2, `502`/`504`, N4, reativação em `/users`, limpeza de linhas vencidas, pendências da `fundacao`; da `alunos`, Open question 1 (cópia de `DATA_ENCRYPTION_KEY` fora do servidor, go-live, `operacao`)
