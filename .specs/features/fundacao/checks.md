@@ -80,7 +80,7 @@ Status: concluído
 Proof: `pnpm --filter "./apps/api" exec vitest run test/request-id.test.ts -t "header_equals_body_request_id"`
 Status: concluído
 
-**C15** - Cada requisição respondida gera exatamente uma linha de log em JSON com `requestId`, `method`, `path`, `status` e `durationMs`, e o `requestId` é o mesmo do header (AC 10)
+**C15** - Cada requisição que o servidor HTTP entrega à aplicação e que é respondida gera exatamente uma linha de log em JSON com `requestId`, `method`, `path`, `status` e `durationMs`, e o `requestId` é o mesmo do header (AC 10)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/logging.test.ts -t "one_json_line_per_request"`
 Status: concluído
 
@@ -172,6 +172,7 @@ Status: concluído
 - Claims naming a status code, route or response shape: C2, C3, C4, C11, C12, C13, C14, C16, C22, C23 - each has a proof that crosses the HTTP boundary
 - C5 é table-driven sobre todas as variáveis obrigatórias do schema; a enumeração vive no teste, lida do próprio schema
 - A door 3 também declara `validation_failed` com `errors[]`, mas nenhuma rota desta feature recebe entrada e o plano não fixou o status dessa resposta. Não há check para ela aqui: o status e a prova entram em `auth-rbac`, na primeira rota com payload (registrado em `.specs/ROADMAP.md`)
+- A camada de protocolo está fora de C15 e das AC 9 e AC 10: a requisição que o servidor HTTP do Node rejeita antes de entregá-la à aplicação (sem `Host`, `Expect` inválido, cabeçalho grande demais, cabeçalhos nunca concluídos, linha de requisição inválida, `Content-Length` inconsistente: `400`, `408`, `417`, `431`) não tem check nem membro em nenhum conjunto acima. Motivo: nesses casos não há método nem caminho interpretados, e em produção o proxy reverso fica na frente da API (decisão do usuário em 2026-10-03, depois da rodada 2 de verificação)
 - "Todos os workspaces" da AC 17 foi lido como em C27: `packages/config` só carrega configuração, e os pacotes internos não precisam de etapa de build
 
 ## Swept
