@@ -18,13 +18,18 @@ interface NewRow {
 
 let stack: Stack;
 let admin: Client;
+/** Um banco só da prova do tamanho da página, para a contagem total de linhas ser exata. */
+let counted: Stack;
 
 beforeAll(async () => {
-  stack = await startStack();
+  [stack, counted] = await Promise.all([startStack(), startStack()]);
   admin = (await stack.session('admin')).client;
 }, 180_000);
 
-afterAll(() => stack?.close());
+afterAll(async () => {
+  await stack?.close();
+  await counted?.close();
+});
 
 /** Linhas inseridas por SQL, com o `created_at` que o teste escolhe; devolve os ids, na ordem dada. */
 async function insert(rows: NewRow[], into: Stack = stack) {
@@ -149,34 +154,28 @@ test('cursor_walks_every_row_once_even_with_equal_instants', async () => {
 });
 
 test('next_cursor_null_at_50_and_set_at_51', async () => {
-  // um banco só deste teste, para a contagem total ser exata
-  const own = await startStack();
-  try {
-    const client = (await own.session('admin')).client;
-    const existing = await auditCount(own);
-    expect(existing).toBeLessThan(50);
-    const base = Date.now() + 86_400_000;
-    await insert(
-      Array.from({ length: 50 - existing }, (_, index) => ({ created_at: new Date(base + index) })),
-      own,
-    );
-    expect(await auditCount(own)).toBe(50);
+  const client = (await counted.session('admin')).client;
+  const existing = await auditCount(counted);
+  expect(existing).toBeLessThan(50);
+  const base = Date.now() + 86_400_000;
+  await insert(
+    Array.from({ length: 50 - existing }, (_, index) => ({ created_at: new Date(base + index) })),
+    counted,
+  );
+  expect(await auditCount(counted)).toBe(50);
 
-    const atFifty = await list({}, client);
+  const atFifty = await list({}, client);
 
-    expect(atFifty.items).toHaveLength(50);
-    expect(atFifty.nextCursor).toBeNull();
+  expect(atFifty.items).toHaveLength(50);
+  expect(atFifty.nextCursor).toBeNull();
 
-    await insert([{ created_at: new Date(base + 1000) }], own);
-    expect(await auditCount(own)).toBe(51);
-    const atFiftyOne = await list({}, client);
+  await insert([{ created_at: new Date(base + 1000) }], counted);
+  expect(await auditCount(counted)).toBe(51);
+  const atFiftyOne = await list({}, client);
 
-    expect(atFiftyOne.items).toHaveLength(50);
-    expect(atFiftyOne.nextCursor).not.toBeNull();
-    expect(atFiftyOne.nextCursor).toMatch(/\S/);
-  } finally {
-    await own.close();
-  }
+  expect(atFiftyOne.items).toHaveLength(50);
+  expect(atFiftyOne.nextCursor).not.toBeNull();
+  expect(atFiftyOne.nextCursor).toMatch(/\S/);
 });
 
 test('rows_written_between_pages_do_not_shift_the_next_page', async () => {
