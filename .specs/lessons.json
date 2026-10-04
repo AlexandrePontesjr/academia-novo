@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 4,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -58,6 +58,42 @@
       ],
       "created": "2026-10-04T00:20:13Z",
       "last_seen": "2026-10-04T00:20:13Z"
+    },
+    {
+      "id": "L-004",
+      "key": "ac_gap::prove a one log line per request claim on a request with a body that the http parser rejects after dispatch such as an invalid chunk size where the response never emits finish",
+      "text": "Prove a one log line per request claim on a request with a body that the HTTP parser rejects after dispatch, such as an invalid chunk size, where the response never emits finish",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C15 - apps/api/src/request-context.ts:13 (api)"
+      ],
+      "created": "2026-10-04T02:14:59Z",
+      "last_seen": "2026-10-04T02:14:59Z"
+    },
+    {
+      "id": "L-005",
+      "key": "spec_precision_gap::draw an exemption boundary on behaviour observed in the built artifact and check each enumerated member against the stated criterion",
+      "text": "Draw an exemption boundary on behaviour observed in the built artifact, and check each enumerated member against the stated criterion",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C15 - .specs/features/fundacao/plan.md:107 (api)"
+      ],
+      "created": "2026-10-04T02:14:59Z",
+      "last_seen": "2026-10-04T02:14:59Z"
     }
   ]
 }

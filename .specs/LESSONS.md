@@ -32,6 +32,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C15 - apps/api/src/main.ts:22 (api)
 - last seen: 2026-10-04T00:20:13Z
 
+### L-004 - Prove a one log line per request claim on a request with a body that the HTTP parser rejects after dispatch, such as an invalid chunk size, where the response never emits finish
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: C15 - apps/api/src/request-context.ts:13 (api)
+- last seen: 2026-10-04T02:14:59Z
+
+### L-005 - Draw an exemption boundary on behaviour observed in the built artifact, and check each enumerated member against the stated criterion
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: C15 - .specs/features/fundacao/plan.md:107 (api)
+- last seen: 2026-10-04T02:14:59Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
