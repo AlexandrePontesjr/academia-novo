@@ -565,3 +565,37 @@ test('save_button_disabled_while_waiting_on_both_forms', async ({ page, api }) =
   await expect(saveEdit).toBeDisabled();
   await expect.poll(() => api.writes().length).toBe(2);
 });
+
+test('edit_form_sends_patch_with_typed_values_and_null_for_cleared', async ({ page, api }) => {
+  api.session = sessionOf('reception');
+  const student = studentOf();
+  const saved = { ...student, name: 'Nome Corrigido', email: null, address: null };
+  api.on('GET', `/api/students/${student.id}`, { status: 200, body: student });
+  api.on('PATCH', `/api/students/${student.id}`, { status: 200, body: saved });
+  await page.goto(`/students/${student.id}/edit`);
+
+  await page.getByLabel('Nome completo', { exact: true }).fill('  Nome Corrigido  ');
+  await page.getByLabel('E-mail', { exact: true }).fill('');
+  await page.getByLabel('Endereço', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+
+  await expect(page).toHaveURL(`/students/${student.id}`);
+  expect(api.writes().map((request) => ({ method: request.method, path: request.path, body: request.body }))).toEqual([
+    {
+      method: 'PATCH',
+      path: `/api/students/${student.id}`,
+      body: {
+        name: 'Nome Corrigido',
+        cpf: '529.982.247-25',
+        birthDate: '2000-01-01',
+        phone: '(11) 91234-5678',
+        sex: 'female',
+        email: null,
+        address: null,
+        emergencyContactName: 'Maria da Penha',
+        emergencyContactPhone: '(11) 3456-7890',
+        healthNotes: 'Hipertensão controlada',
+      },
+    },
+  ]);
+});

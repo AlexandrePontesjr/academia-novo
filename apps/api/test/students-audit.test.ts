@@ -159,22 +159,22 @@ test('rejected_students_requests_write_no_row', async () => {
   const inactive = await createStudent(reception, studentBody(next()));
   await setStatus(stack, inactive.id, 'inactive');
   const { client: instructor } = await stack.session('instructor');
-  const cases: Array<[name: string, send: () => Promise<Response>]> = [
-    ['401', () => stack.client().post('/api/students', studentBody(next()))],
-    ['403', () => instructor.post('/api/students', studentBody(next()))],
-    ['404', () => reception.patch(`/api/students/${unknownId()}`, { phone: '11977776666' })],
-    ['409', () => reception.post('/api/students', studentBody(next(), { cpf: student.cpf }))],
-    ['422', () => reception.patch(`/api/students/${other.id}`, { status: 'inactive' })],
-    ['DELETE de inativo', () => reception.delete(`/api/students/${inactive.id}`)],
+  const cases: Array<[name: string, expected: number, send: () => Promise<Response>]> = [
+    ['401', 401, () => stack.client().post('/api/students', studentBody(next()))],
+    ['403', 403, () => instructor.post('/api/students', studentBody(next()))],
+    ['404', 404, () => reception.patch(`/api/students/${unknownId()}`, { phone: '11977776666' })],
+    ['409', 409, () => reception.post('/api/students', studentBody(next(), { cpf: student.cpf }))],
+    ['422', 422, () => reception.patch(`/api/students/${other.id}`, { status: 'inactive' })],
+    ['DELETE de inativo', 204, () => reception.delete(`/api/students/${inactive.id}`)],
   ];
   expect(cases).toHaveLength(6);
 
-  for (const [name, send] of cases) {
+  for (const [name, expected, send] of cases) {
     const count = await auditCount(stack);
 
     const response = await send();
 
-    expect([401, 403, 404, 409, 422, 204], name).toContain(response.status);
+    expect(response.status, name).toBe(expected);
     expect(await auditCount(stack), name).toBe(count);
   }
 });
