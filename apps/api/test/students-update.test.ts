@@ -241,3 +241,22 @@ test('patch_and_delete_404_for_bad_and_unknown_id', async () => {
   }
   expect(cases).toBe(4);
 });
+
+test('patch_with_uppercase_id_keeps_health_notes_readable', async () => {
+  const student = await createStudent(reception, fullStudentBody(next()));
+
+  const response = await reception.patch(`/api/students/${student.id.toUpperCase()}`, { healthNotes: 'Texto novo' });
+
+  expect(response.status).toBe(200);
+  expect((await fetchStudent(student.id)).healthNotes).toBe('Texto novo');
+});
+
+test('patch_null_clears_an_unreadable_health_notes_value', async () => {
+  const student = await createStudent(reception, fullStudentBody(next()));
+  await stack.query("update students set health_notes_enc = 'v1.lixo.lixo.lixo' where id = $1", [student.id]);
+
+  const response = await reception.patch(`/api/students/${student.id}`, { healthNotes: null });
+
+  expect(response.status).toBe(200);
+  expect((await fetchStudent(student.id)).healthNotes).toBeNull();
+});
