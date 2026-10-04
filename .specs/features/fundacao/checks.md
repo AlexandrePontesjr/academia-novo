@@ -79,12 +79,15 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/contracts.test.ts -t "re
 
 **C18** - `pnpm db:migrate` contra um banco vazio sai com código 0 e deixa a extensão `pg_trgm` instalada (AC 11)
 Proof: `pnpm --filter "./packages/database" exec vitest run test/migrate.test.ts -t "empty_db_migrates_and_installs_pg_trgm"`
+Status: concluído
 
 **C19** - Uma segunda execução de `pnpm db:migrate` sai com código 0 e deixa o schema e o registro de migrações aplicadas idênticos aos de antes (AC 12)
 Proof: `pnpm --filter "./packages/database" exec vitest run test/migrate.test.ts -t "second_run_changes_nothing"`
+Status: concluído
 
 **C20** - Com uma migração de SQL inválido, `pnpm db:migrate` sai com código diferente de 0 (AC 13)
 Proof: `pnpm --filter "./packages/database" exec vitest run test/migrate.test.ts -t "failing_migration_exits_nonzero"`
+Status: concluído
 
 **C21** - Quando o serviço `migrate` termina com código diferente de 0, `docker compose up --wait` sai com código diferente de 0 e o container `api` nunca chega a iniciar (AC 14)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "api_never_starts_when_migrate_fails"`
