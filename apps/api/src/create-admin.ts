@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { emailSchema, newPasswordSchema } from '@academia/contracts';
 import { createDatabase } from '@academia/database';
 import { z } from 'zod';
+import { describeError } from './log-safe.ts';
 import { UsersService } from './users/users.service.ts';
 
 // `pnpm users:create-admin --email <e-mail> --name <nome>`, com a senha em ADMIN_PASSWORD.
@@ -55,4 +56,10 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main();
+try {
+  process.exitCode = await main();
+} catch (error) {
+  // a mensagem de um erro de consulta traz os parâmetros dela; sai só o que pode ir para a saída
+  console.error(`users:create-admin: ${describeError(error)}`);
+  process.exitCode = 1;
+}
