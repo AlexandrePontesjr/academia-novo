@@ -108,12 +108,15 @@ Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "api_ne
 
 **C22** - Com a API respondendo `200` em `/health`, a página `/` responde `200`, exibe o título "Gestão de Academia" e o texto "API: operacional", e o elemento `html` tem `lang="pt-BR"` (AC 15)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/home.spec.ts -g "shows_api_operational"`
+Status: concluído
 
 **C23** - Com a API respondendo `503`, pendurada ou recusando conexão, a página `/` responde `200` e exibe "API: indisponível" (AC 16)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/home.spec.ts -g "shows_api_unavailable"`
+Status: concluído
 
 **C24** - Com a API pendurada, a página `/` responde em até 4 s (os 3 s do limite mais 1 s de margem) (AC 16)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/home.spec.ts -g "hung_api_answers_within_4s"`
+Status: concluído
 
 **C25** - Na stack de pé, a página `/` servida pelo container `web` exibe "API: operacional" (AC 15)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "home_reports_api_operational"`
