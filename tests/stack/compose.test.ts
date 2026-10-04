@@ -126,12 +126,14 @@ describe('stack de pé', () => {
     expect(((await anonymous.json()) as { code: string }).code).toBe('unauthorized');
   });
 
-  test('home_reports_api_operational', async () => {
-    const response = await fetch(`http://127.0.0.1:${stack.ports.WEB_PORT}/`);
+  test('home_redirects_to_login', async () => {
+    const response = await fetch(`${stack.webOrigin}/`);
     const html = await response.text();
 
+    expect(response.redirected).toBe(true);
+    expect(response.url).toBe(`${stack.webOrigin}/login`);
     expect(response.status).toBe(200);
-    expect(html).toContain('API: operacional');
+    expect(html).toMatch(/<h1[^>]*>Entrar<\/h1>/);
   });
 });
 

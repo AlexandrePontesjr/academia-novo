@@ -110,3 +110,36 @@ test('api_coverage_thresholds_are_70_lines_and_branches', async () => {
   const api = JSON.parse(readFileSync(join(repoRoot, 'apps/api/package.json'), 'utf8'));
   expect(api.scripts.test).toMatch(/^vitest run( .*)? --coverage( |$)/);
 });
+
+test('ui_package_is_the_shared_interface_base', () => {
+  const readJson = (path: string) => JSON.parse(readFileSync(join(repoRoot, path), 'utf8'));
+
+  expect(workspaceDirs()).toContain('packages/ui');
+  const ui = readJson('packages/ui/package.json');
+  expect(ui.name).toBe('@academia/ui');
+  expect(ui.dependencies.tailwindcss).toMatch(/\S/);
+  expect(readJson('packages/ui/components.json').$schema).toBe('https://ui.shadcn.com/schema.json');
+
+  const web = readJson('apps/web/package.json');
+  for (const dependency of ['@academia/ui', 'react-hook-form', '@academia/contracts']) {
+    expect(web.dependencies[dependency], `apps/web declara ${dependency}`).toMatch(/\S/);
+  }
+
+  // as tarefas que o `pnpm verify` roda, como o Turborepo as resolve
+  const dry = spawnSync('pnpm exec turbo run lint typecheck test build --dry-run=json', {
+    cwd: repoRoot,
+    shell: true,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  expect(dry.status, dry.stderr).toBe(0);
+  const { tasks } = JSON.parse(dry.stdout.slice(dry.stdout.indexOf('{'))) as {
+    tasks: Array<{ taskId: string; command: string }>;
+  };
+  for (const taskId of ['@academia/ui#lint', '@academia/ui#typecheck']) {
+    const task = tasks.find((candidate) => candidate.taskId === taskId);
+    expect(task, taskId).toBeDefined();
+    expect(task?.command, taskId).not.toBe('<NONEXISTENT>');
+    expect(task?.command, taskId).toMatch(/\S/);
+  }
+});

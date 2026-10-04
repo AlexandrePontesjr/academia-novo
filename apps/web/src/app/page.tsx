@@ -1,33 +1,15 @@
-import { healthResponseSchema } from '@academia/contracts';
-import { envSchema } from '../env.ts';
+import { Shell } from '../components/shell.tsx';
+import { requireSession } from '../lib/session.ts';
 
-// O status da API é consultado a cada requisição, nunca no build.
+// A sessão é conferida a cada requisição, nunca no build.
 export const dynamic = 'force-dynamic';
 
-const HEALTH_TIMEOUT_MS = 3000;
-
-async function isApiOperational(): Promise<boolean> {
-  try {
-    const { API_URL } = envSchema.parse(process.env);
-    const response = await fetch(new URL('/health', API_URL), {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
-    });
-    if (response.status !== 200) return false;
-    return healthResponseSchema.parse(await response.json()).status === 'ok';
-  } catch {
-    return false;
-  }
-}
-
-// Página provisória: `auth-rbac` a troca pelo login.
 export default async function HomePage() {
-  const operational = await isApiOperational();
+  const session = await requireSession();
 
   return (
-    <main>
-      <h1>Gestão de Academia</h1>
-      <p role="status">{operational ? 'API: operacional' : 'API: indisponível'}</p>
-    </main>
+    <Shell session={session}>
+      <p>Olá, {session.user.name}. Escolha uma opção no menu acima.</p>
+    </Shell>
   );
 }
