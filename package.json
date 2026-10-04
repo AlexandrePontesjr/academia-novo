@@ -8,6 +8,7 @@
   "scripts": {
     "verify": "turbo run lint typecheck test build",
     "db:migrate": "pnpm --filter @academia/database migrate",
+    "users:create-admin": "pnpm --filter @academia/api run users:create-admin",
     "test:stack": "pnpm --filter @academia/stack-tests test:stack"
   },
   "devDependencies": {

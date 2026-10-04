@@ -5,9 +5,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate as runMigrations } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 
-/** Postgres real, um por arquivo de teste que precisa dele. */
+/** Postgres real e já migrado, um por arquivo de teste que precisa dele. */
 export async function startPostgres() {
   const container = await new PostgreSqlContainer('postgres:18-alpine').start();
+  await migrate(container.getConnectionUri());
   return { url: container.getConnectionUri(), stop: () => container.stop() };
 }
 

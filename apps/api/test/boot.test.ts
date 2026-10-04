@@ -1,6 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 import { beforeAll, expect, test, vi } from 'vitest';
+import { buildOptions } from '../build-options.mjs';
 import { envSchema } from '../src/env.ts';
 import { invalidChunk, rawExchange } from './support/raw.ts';
 import { freePort, refusingDatabaseUrl } from './support/servers.ts';
@@ -11,16 +13,27 @@ const SECRET = 's3nha-ultra-secreta';
 const validEnv: Record<string, string> = {
   DATABASE_URL: `postgres://academia:${SECRET}@127.0.0.1:5432/academia`,
   PORT: '39871',
+  AUTH_SECRET: `chave-de-teste-${SECRET}-com-mais-de-32`,
+  WEB_ORIGIN: 'http://localhost:3000',
 };
 
 const requiredKeys = Object.entries(envSchema.shape)
   .filter(([, field]) => !field.safeParse(undefined).success)
   .map(([key]) => key);
 
-beforeAll(() => {
-  const build = spawnSync('pnpm build', { cwd: apiRoot, shell: true, encoding: 'utf8' });
-  expect(build.status, build.stderr).toBe(0);
-}, 120_000);
+beforeAll(async () => {
+  // o mesmo processo da API, empacotado como o `dist/main.js`, com uma rota de acesso mal declarado
+  await build({
+    ...buildOptions(['test/fixtures/invalid-access.ts'], 'dist/fixtures'),
+    absWorkingDir: apiRoot,
+  });
+}, 60_000);
+
+function without(env: Record<string, string>, key: string) {
+  const rest = { ...env };
+  delete rest[key];
+  return rest;
+}
 
 /** Inicia o processo real da API (o mesmo `dist/main.js` da imagem) só com as variáveis dadas. */
 function startApiProcess(env: Record<string, string>) {
@@ -75,6 +88,46 @@ test('env_failure_prints_no_values', () => {
   }
 });
 
+test('auth_env_rejected_exits_1_naming_var', () => {
+  const cases: Array<{ variable: string; env: Record<string, string> }> = [
+    { variable: 'AUTH_SECRET', env: without(validEnv, 'AUTH_SECRET') },
+    { variable: 'AUTH_SECRET', env: { ...validEnv, AUTH_SECRET: `${SECRET}-com-31-cara` } },
+    { variable: 'WEB_ORIGIN', env: without(validEnv, 'WEB_ORIGIN') },
+    { variable: 'WEB_ORIGIN', env: { ...validEnv, WEB_ORIGIN: 'ftp://x' } },
+  ];
+  expect(cases[1]!.env.AUTH_SECRET).toHaveLength(31);
+
+  for (const { variable, env } of cases) {
+    const { status, output } = startApiProcess(env);
+
+    expect(status, JSON.stringify(env)).toBe(1);
+    expect(output).toContain(variable);
+    for (const value of Object.values(env)) {
+      expect(output).not.toContain(value);
+    }
+  }
+});
+
+test('route_without_single_access_declaration_exits_1', () => {
+  const cases = [
+    { fixture: 'undeclared', route: 'GET /api/undeclared' },
+    { fixture: 'double', route: 'GET /api/double' },
+  ];
+
+  for (const { fixture, route } of cases) {
+    const result = spawnSync(process.execPath, ['dist/fixtures/invalid-access.js', fixture], {
+      cwd: apiRoot,
+      encoding: 'utf8',
+      timeout: 15_000,
+      env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...validEnv },
+    });
+
+    expect(result.status, `${fixture}: ${result.stdout}${result.stderr}`).toBe(1);
+    expect(`${result.stdout}
+${result.stderr}`).toContain(route);
+  }
+});
+
 test('real_process_logs_delivered_body_error', async () => {
   const port = await freePort();
   const child = spawn(process.execPath, ['dist/main.js'], {
@@ -82,6 +135,7 @@ test('real_process_logs_delivered_body_error', async () => {
     env: {
       PATH: process.env.PATH,
       SystemRoot: process.env.SystemRoot,
+      ...validEnv,
       DATABASE_URL: await refusingDatabaseUrl(),
       PORT: String(port),
     },

@@ -2,6 +2,7 @@ import type { HealthResponse } from '@academia/contracts';
 import { type Database, sql } from '@academia/database';
 import { Controller, Get, Inject, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { Public } from './access.ts';
 import { DATABASE } from './tokens.ts';
 
 @Controller()
@@ -9,6 +10,7 @@ export class HealthController {
   constructor(@Inject(DATABASE) private readonly database: Database) {}
 
   @Get('health')
+  @Public()
   async health(@Res({ passthrough: true }) res: Response): Promise<HealthResponse> {
     const databaseUp = await this.database.db.execute(sql`select 1`).then(
       () => true,

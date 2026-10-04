@@ -2,7 +2,7 @@ import { createDatabase, type Database } from '@academia/database';
 import pg from 'pg';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { type Auth, createAuth } from '../src/auth.ts';
-import { migrate, startPostgres } from './support/servers.ts';
+import { startPostgres } from './support/servers.ts';
 import { cookieHeader, totpCode } from './support/totp.ts';
 
 const EMAIL = 'admin@exemplo.com';
@@ -15,7 +15,6 @@ let auth: Auth;
 
 beforeAll(async () => {
   postgres = await startPostgres();
-  await migrate(postgres.url);
   database = createDatabase(postgres.url);
   client = new pg.Client({ connectionString: postgres.url });
   await client.connect();

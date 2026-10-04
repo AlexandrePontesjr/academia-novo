@@ -6,9 +6,10 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "build": "node build.mjs",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "users:create-admin": "node --env-file-if-exists=../../.env dist/create-admin.js"
   },
   "dependencies": {
     "@academia/contracts": "workspace:*",
@@ -31,6 +32,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "@types/pg": "^8.23.1",
+    "@vitest/coverage-v8": "^5.0.3",
     "esbuild": "^0.28.2",
     "eslint": "catalog:",
     "typescript": "catalog:",

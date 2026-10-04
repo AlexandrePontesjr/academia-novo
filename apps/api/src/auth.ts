@@ -1,11 +1,17 @@
 import { type Database, schema } from '@academia/database';
-import { hash, verify } from '@node-rs/argon2';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins/two-factor';
+import { hashPassword, verifyPassword } from './password.ts';
 
-/** Argon2id (o algoritmo padrão do `@node-rs/argon2`) com m=19456, t=2, p=1. */
-const ARGON2 = { memoryCost: 19456, timeCost: 2, parallelism: 1 };
+/**
+ * O Better Auth ainda aceita a sessão no instante exato de `expiresAt`. Gravando 1 ms a menos, ela
+ * vale enquanto o último uso tem menos de 30 minutos, e aos 30 minutos exatos já não vale.
+ */
+function endingBefore<T extends { expiresAt?: Date }>(session: T): T {
+  if (!session.expiresAt) return session;
+  return { ...session, expiresAt: new Date(new Date(session.expiresAt).getTime() - 1) };
+}
 
 export interface AuthConfig {
   secret: string;
@@ -36,14 +42,20 @@ export function createAuth(db: Database['db'], { secret, webOrigin }: AuthConfig
       },
     },
     session: { expiresIn: 1800, updateAge: 60 },
+    databaseHooks: {
+      session: {
+        create: { before: async (session) => ({ data: endingBefore(session) }) },
+        update: { before: async (session) => ({ data: endingBefore(session) }) },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,
       minPasswordLength: 12,
       maxPasswordLength: 128,
       password: {
-        hash: (password) => hash(password, ARGON2),
-        verify: ({ hash: stored, password }) => verify(stored, password),
+        hash: hashPassword,
+        verify: ({ hash, password }) => verifyPassword(hash, password),
       },
     },
     plugins: [twoFactor()],
