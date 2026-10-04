@@ -1,4 +1,5 @@
-import type { AuditAction, AuditLog, Role, StudentStatus } from '@academia/contracts';
+import type { AuditAction, AuditLog, ConsentGrantor, ConsentPurpose, Role, StudentStatus } from '@academia/contracts';
+import { GRANTOR_LABELS, PURPOSE_LABELS } from './consents.ts';
 import { ROLE_LABELS } from './roles.ts';
 import { STATUS_LABELS } from './students.ts';
 
@@ -80,6 +81,11 @@ const FIELD_LABELS: Record<string, string> = {
   emergencyContactName: 'Contato de emergência (nome)',
   emergencyContactPhone: 'Contato de emergência (telefone)',
   healthNotes: 'Observações de saúde',
+  // responsável e consentimento: a trilha guarda o valor só de `purpose`, `termVersion` e `grantedBy`
+  relationship: 'Parentesco',
+  purpose: 'Finalidade',
+  termVersion: 'Versão do termo',
+  grantedBy: 'Concedido por',
 };
 
 function valueLabel(field: string, value: unknown): string {
@@ -88,6 +94,8 @@ function valueLabel(field: string, value: unknown): string {
   if (field === 'active') return value ? 'Ativo' : 'Inativo';
   if (field === 'status') return STATUS_LABELS[value as StudentStatus] ?? String(value);
   if (field === 'twoFactorEnabled') return value ? 'Ativado' : 'Desativado';
+  if (field === 'purpose') return PURPOSE_LABELS[value as ConsentPurpose] ?? String(value);
+  if (field === 'grantedBy') return GRANTOR_LABELS[value as ConsentGrantor] ?? String(value);
   return String(value);
 }
 

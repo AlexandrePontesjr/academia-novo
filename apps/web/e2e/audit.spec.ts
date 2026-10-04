@@ -134,7 +134,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(13);
+  expect(AUDIT_ACTIONS).toHaveLength(16);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -156,6 +156,9 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Aluno criado',
     'Aluno editado',
     'Aluno inativado',
+    'Responsável do aluno salvo',
+    'Consentimento registrado',
+    'Consentimento revogado',
   ]);
 });
 
@@ -173,6 +176,9 @@ const LABELS = [
   'Aluno criado',
   'Aluno editado',
   'Aluno inativado',
+  'Responsável do aluno salvo',
+  'Consentimento registrado',
+  'Consentimento revogado',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -191,8 +197,8 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(13);
-  expect(options.slice(11)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
+  expect(options.slice(1)).toHaveLength(16);
+  expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
 test('student_details_show_status_change_and_changed_phone', async ({ page, api }) => {
@@ -425,4 +431,66 @@ test('clear_filters_goes_to_audit_without_query', async ({ page, api }) => {
   await expect(page.getByLabel('IP', { exact: true })).toHaveValue('');
   await expect.poll(() => auditCalls(api).length).toBeGreaterThan(callsBefore);
   expect(auditCalls(api).at(-1)!.query).toBe('');
+});
+
+test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) => {
+  const consentActions = ['student.guardian_saved', 'student.consent_granted', 'student.consent_revoked'] as const;
+  serve(
+    api,
+    consentActions.map((action) => logOf({ action, entity: 'student' })),
+  );
+
+  await page.goto('/audit');
+
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual([
+    'Responsável do aluno salvo',
+    'Consentimento registrado',
+    'Consentimento revogado',
+  ]);
+  const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
+  expect(options).toEqual(['Todas', ...LABELS]);
+  expect(options.slice(1)).toHaveLength(16);
+  expect(options.slice(14)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
+  // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
+  expect(AUDIT_ACTIONS.slice(13)).toEqual(consentActions);
+});
+
+test('consent_granted_details_show_purpose_version_and_grantor', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'student.consent_granted',
+      entity: 'student',
+      diff: {
+        fields: ['purpose', 'termVersion', 'grantedBy'],
+        values: {
+          purpose: { from: null, to: 'image_use' },
+          termVersion: { from: null, to: 1 },
+          grantedBy: { from: null, to: 'guardian' },
+        },
+      },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  const details = page.locator('tbody tr:nth-child(1) td:nth-child(7)');
+  await expect(details.getByText('Finalidade: — → Uso da imagem', { exact: true })).toBeVisible();
+  await expect(details.getByText('Versão do termo: — → 1', { exact: true })).toBeVisible();
+  await expect(details.getByText('Concedido por: — → Responsável', { exact: true })).toBeVisible();
+});
+
+test('guardian_saved_details_show_changed_phone', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'student.guardian_saved',
+      entity: 'student',
+      diff: { fields: ['phone'], values: {} },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  await expect(
+    page.locator('tbody tr:nth-child(1) td:nth-child(7)').getByText('Telefone alterado', { exact: true }),
+  ).toBeVisible();
 });
