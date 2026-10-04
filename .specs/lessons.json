@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 8,
+  "next_id": 14,
   "lessons": [
     {
       "id": "L-001",
@@ -130,6 +130,114 @@
       ],
       "created": "2026-10-04T02:50:59Z",
       "last_seen": "2026-10-04T02:50:59Z"
+    },
+    {
+      "id": "L-008",
+      "key": "ac_gap::prove a path prefix middleware on a differently cased path that the router still dispatches to the same handler",
+      "text": "Prove a path-prefix middleware on a differently cased path that the router still dispatches to the same handler",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C22, C23 - apps/api/src/csrf.ts:13 (api)"
+      ],
+      "created": "2026-10-04T05:11:12Z",
+      "last_seen": "2026-10-04T05:11:12Z"
+    },
+    {
+      "id": "L-009",
+      "key": "ac_gap::prove a claim that secrets never reach the log on a dependency failure path where the logged exception carries the query parameters",
+      "text": "Prove a claim that secrets never reach the log on a dependency failure path, where the logged exception carries the query parameters",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C100 - apps/api/src/problem.filter.ts:88 (api)"
+      ],
+      "created": "2026-10-04T05:11:12Z",
+      "last_seen": "2026-10-04T05:11:12Z"
+    },
+    {
+      "id": "L-010",
+      "key": "ac_gap::capture console output as well as direct stdout and stderr writes when a test asserts what the process logs",
+      "text": "Capture console output as well as direct stdout and stderr writes when a test asserts what the process logs",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C100 - apps/api/test/auth-log.test.ts:25 (api)"
+      ],
+      "created": "2026-10-04T05:11:12Z",
+      "last_seen": "2026-10-04T05:11:12Z"
+    },
+    {
+      "id": "L-011",
+      "key": "spec_precision_gap::state a time limit in a check as an upper bound the proof measures not as a precondition of the scenario",
+      "text": "State a time limit in a check as an upper bound the proof measures, not as a precondition of the scenario",
+      "signal": "spec_precision_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C75 - apps/web/e2e/forms.spec.ts:39 (web)"
+      ],
+      "created": "2026-10-04T05:11:13Z",
+      "last_seen": "2026-10-04T05:11:13Z"
+    },
+    {
+      "id": "L-012",
+      "key": "spec_precision_gap::enumerate a claim about every form by submit control not by screen",
+      "text": "Enumerate a claim about every form by submit control, not by screen",
+      "signal": "spec_precision_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C74, C75, C76 - apps/web/e2e/support/forms.ts:17 (web)"
+      ],
+      "created": "2026-10-04T05:11:13Z",
+      "last_seen": "2026-10-04T05:11:13Z"
+    },
+    {
+      "id": "L-013",
+      "key": "spec_deviation::when the build adds a status or code to the plan surface add a check and a coverage row for it before the feature closes",
+      "text": "When the Build adds a status or code to the plan Surface, add a check and a Coverage row for it before the feature closes",
+      "signal": "spec_deviation",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F3 - .specs/features/auth-rbac/plan.md:110 (web)"
+      ],
+      "created": "2026-10-04T05:11:13Z",
+      "last_seen": "2026-10-04T05:11:13Z"
     }
   ]
 }

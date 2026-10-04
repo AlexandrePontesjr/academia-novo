@@ -56,6 +56,42 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: F3 - .specs/features/fundacao/checks.md:183 (C32) (api)
 - last seen: 2026-10-04T02:50:59Z
 
+### L-008 - Prove a path-prefix middleware on a differently cased path that the router still dispatches to the same handler
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C22, C23 - apps/api/src/csrf.ts:13 (api)
+- last seen: 2026-10-04T05:11:12Z
+
+### L-009 - Prove a claim that secrets never reach the log on a dependency failure path, where the logged exception carries the query parameters
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C100 - apps/api/src/problem.filter.ts:88 (api)
+- last seen: 2026-10-04T05:11:12Z
+
+### L-010 - Capture console output as well as direct stdout and stderr writes when a test asserts what the process logs
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C100 - apps/api/test/auth-log.test.ts:25 (api)
+- last seen: 2026-10-04T05:11:12Z
+
+### L-011 - State a time limit in a check as an upper bound the proof measures, not as a precondition of the scenario
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: auth-rbac
+- evidence: C75 - apps/web/e2e/forms.spec.ts:39 (web)
+- last seen: 2026-10-04T05:11:13Z
+
+### L-012 - Enumerate a claim about every form by submit control, not by screen
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: auth-rbac
+- evidence: C74, C75, C76 - apps/web/e2e/support/forms.ts:17 (web)
+- last seen: 2026-10-04T05:11:13Z
+
+### L-013 - When the Build adds a status or code to the plan Surface, add a check and a Coverage row for it before the feature closes
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: auth-rbac
+- evidence: F3 - .specs/features/auth-rbac/plan.md:110 (web)
+- last seen: 2026-10-04T05:11:13Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
