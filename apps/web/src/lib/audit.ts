@@ -26,6 +26,9 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'student.created': 'Aluno criado',
   'student.updated': 'Aluno editado',
   'student.inactivated': 'Aluno inativado',
+  'student.guardian_saved': 'Responsável do aluno salvo',
+  'student.consent_granted': 'Consentimento registrado',
+  'student.consent_revoked': 'Consentimento revogado',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;

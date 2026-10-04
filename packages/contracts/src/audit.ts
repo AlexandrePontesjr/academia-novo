@@ -18,6 +18,9 @@ export const AUDIT_ACTIONS = [
   'student.created',
   'student.updated',
   'student.inactivated',
+  'student.guardian_saved',
+  'student.consent_granted',
+  'student.consent_revoked',
 ] as const;
 export const auditActionSchema = z.enum(AUDIT_ACTIONS, 'Escolha uma ação válida.');
 export type AuditAction = z.infer<typeof auditActionSchema>;

@@ -1,7 +1,12 @@
 import {
   AUDIT_ACTIONS,
   auditActionSchema,
+  consentSchema,
   createStudentRequestSchema,
+  grantConsentRequestSchema,
+  guardianRequestSchema,
+  studentConsentsResponseSchema,
+  updateStudentRequestSchema,
   type AuditLogsResponse,
   auditLogsResponseSchema,
   healthResponseSchema,
@@ -213,8 +218,16 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(13);
-  expect([...AUDIT_ACTIONS]).toEqual([...before, 'student.created', 'student.updated', 'student.inactivated']);
+  expect(AUDIT_ACTIONS).toHaveLength(16);
+  expect([...AUDIT_ACTIONS]).toEqual([
+    ...before,
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+  ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 
@@ -322,4 +335,81 @@ test('cpf_taken_is_a_known_409_code', async () => {
   expect(body.status).toBe(409);
   expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
   expect(problemSchema.safeParse(body).success).toBe(true);
+});
+
+test('audit_actions_end_with_three_consent_actions_in_order', () => {
+  expect(AUDIT_ACTIONS).toHaveLength(16);
+  expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+  ]);
+  expect(AUDIT_ACTIONS.slice(13)).toEqual(['student.guardian_saved', 'student.consent_granted', 'student.consent_revoked']);
+});
+
+const without = <T extends Record<string, unknown>>(body: T, key: string) =>
+  Object.fromEntries(Object.entries(body).filter(([name]) => name !== key));
+
+test('consent_and_guardian_request_schemas_accept_and_reject', () => {
+  const grant = { purpose: 'image_use', termVersion: 1, grantedBy: 'student' };
+  for (const purpose of ['data_processing', 'image_use']) {
+    for (const grantedBy of ['student', 'guardian']) {
+      expect(grantConsentRequestSchema.safeParse({ ...grant, purpose, grantedBy }).success, `${purpose}/${grantedBy}`).toBe(true);
+    }
+  }
+  expect(grantConsentRequestSchema.safeParse({ ...grant, termVersion: 7 }).success).toBe(true);
+  for (const field of ['purpose', 'termVersion', 'grantedBy']) {
+    expect(grantConsentRequestSchema.safeParse(without(grant, field)).success, `sem ${field}`).toBe(false);
+  }
+  const refused: Array<[string, Record<string, unknown>]> = [
+    ['purpose marketing', { ...grant, purpose: 'marketing' }],
+    ['termVersion 0', { ...grant, termVersion: 0 }],
+    ['termVersion 1.5', { ...grant, termVersion: 1.5 }],
+    ['termVersion "1"', { ...grant, termVersion: '1' }],
+    ['grantedBy staff', { ...grant, grantedBy: 'staff' }],
+  ];
+  for (const [label, body] of refused) expect(grantConsentRequestSchema.safeParse(body).success, label).toBe(false);
+
+  const guardian = { name: 'Ana Souza', cpf: '529.982.247-25', phone: '(11) 91234-5678', relationship: 'mother' };
+  expect(guardianRequestSchema.safeParse(guardian).success).toBe(true);
+  expect(guardianRequestSchema.safeParse(guardian).data).toMatchObject({ cpf: '52998224725', phone: '11912345678' });
+  for (const field of ['name', 'cpf', 'phone', 'relationship']) {
+    expect(guardianRequestSchema.safeParse(without(guardian, field)).success, `guardian sem ${field}`).toBe(false);
+  }
+  expect(guardianRequestSchema.safeParse(null).success, 'guardian null').toBe(false);
+  // o PATCH também recusa `null`
+  expect(updateStudentRequestSchema.safeParse({ guardian: null }).success).toBe(false);
+  expect(updateStudentRequestSchema.safeParse({ guardian }).success).toBe(true);
+});
+
+test('consent_response_schemas_accept_and_reject', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+  const item = {
+    id,
+    purpose: 'image_use',
+    termVersion: 1,
+    grantedBy: 'guardian',
+    guardian: { id, name: 'Ana Souza' },
+    grantedAt: '2026-10-05T02:30:00.000Z',
+    revokedAt: null,
+  };
+  expect(consentSchema.safeParse(item).success).toBe(true);
+  expect(consentSchema.safeParse({ ...item, guardian: null, grantedBy: 'student' }).success, 'guardian null').toBe(true);
+  expect(consentSchema.safeParse({ ...item, revokedAt: '2026-10-06T02:30:00.000Z' }).success, 'revokedAt instante').toBe(true);
+  for (const field of ['id', 'purpose', 'termVersion', 'grantedBy', 'grantedAt', 'revokedAt']) {
+    expect(consentSchema.safeParse(without(item, field)).success, `sem ${field}`).toBe(false);
+  }
+
+  expect(studentConsentsResponseSchema.safeParse({ guardian: null, items: [] }).success).toBe(true);
+  expect(studentConsentsResponseSchema.safeParse({ guardian: null, items: [item] }).success).toBe(true);
 });

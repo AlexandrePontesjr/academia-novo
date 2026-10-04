@@ -48,11 +48,26 @@ const phoneSchema = z
   .overwrite((value) => value.replace(/[\s()-]/g, ''))
   .regex(/^\d{10,11}$/, 'Informe um telefone com DDD, de 10 ou 11 dígitos.');
 
-/** O dia de hoje em `America/Sao_Paulo`, `aaaa-mm-dd`: o relógio do servidor pode estar em UTC. */
-const today = () =>
+/** O dia de hoje em `America/Sao_Paulo`, `aaaa-mm-dd`: o relógio do servidor ou do navegador pode estar em UTC. */
+export const saoPauloToday = (now: Date = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
-    new Date(),
+    now,
   );
+const today = () => saoPauloToday();
+
+const MAJORITY_AGE = 18;
+
+/**
+ * Menor é quem tem menos de 18 anos completos em `today` (`aaaa-mm-dd`, o dia de `America/Sao_Paulo`).
+ * Conta por ano, mês e dia, sem fuso: quem faz 18 anos hoje não é menor, e quem nasceu em 29/02
+ * completa 18 anos em 01/03 nos anos comuns. A única definição, da API e do web (AD-011).
+ */
+export function isMinor(birthDate: string, today: string): boolean {
+  const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number) as [number, number, number];
+  const [year, month, day] = today.split('-').map(Number) as [number, number, number];
+  const birthdayPassed = month > birthMonth || (month === birthMonth && day >= birthDay);
+  return year - birthYear - (birthdayPassed ? 0 : 1) < MAJORITY_AGE;
+}
 
 const isRealDay = (value: string) => {
   const date = new Date(`${value}T00:00:00Z`);
@@ -78,6 +93,47 @@ const emergencyNameSchema = text(
   'O nome do contato deve ter no máximo 120 caracteres.',
 );
 
+export const GUARDIAN_RELATIONSHIPS = ['mother', 'father', 'legal_guardian', 'other'] as const;
+export const guardianRelationshipSchema = z.enum(GUARDIAN_RELATIONSHIPS, 'Escolha o parentesco do responsável.');
+export type GuardianRelationship = z.infer<typeof guardianRelationshipSchema>;
+
+/**
+ * O responsável legal enviado junto do aluno (consentimento, door 1): os quatro campos são
+ * obrigatórios, e o CPF e o telefone seguem as regras do aluno e ficam só em dígitos.
+ */
+export const guardianRequestSchema = z.object(
+  {
+    name: z
+      .string('Informe o nome do responsável.')
+      .trim()
+      .min(1, 'Informe o nome do responsável.')
+      .max(120, 'O nome do responsável deve ter no máximo 120 caracteres.')
+      .refine(noNul, 'O nome do responsável contém um caractere inválido.'),
+    cpf: z
+      .string('Informe o CPF do responsável.')
+      .overwrite((value) => value.replace(/[.-]/g, ''))
+      .refine(isValidCpf, 'Informe um CPF válido para o responsável.'),
+    phone: z
+      .string('Informe o telefone do responsável.')
+      .overwrite((value) => value.replace(/[\s()-]/g, ''))
+      .regex(/^\d{10,11}$/, 'Informe um telefone com DDD, de 10 ou 11 dígitos, para o responsável.'),
+    relationship: guardianRelationshipSchema,
+  },
+  'Informe o responsável com nome, CPF, telefone e parentesco.',
+);
+export type GuardianRequest = z.infer<typeof guardianRequestSchema>;
+
+/** O responsável gravado, como a ficha de consentimentos o devolve. */
+export const guardianSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  cpf: z.string(),
+  phone: z.string(),
+  relationship: guardianRelationshipSchema,
+  createdAt: z.iso.datetime(),
+});
+export type Guardian = z.infer<typeof guardianSchema>;
+
 /** Corpo de `POST /api/students`: os quatro campos da RF-05 e os demais opcionais. */
 export const createStudentRequestSchema = z
   .object({
@@ -91,8 +147,25 @@ export const createStudentRequestSchema = z
     emergencyContactName: emergencyNameSchema.optional(),
     emergencyContactPhone: phoneSchema.optional(),
     healthNotes: healthNotesSchema.optional(),
+    guardian: guardianRequestSchema.optional(),
   })
   .superRefine((body, context) => {
+    // o menor exige o responsável; um `birthDate` que o schema já recusou não chega a esta conta
+    if (
+      body.guardian === undefined &&
+      typeof body.birthDate === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(body.birthDate) &&
+      isMinor(body.birthDate, today())
+    ) {
+      context.addIssue({ code: 'custom', path: ['guardian'], message: 'Informe o responsável legal do aluno menor de 18 anos.' });
+    }
+    if (body.guardian !== undefined && body.guardian.cpf === body.cpf) {
+      context.addIssue({
+        code: 'custom',
+        path: ['guardian', 'cpf'],
+        message: 'O CPF do responsável deve ser diferente do CPF do aluno.',
+      });
+    }
     // só um do par: o campo que falta é o que a tela marca
     if (body.emergencyContactName !== undefined && body.emergencyContactPhone === undefined) {
       context.addIssue({
@@ -128,6 +201,7 @@ export const updateStudentRequestSchema = z.object({
   emergencyContactPhone: phoneSchema.nullable().optional(),
   healthNotes: healthNotesSchema.nullable().optional(),
   status: z.enum(['active', 'suspended'], 'Escolha Ativo ou Suspenso; para inativar, use Inativar.').optional(),
+  guardian: guardianRequestSchema.optional(),
 });
 export type UpdateStudentRequest = z.infer<typeof updateStudentRequestSchema>;
 
