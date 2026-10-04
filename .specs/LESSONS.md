@@ -110,6 +110,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C32 - apps/api/src/auth/auth.controller.ts:263 (N3) (api)
 - last seen: 2026-10-04T05:54:53Z
 
+### L-017 - Measure a length limit in the same unit in the request schema and in every library that enforces it again, and prove the upper bound with a character that takes two UTF-16 units
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C51, C60 - packages/contracts/src/auth.ts:11 (N5) (api)
+- last seen: 2026-10-04T06:22:59Z
+
+### L-018 - Prove a wrong-secret rejection on a value longer than the verifying library accepts, where the library refuses before comparing
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C37 - apps/api/src/auth/auth.controller.ts:295 (N6) (api)
+- last seen: 2026-10-04T06:22:59Z
+
+### L-019 - When a criterion says a valid value, state the check on both bounds of validity, not on one sample value
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)
+- last seen: 2026-10-04T06:22:59Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

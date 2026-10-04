@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 17,
+  "next_id": 20,
   "lessons": [
     {
       "id": "L-001",
@@ -292,6 +292,60 @@
       ],
       "created": "2026-10-04T05:54:53Z",
       "last_seen": "2026-10-04T05:54:53Z"
+    },
+    {
+      "id": "L-017",
+      "key": "ac_gap::measure a length limit in the same unit in the request schema and in every library that enforces it again and prove the upper bound with a character that takes two utf 16 units",
+      "text": "Measure a length limit in the same unit in the request schema and in every library that enforces it again, and prove the upper bound with a character that takes two UTF-16 units",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C51, C60 - packages/contracts/src/auth.ts:11 (N5) (api)"
+      ],
+      "created": "2026-10-04T06:22:59Z",
+      "last_seen": "2026-10-04T06:22:59Z"
+    },
+    {
+      "id": "L-018",
+      "key": "ac_gap::prove a wrong secret rejection on a value longer than the verifying library accepts where the library refuses before comparing",
+      "text": "Prove a wrong-secret rejection on a value longer than the verifying library accepts, where the library refuses before comparing",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C37 - apps/api/src/auth/auth.controller.ts:295 (N6) (api)"
+      ],
+      "created": "2026-10-04T06:22:59Z",
+      "last_seen": "2026-10-04T06:22:59Z"
+    },
+    {
+      "id": "L-019",
+      "key": "spec_precision_gap::when a criterion says a valid value state the check on both bounds of validity not on one sample value",
+      "text": "When a criterion says a valid value, state the check on both bounds of validity, not on one sample value",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)"
+      ],
+      "created": "2026-10-04T06:22:59Z",
+      "last_seen": "2026-10-04T06:22:59Z"
     }
   ]
 }
