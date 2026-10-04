@@ -293,6 +293,16 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { id: studentId } = (await student.json()) as { id: string }; // student.created
   await admin.patch(`/api/students/${studentId}`, { phone: '11977776666' }); // student.updated
   await admin.delete(`/api/students/${studentId}`); // student.inactivated
+  await admin.patch(`/api/students/${studentId}`, {
+    guardian: { name: 'Ana Souza', cpf: '123.456.789-09', phone: '11912345678', relationship: 'mother' },
+  }); // student.guardian_saved
+  const consent = await admin.post(`/api/students/${studentId}/consents`, {
+    purpose: 'image_use',
+    termVersion: 1,
+    grantedBy: 'student',
+  }); // student.consent_granted
+  const { id: consentId } = (await consent.json()) as { id: string };
+  await admin.delete(`/api/students/${studentId}/consents/${consentId}`); // student.consent_revoked
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -300,6 +310,6 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   expect(auditActionSchema.options).toHaveLength(16);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
-  expect(rows.length).toBeGreaterThanOrEqual(13);
+  expect(rows.length).toBeGreaterThanOrEqual(16);
   expect(rows.filter((row) => row.entity !== 'user' && row.entity !== 'student')).toEqual([]);
 });
