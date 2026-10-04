@@ -28,6 +28,19 @@ test('users_link_only_for_admin', async ({ page, api }) => {
   }
 });
 
+test('students_link_for_all_four_roles', async ({ page, api }) => {
+  const roles = ['admin', 'reception', 'hr_finance', 'instructor'] satisfies Role[];
+
+  for (const role of roles) {
+    api.session = sessionOf(role);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Alunos', exact: true }), role).toHaveCount(1);
+  }
+  expect(roles).toHaveLength(4);
+});
+
 test('audit_link_only_for_admin', async ({ page, api }) => {
   const visible: Record<Role, boolean> = {
     admin: true,

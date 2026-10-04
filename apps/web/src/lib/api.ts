@@ -14,7 +14,7 @@ export type ApiResult<T> =
 
 /** Chama a API pela origem do web. Nunca lança: toda falha vira um resultado que a tela trata. */
 export async function callApi<T = undefined>(
-  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
