@@ -42,6 +42,8 @@ services:
     environment:
       DATABASE_URL: *database-url
       PORT: 3001
+      AUTH_SECRET: ${AUTH_SECRET:?}
+      WEB_ORIGIN: ${WEB_ORIGIN:?}
     ports:
       - 127.0.0.1:${PORT:?}:3001
     depends_on:

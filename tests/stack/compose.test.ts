@@ -22,7 +22,10 @@ async function prepareStack(name: string) {
     PORT: String(await freePort()),
     WEB_PORT: String(await freePort()),
   };
-  const compose = (args: string) => run(`docker compose -p ${project} ${args}`, dir, ports);
+  // a origem do web é a URL pela qual o teste o alcança, na porta sorteada
+  const webOrigin = `http://127.0.0.1:${ports.WEB_PORT}`;
+  const compose = (args: string) =>
+    run(`docker compose -p ${project} ${args}`, dir, { ...ports, WEB_ORIGIN: webOrigin });
   const containers = (): ComposeContainer[] =>
     compose('ps --all --format json')
       .output.split('\n')
@@ -32,7 +35,7 @@ async function prepareStack(name: string) {
     compose('down --volumes --rmi local --remove-orphans');
     removeClone(dir);
   };
-  return { dir, ports, compose, containers, destroy };
+  return { dir, ports, webOrigin, compose, containers, destroy };
 }
 
 type Stack = Awaited<ReturnType<typeof prepareStack>>;
@@ -78,6 +81,49 @@ describe('stack de pé', () => {
     expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
     expect(body.requestId).toMatch(/\S/);
     expect(response.headers.get('x-request-id')).toBe(body.requestId);
+  });
+
+  test('login_through_web_origin', async () => {
+    const email = 'admin.da.stack@exemplo.com';
+    const password = 'senha-da-stack-123';
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Administradora`,
+    );
+    expect(created.status, created.output).toBe(0);
+
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    expect(await login.json()).toEqual({ status: 'authenticated' });
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+    expect(cookie).toMatch(/session_token=/);
+
+    const session = await fetch(`${stack.webOrigin}/api/auth/session`, { headers: { Cookie: cookie } });
+
+    expect(session.status).toBe(200);
+    expect(((await session.json()) as { user: { email: string } }).user.email).toBe(email);
+  });
+
+  test('running_api_rejects_foreign_origin_and_anonymous', async () => {
+    const foreign = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://outro.example' },
+      body: JSON.stringify({ email: 'alguem@exemplo.com', password: 'senha-qualquer-123' }),
+    });
+    expect(foreign.status).toBe(403);
+    expect(foreign.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+    expect(((await foreign.json()) as { code: string }).code).toBe('csrf_rejected');
+
+    const anonymous = await fetch(`${stack.webOrigin}/api/users`);
+    expect(anonymous.status).toBe(401);
+    expect(anonymous.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+    expect(((await anonymous.json()) as { code: string }).code).toBe('unauthorized');
   });
 
   test('home_reports_api_operational', async () => {
