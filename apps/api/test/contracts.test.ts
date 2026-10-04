@@ -1,10 +1,14 @@
 import {
+  AUDIT_ACTIONS,
+  auditActionSchema,
+  createStudentRequestSchema,
   type AuditLogsResponse,
   auditLogsResponseSchema,
   healthResponseSchema,
   loginResponseSchema,
   problemSchema,
   sessionResponseSchema,
+  studentSchema,
   twoFactorEnableResponseSchema,
   userSchema,
   usersResponseSchema,
@@ -191,4 +195,76 @@ test('audit_logs_body_matches_contract_schema', async () => {
   expect(body.items.some((item) => item.user?.id === admin.user.id && item.diff !== null)).toBe(true);
   expect(body.items.some((item) => item.user === null && item.diff === null)).toBe(true);
   expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
+});
+
+test('audit_actions_end_with_three_student_actions_in_order', () => {
+  const before = [
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+  ];
+
+  expect(AUDIT_ACTIONS).toHaveLength(13);
+  expect([...AUDIT_ACTIONS]).toEqual([...before, 'student.created', 'student.updated', 'student.inactivated']);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('student_schema_has_optional_profile_fields', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+  const instructor = { id, name: 'Ana Lima', status: 'active' };
+  const hrFinance = {
+    ...instructor,
+    cpf: '52998224725',
+    birthDate: '2000-01-01',
+    sex: null,
+    email: null,
+    phone: '11912345678',
+    address: null,
+    emergencyContactName: null,
+    emergencyContactPhone: null,
+  };
+  const full = { ...hrFinance, healthNotes: null };
+
+  for (const [name, body] of Object.entries({ instructor, hrFinance, full })) {
+    expect(studentSchema.safeParse(body).success, name).toBe(true);
+  }
+  for (const missing of ['id', 'name', 'status']) {
+    const without = Object.fromEntries(Object.entries(full).filter(([key]) => key !== missing));
+    expect(studentSchema.safeParse(without).success, missing).toBe(false);
+  }
+});
+
+test('cpf_check_digit_table', () => {
+  const body = { name: 'Ana Lima', birthDate: '2000-01-01', phone: '11912345678' };
+  const refused = [
+    '5299822472', // 10 dígitos
+    '529982247251', // 12 dígitos
+    ...Array.from({ length: 10 }, (_, digit) => String(digit).repeat(11)),
+    '529.982.247-15', // primeiro dígito verificador errado
+    '529.982.247-24', // segundo dígito verificador errado
+    '5299822472a', // letra
+  ];
+  const accepted: Array<[sent: string, stored: string]> = [
+    ['529.982.247-25', '52998224725'],
+    ['52998224725', '52998224725'],
+    ['123.456.789-09', '12345678909'], // primeiro dígito verificador zero
+  ];
+
+  for (const cpf of refused) {
+    const result = createStudentRequestSchema.safeParse({ ...body, cpf });
+    expect(result.success, cpf).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path.join('.')), cpf).toEqual(['cpf']);
+  }
+  for (const [sent, stored] of accepted) {
+    const result = createStudentRequestSchema.safeParse({ ...body, cpf: sent });
+    expect(result.success, sent).toBe(true);
+    expect(result.data?.cpf, sent).toBe(stored);
+  }
 });

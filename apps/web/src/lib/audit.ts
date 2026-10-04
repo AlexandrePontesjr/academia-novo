@@ -22,6 +22,9 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'user.updated': 'Usuário editado',
   'user.password_reset': 'Senha redefinida',
   'user.two_factor_reset': '2FA zerado',
+  'student.created': 'Aluno criado',
+  'student.updated': 'Aluno editado',
+  'student.inactivated': 'Aluno inativado',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;
