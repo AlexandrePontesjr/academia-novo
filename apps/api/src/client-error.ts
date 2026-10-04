@@ -1,10 +1,14 @@
 import { STATUS_CODES } from 'node:http';
 import type { Socket } from 'node:net';
-import { sendProblem } from './problem.filter.ts';
+import type { Response } from 'express';
+import { problemFor, sendProblem } from './problem.filter.ts';
 import { inFlightRequest } from './request-context.ts';
 
 /** Quanto uma conexão com erro de protocolo pode ficar parada até a resposta pendente sair. */
 const CLOSE_GRACE_MS = 10_000;
+
+/** Intervalo entre os cabeçalhos e o corpo da resposta a um cliente que talvez já tenha ido embora. */
+const ABANDON_PROBE_MS = 10;
 
 const closing = new WeakSet<Socket>();
 
@@ -20,6 +24,20 @@ function statusFor(error: NodeJS.ErrnoException): number {
     default:
       return 400;
   }
+}
+
+/**
+ * A resposta de erro em duas escritas. O cliente fechou o seu lado com o corpo incompleto, e daqui
+ * não dá para saber se ele ainda lê (fechou só um lado) ou se foi embora (fechou a conexão): os
+ * dois chegam como o mesmo FIN. A primeira escrita sempre passa; se ele foi embora, o sistema dele
+ * recusa e a segunda falha, e a linha de log registra que nenhuma resposta foi entregue.
+ */
+function sendProblemProbing(res: Response, status: number) {
+  const body = JSON.stringify(problemFor(res, status));
+  res.status(status).type('application/problem+json');
+  res.setHeader('Content-Length', Buffer.byteLength(body));
+  res.flushHeaders();
+  setTimeout(() => res.end(body), ABANDON_PROBE_MS);
 }
 
 /**
@@ -53,5 +71,7 @@ export function onClientError(error: NodeJS.ErrnoException, socket: Socket) {
 
   res.setHeader('Connection', 'close');
   // corpo completo: o erro é do que veio depois na conexão, e a aplicação ainda responde por si
-  if (!req.complete) sendProblem(res, status);
+  if (req.complete) return;
+  if (socket.readableEnded) sendProblemProbing(res, status);
+  else sendProblem(res, status);
 }

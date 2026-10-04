@@ -27,10 +27,10 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 ## Handoff
 
-**Feature**: fundacao
-**Where**: concluída. Quatro rodadas de verificação; a rodada 4 (`d060517`, autorizada pelo usuário além do limite de três) passou com 33/33 e `validate_verification.py fundacao` sai com 0
+**Feature**: fundacao-ajustes
+**Where**: construída; C1 e C2 fechados, verificação independente (profile light) a seguir. `fundacao` segue concluída com 33/33
 **In progress**: nada
-**Next step**: planejar `auth-rbac` (ver `ROADMAP.md`). Achados da rodada 4 que não reprovam check e ficam para decisão do usuário, em `features/fundacao/verification.md`: aviso `MaxListenersExceededWarning` com mais de 10 requisições em voo na mesma conexão (F1); status da linha de log quando o cliente abandona a requisição, hoje `499` ou `400` conforme o caso (F2); textos desatualizados em `plan.md` e `checks.md` (F3)
+**Next step**: planejar `auth-rbac` (ver `ROADMAP.md`). Dos achados da rodada 4 da `fundacao`, F1 a F3 foram resolvidos em `features/fundacao-ajustes/checks.md`; F4 continua em aberto, sem reprovar check. A linha de `Coverage` "erro em qualquer rota, statuses (2)" da `fundacao` não foi tocada e agora lista menos status que a `Surface` (`400` e `408` são provados pela C31; `413` não tem check)
 **Blockers**: nenhum
 **Uncommitted**: nada
 **Branch**: main

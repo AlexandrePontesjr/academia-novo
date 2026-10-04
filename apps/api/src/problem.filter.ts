@@ -19,17 +19,21 @@ function statusOf(exception: unknown): number {
   return typeof status === 'number' && status >= 400 && status < 500 ? status : 500;
 }
 
-/** Escreve a resposta de erro no contrato, com o request id que a requisição já carrega. */
-export function sendProblem(res: Response, status: number) {
+/** O corpo de erro no contrato, com o request id que a requisição já carrega. */
+export function problemFor(res: Response, status: number): Problem {
   const title = STATUS_CODES[status] ?? 'Error';
-  const problem: Problem = {
+  return {
     type: 'about:blank',
     title,
     status,
     code: codeFor(status, title),
     requestId: String(res.locals.requestId),
   };
-  res.status(status).type('application/problem+json').json(problem);
+}
+
+/** Escreve a resposta de erro no contrato. */
+export function sendProblem(res: Response, status: number) {
+  res.status(status).type('application/problem+json').json(problemFor(res, status));
 }
 
 /** Converte qualquer exceção no contrato de erro. Nada da exceção original chega ao corpo. */
