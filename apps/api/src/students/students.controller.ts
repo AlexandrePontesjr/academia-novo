@@ -65,6 +65,12 @@ export class StudentsController {
     const change = await this.students.update(id, body, actor);
     if (change.outcome === 'not_found') throw new NotFoundException();
     if (change.outcome === 'cpf_taken') throw new ProblemException(409, 'cpf_taken');
+    if (change.outcome === 'guardian_required') {
+      throw validationProblem([{ path: 'guardian', message: 'Informe o responsável legal do aluno menor de 18 anos.' }]);
+    }
+    if (change.outcome === 'guardian_cpf_is_students') {
+      throw validationProblem([{ path: 'guardian.cpf', message: 'O CPF do responsável deve ser diferente do CPF do aluno.' }]);
+    }
     if (change.outcome === 'incomplete_contact') {
       throw validationProblem([
         {

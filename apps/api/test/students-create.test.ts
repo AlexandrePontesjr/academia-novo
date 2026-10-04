@@ -1,6 +1,7 @@
 import type { Role, Student } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import type { Client } from './support/client.ts';
+import { guardianBody } from './support/consents.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import {
   cpfOf,
@@ -183,7 +184,8 @@ test('birth_date_bounds_in_sao_paulo', async () => {
     expect(await studentCount(stack), birthDate).toBe(total);
   }
   for (const birthDate of accepted) {
-    const response = await client.post('/api/students', studentBody(next(), { birthDate }));
+    // quem nasceu hoje é menor: o responsável vai junto (consentimento), e o que se prova aqui é o limite da data
+    const response = await client.post('/api/students', studentBody(next(), { birthDate, guardian: guardianBody() }));
 
     expect(response.status, birthDate).toBe(201);
     expect(((await response.json()) as Student).birthDate, birthDate).toBe(birthDate);

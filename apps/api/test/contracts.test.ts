@@ -4,6 +4,7 @@ import {
   consentSchema,
   createStudentRequestSchema,
   grantConsentRequestSchema,
+  isMinor,
   guardianRequestSchema,
   studentConsentsResponseSchema,
   updateStudentRequestSchema,
@@ -412,4 +413,19 @@ test('consent_response_schemas_accept_and_reject', () => {
 
   expect(studentConsentsResponseSchema.safeParse({ guardian: null, items: [] }).success).toBe(true);
   expect(studentConsentsResponseSchema.safeParse({ guardian: null, items: [item] }).success).toBe(true);
+});
+
+test('is_minor_boundaries_in_sao_paulo', () => {
+  const cases: Array<[label: string, birthDate: string, today: string, minor: boolean]> = [
+    ['faz 18 anos amanhã', '2008-10-05', '2026-10-04', true],
+    ['faz 18 anos hoje', '2008-10-04', '2026-10-04', false],
+    ['fez 18 anos ontem', '2008-10-03', '2026-10-04', false],
+    ['ano: 17 anos e 11 meses', '2008-11-01', '2026-10-31', true],
+    ['mês: aniversário mais cedo no ano', '2008-01-01', '2026-10-04', false],
+    ['mês: aniversário mais tarde no ano', '2008-12-25', '2026-10-04', true],
+    ['um ano a menos', '2009-01-01', '2026-10-04', true],
+    ['29/02 em 28/02 de ano comum', '2008-02-29', '2026-02-28', true],
+    ['29/02 em 01/03 de ano comum', '2008-02-29', '2026-03-01', false],
+  ];
+  for (const [label, birthDate, today, minor] of cases) expect(isMinor(birthDate, today), label).toBe(minor);
 });
