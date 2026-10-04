@@ -5,7 +5,7 @@ Plan: `.specs/features/alunos/plan.md`
 
 ## Intent
 
-91 checks in 10 slices (S0 e as 8 do plano, mais S9 de montagem) · 4 one-way doors · 1 open, of which 0 block the Build
+94 checks in 11 slices (S0 e as 8 do plano, S9 de montagem e S10 da rodada 2) · 5 one-way doors (a 5, a cifra amarrada ao `id` da linha, é a AD-034) · 1 open, of which 0 block the Build
 
 ## Checks
 
@@ -220,7 +220,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/students-audit.test.ts -
 **C56** - `DELETE /api/students/:id` que inativa um aluno `active` grava exatamente uma linha com `action` igual a `student.inactivated`, `user_id` do autor, `entity` igual a `student`, `entity_id` igual a `:id` e `diff` igual a `{"fields":["status"],"values":{"status":{"from":"active","to":"inactive"}}}`; sobre um aluno `suspended`, o `diff` traz `"from":"suspended"` (AC 48, door 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/students-audit.test.ts -t "inactivate_writes_one_student_inactivated_row"`
 
-**C57** - Uma requisição a `/api/students*` que termina em `401`, `403`, `404`, `409` e `422`, e o `DELETE` de aluno já inativo, deixam, nos seis casos, a contagem de `audit_logs` igual à de antes (AC 49)
+**C57** - Uma requisição a `/api/students*` que termina em `401`, `403`, `404`, `409` e `422`, e o `DELETE` de aluno já inativo (`204`), responde, em cada um dos seis casos, exatamente o status do caso (`401`, `403`, `404`, `409`, `422` e `204`) e deixa a contagem de `audit_logs` igual à de antes (AC 49)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/students-audit.test.ts -t "rejected_students_requests_write_no_row"`
 
 **C58** - Com o insert em `audit_logs` falhando, `POST /api/students`, `PATCH /api/students/:id` e `DELETE /api/students/:id` respondem `500` com `code` igual a `internal_error`, e `students` fica idêntico ao de antes, nos três casos (AC 50, AD-027)
@@ -331,6 +331,17 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/enrollment.test.ts -t "a
 **C91** - O botão "Salvar" de `/students/new` e o de `/students/<id>/edit` fica desabilitado enquanto a API não responde ao envio (Observable, loading state)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/students.spec.ts -g "save_button_disabled_while_waiting_on_both_forms"`
 
+### S10 - Achados da rodada 1: o `id` da linha na cifra, `null` sobre valor ilegível, corpo da edição · ~3 files · ~2 KB · ~1k
+
+**C92** - `PATCH /api/students/:id` de `reception` com o `id` do aluno em maiúsculas e `healthNotes` novo responde `200`, e `GET /api/students/:id` com o `id` em minúsculas devolve o texto novo em `healthNotes` (AC 12, AC 14, door 5)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/students-update.test.ts -t "patch_with_uppercase_id_keeps_health_notes_readable"`
+
+**C93** - Num aluno cujo valor guardado de `healthNotes` é ilegível, `PATCH /api/students/:id` com `healthNotes` igual a `null` responde `200` e `GET /api/students/:id` seguinte devolve `healthNotes` igual a `null` com `200` (AC 33, door 2)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/students-update.test.ts -t "patch_null_clears_an_unreadable_health_notes_value"`
+
+**C94** - Salvar o formulário de `/students/<id>/edit`, com o nome digitado com espaços nas pontas e "E-mail" e "Endereço" esvaziados, envia uma única escrita, `PATCH /api/students/<id>`, com o corpo `{ name: 'Nome Corrigido', cpf: '529.982.247-25', birthDate: '2000-01-01', phone: '(11) 91234-5678', sex: 'female', email: null, address: null, emergencyContactName: 'Maria da Penha', emergencyContactPhone: '(11) 3456-7890', healthNotes: 'Hipertensão controlada' }`, e termina na URL `/students/<id>` (AC 69, AC 70, Test policy "Tela")
+Proof: `pnpm --filter "./apps/web" exec playwright test e2e/students.spec.ts -g "edit_form_sends_patch_with_typed_values_and_null_for_cleared"`
+
 ## Coverage
 
 Uma linha para cada rota da `Surface`, com os status como membros, e uma por rota e perfil; depois as
@@ -350,7 +361,7 @@ doors, a entidade de `Relations` e os conjuntos enumerados nos critérios.
 | `PATCH /api/students/:id` por perfil (4) | `admin` C40 · `reception` C40 · `hr_finance` C18 · `instructor` C18 | - |
 | `DELETE /api/students/:id` por perfil (4) | `admin` C47 · `reception` C47 · `hr_finance` C18 · `instructor` C18 | - |
 | `q` por perfil (4) | `admin` C34 · `reception` C34 · `hr_finance` C34 · `instructor` C33, C35 | - |
-| one-way doors (4) | door 1 C4 · door 2 C20 · door 3 C56 · door 4 C28 | - |
+| one-way doors (5) | door 1 C4 · door 2 C20 · door 3 C56 · door 4 C28 · door 5 (AAD = `id` da linha, AD-034) C23, C92 | - |
 | entidades de `Relations` (1) | `students` C1 | - |
 | one-way constraints de `Relations` (4) | CPF único entre todas as situações C4 · situação só com três valores C3 · `uuid` gerado pelo banco C2 · saúde só cifrada C20 | - |
 | situação do aluno (3) | `active` C2 · `suspended` C45 · `inactive` C47 | - |
@@ -366,10 +377,12 @@ doors, a entidade de `Relations` e os conjuntos enumerados nos critérios.
 | vocabulário de `AUDIT_ACTIONS` (13) | C7, table-driven over all 13: os dez de antes e os três novos na ordem | - |
 | `diff` de cada ação de aluno (3) | `student.created` C52 · `student.updated` C54 · `student.inactivated` C56 | - |
 | campos do aluno que o `PATCH` aceita (11) | `name` C40 · `cpf` C44 · `birthDate` C42 · `sex` C41 · `email` C40 · `phone` C40 · `address` C40 · `emergencyContactName` C43 · `emergencyContactPhone` C43 · `healthNotes` C41 · `status` C45 | - |
-| campos que o `PATCH` aceita limpar com `null` (5) | `sex` C41 · `email` C41 · `address` C41 · `healthNotes` C41 · par de contato C41 | - |
+| campos que o `PATCH` aceita limpar com `null` (5) | `sex` C41 · `email` C41 · `address` C41 · `healthNotes` C41, C93 (valor ilegível) · par de contato C41 | - |
+| corpo do `PATCH` enviado pelo formulário de edição (1) | valores digitados e `null` nos opcionais esvaziados C94 | - |
+| `id` da URL do `PATCH` em maiúsculas (1) | cifra com o `id` da linha C92 | - |
 | campos que o `PATCH` recusa `null` (5) | `name` C42 · `cpf` C42 · `birthDate` C42 · `phone` C42 · `status` C42 | - |
 | rotas que desfazem a ação quando o insert falha (3) | C58, table-driven over all 3 | - |
-| status que não gravam linha (5 e um caso) | `401` C57 · `403` C57 · `404` C57 · `409` C57 · `422` C57 · `DELETE` de inativo C57 | - |
+| status que não gravam linha (5 e um caso) | `401` C57 · `403` C57 · `404` C57 · `409` C57 · `422` C57 · `DELETE` de inativo `204` C57; C57 afirma o status de cada caso | - |
 | leituras que não gravam (8) | C30, table-driven over all 8: 2 rotas e 4 perfis | - |
 | chaves da ficha por perfil (3 conjuntos) | `admin` e `reception` doze C26 · `hr_finance` onze C27 · `instructor` três C28 | - |
 | chave ausente, nunca `null` (2) | `healthNotes` em `hr_finance` C27 · todas menos três em `instructor` C28 | - |
@@ -454,8 +467,9 @@ doors, a entidade de `Relations` e os conjuntos enumerados nos critérios.
 - Decisões que o plano deixa fora de AC e que nenhum check afirma: o que `q` só com espaços ou só com
   pontuação devolve; o texto de "Detalhes" para os campos `name`, `cpf`, `birthDate`, `sex`, `email`,
   `address`, `emergencyContactName`, `emergencyContactPhone` e `healthNotes`; o que o botão "Limpar"
-  faz; o que a edição de um aluno com observação ilegível devolve
+  faz; o que a edição sem `healthNotes` de um aluno com observação ilegível devolve
 - `users:create-admin` também lê o ambiente da API e passa a exigir a chave: a prova existente `create_admin_writes_user_created_row_without_actor` segue valendo e quebra se a chave faltar no suporte
+- Dobra de caixa e acento (AC 23, AC 25), decisão do usuário na rodada 2: vale para as letras do português, as 46 de `students_fold` (`0003_students.sql:3-7`); letras de outras línguas (`ø`, `ř`, `ş`, `å`, `ý`) ficam fora e nenhum check as afirma
 - A meta de p95 da `Assumptions` não é check: nenhuma prova mede percentil
 - No other check claims more than the cases its proof exercises
 
@@ -486,7 +500,7 @@ Evidence (o código da feature ainda não existe; a contagem vem do plano e do c
 - migração `0003`: 1 `CHECK`, 1 `UNIQUE`, 2 `DEFAULT` (C1 a C4) -> decide
 - closest analogue in the repo: `apps/api/test/audit-logs.test.ts`, cursor, filtros e `422` de query provados um a um na fronteira HTTP contra a aplicação do `startApi`; `apps/api/test/audit-users.test.ts`, linha gravada e desfeita por gatilho que falha; e `packages/database/test/audit.test.ts`, restrições do banco provadas uma a uma sobre o banco migrado
 
-Cost: 1 prova além das 91 acima, a da tabela de CPF no próprio nível (segunda `Proof` da C11); as de cifra (C5, C6) e as do banco (C1 a C4) já são checks. Sem a linha de "ramos que a rota não separa", o dígito verificador seria provado só pelos CPFs que a fronteira percorre.
+Cost: 3 provas da rodada 2 (C92 a C94) e 1 prova além das 91 acima, a da tabela de CPF no próprio nível (segunda `Proof` da C11); as de cifra (C5, C6) e as do banco (C1 a C4) já são checks. Sem a linha de "ramos que a rota não separa", o dígito verificador seria provado só pelos CPFs que a fronteira percorre.
 
 ## Swept
 
