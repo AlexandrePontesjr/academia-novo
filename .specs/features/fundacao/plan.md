@@ -69,7 +69,7 @@ comando); suas decisões estão em `Observable`.
 | --- | --- | --- |
 | 1. monorepo | pnpm workspaces + Turborepo; `apps/web` (Next.js 16), `apps/api` (NestJS), `packages/contracts`, `packages/config`, `packages/database`; versão do pnpm fixada em `packageManager` | npm workspaces - o hoisting deixa um app importar dependência que não declarou, e o build Docker por app quebra só em produção |
 | 2. persistência | PostgreSQL 18 + Drizzle; migrações como arquivos SQL versionados em `packages/database/migrations`, aplicadas pelo serviço `migrate` antes da API subir | Prisma (alternativa viva, PRD §13.6) - schema em DSL própria, então os schemas Zod de `packages/contracts` não derivam da tabela sem gerador de terceiros; sincronizar schema no boot - não deixa histórico revisável |
-| 3. contrato de erro | toda resposta de erro é `application/problem+json` com `{"type","title","status","code","requestId"}` e, em erro de validação, `"errors":[{"path","message"}]`; `code` é estável e em snake_case (`not_found`, `internal_error`, `validation_failed`); ressalva: vale para a requisição que o servidor HTTP entrega à aplicação - a que o servidor HTTP do Node rejeita antes disso (`400`, `408`, `417`, `431` de protocolo) fica fora, porque não há método nem caminho interpretados e em produção o proxy reverso fica na frente da API | formato padrão do NestJS `{statusCode,message,error}` - `message` é string ou array conforme o erro e não há código estável para o front ramificar |
+| 3. contrato de erro | toda resposta de erro é `application/problem+json` com `{"type","title","status","code","requestId"}` e, em erro de validação, `"errors":[{"path","message"}]`; `code` é estável e em snake_case (`not_found`, `internal_error`, `validation_failed`); ressalva: vale para a requisição que o servidor HTTP entrega à aplicação - a que o servidor HTTP do Node rejeita antes disso (sem header `Host`, `Expect` inválido, cabeçalho grande demais, cabeçalhos nunca concluídos, linha de requisição inválida, `Content-Length` duplicado ou junto de `Transfer-Encoding`: `400`, `408`, `417`, `431`) fica fora, porque não há método nem caminho interpretados e em produção o proxy reverso fica na frente da API | formato padrão do NestJS `{statusCode,message,error}` - `message` é string ou array conforme o erro e não há código estável para o front ramificar |
 | 4. contrato de saúde | `GET /health` sem autenticação -> `200 {"status":"ok","checks":{"database":"up"}}` ou `503 {"status":"degraded","checks":{"database":"down"}}`; cada dependência futura acrescenta uma chave em `checks` | só o healthcheck TCP do container - não distingue processo de pé de banco fora |
 | 5. fonte dos contratos | cada payload tem um schema Zod em `packages/contracts`; a API valida e o web interpreta com o mesmo schema | DTOs com class-validator na API - segunda definição de cada campo, que o web não consegue importar |
 | 6. testes | Vitest para unidade e integração, integração sempre contra Postgres real; Playwright para telas | Jest - segundo runner ao lado do que web e contracts usam; banco simulado - passa com SQL que o Postgres rejeita |
@@ -104,12 +104,16 @@ Toda falha da API sai no mesmo contrato e toda requisição deixa uma linha rast
 9. The system SHALL incluir o header `X-Request-Id` em toda resposta a uma requisição que o servidor HTTP entrega à aplicação, com o mesmo valor do campo `requestId` do corpo quando a resposta é de erro
 10. WHEN a API termina de responder uma requisição que o servidor HTTP entregou à aplicação THEN the system SHALL escrever uma linha de log em JSON com `requestId`, `method`, `path`, `status` e `durationMs`
 
-**Alcance das AC 9 e AC 10:** valem para toda requisição que o servidor HTTP entrega à aplicação.
-Uma requisição que o servidor HTTP do Node rejeita antes disso (sem header `Host`, `Expect`
+**Alcance das AC 9 e AC 10:** valem para toda requisição que o servidor HTTP entrega à aplicação,
+o que acontece quando os cabeçalhos terminam. Continuam valendo quando o corpo dessa requisição é
+rejeitado depois da entrega: tamanho de chunk inválido, corpo truncado, corpo que nunca termina.
+Uma requisição que o servidor HTTP do Node rejeita antes da entrega (sem header `Host`, `Expect`
 inválido, cabeçalho grande demais, cabeçalhos nunca concluídos, linha de requisição inválida,
-`Content-Length` inconsistente: `400`, `408`, `417`, `431`) fica fora. Motivo: nesses casos não há
-método nem caminho interpretados, e em produção o proxy reverso fica na frente da API.
-Delimitação decidida pelo usuário em 2026-10-03, depois da rodada 2 de verificação.
+`Content-Length` duplicado ou junto de `Transfer-Encoding`: `400`, `408`, `417`, `431`) fica fora.
+Motivo: nesses casos a aplicação nunca é chamada, então não existe request id nem resposta dela, e
+em produção o proxy reverso fica na frente da API.
+Delimitação decidida pelo usuário em 2026-10-03, depois da rodada 2 de verificação; motivo e lista
+corrigidos pelo usuário depois da rodada 3.
 
 **Independent test:** chamar uma rota que não existe e conferir corpo, header e a linha de log com o mesmo id.
 

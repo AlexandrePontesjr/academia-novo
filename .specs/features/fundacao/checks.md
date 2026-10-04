@@ -5,7 +5,7 @@ Plan: `.specs/features/fundacao/plan.md`
 
 ## Intent
 
-30 checks in 5 slices · 6 one-way doors · 0 open
+33 checks in 5 slices · 6 one-way doors · 0 open
 
 ## Checks
 
@@ -150,6 +150,28 @@ Status: concluído
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "ci_runs_verify_on_push_and_pr"`
 Status: concluído
 
+### S2 - Erro e log: requisição entregue com corpo rejeitado · ~6 files · ~14 KB · ~4k
+
+Acrescentados depois da rodada 3 de verificação, por decisão do usuário. "Entregue" é a requisição
+cujos cabeçalhos terminaram e que a aplicação já recebeu. Os cinco casos de C31 e C32, em socket
+cru contra `POST /health`: (a) `Transfer-Encoding: chunked`, sem content type, tamanho de chunk
+`zz`; (b) o mesmo com `Content-Type: application/json`; (c) o mesmo com
+`Content-Type: application/x-www-form-urlencoded`; (d) JSON com `Content-Length: 50`, 5 bytes
+enviados e o cliente fecha o seu lado da conexão; (e) JSON com `Content-Length: 50`, 5 bytes
+enviados e a conexão mantida aberta até o tempo limite de requisição do servidor.
+
+**C31** - Em cada um dos cinco casos, a requisição gera exatamente uma linha de log em JSON com `requestId`, `method` igual a `POST`, `path` igual a `/health`, `status` e `durationMs`, e o `status` da linha é o da resposta que o cliente recebeu: (a) `404`, (b) `400`, (c) `400`, (d) `400`, (e) `408` (AC 10)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/delivered-body-errors.test.ts -t "delivered_body_error_logs_one_line"`
+Status: pendente
+
+**C32** - Em cada um dos cinco casos, a resposta tem o header `X-Request-Id` igual ao `requestId` da linha de log, `Content-Type: application/problem+json` e corpo com `status` igual ao da resposta, `requestId` igual ao header e `code` igual a (a) `not_found`, (b) `bad_request`, (c) `bad_request`, (d) `bad_request`, (e) `request_timeout` (AC 9, door 3)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/delivered-body-errors.test.ts -t "delivered_body_error_has_request_id_and_error_contract"`
+Status: pendente
+
+**C33** - No processo real da API (`dist/main.js`), o caso (b) responde `400` em `application/problem+json` com `X-Request-Id` igual ao `requestId` do corpo, e o processo escreve em stdout exatamente uma linha de log com esse `requestId` e `status` igual a 400 (AC 9, AC 10)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/boot.test.ts -t "real_process_logs_delivered_body_error"`
+Status: pendente
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -168,11 +190,15 @@ Status: concluído
 | eventos do CI (2) | `push` C30 · `pull_request` C30 | - |
 | one-way doors (6) | door 1 C27 · door 2 C18 · door 3 C11 · door 4 C2 · door 5 C17 · door 6 C2 | - |
 | startup config: contrato de erro e request id (2 assemblies) | processo real na stack C16 · harness de teste C11 | - |
+| linha de log em requisição entregue com corpo rejeitado, por estágio que produz a resposta (3) | a aplicação, antes de o parser rejeitar o corpo C31 · a resposta ao erro do parser, com a aplicação ainda lendo o corpo C31 · a resposta ao tempo limite da requisição, com o corpo incompleto C31 | - |
+| `X-Request-Id` e contrato de erro em requisição entregue com corpo rejeitado, por estágio que produz a resposta (3) | a aplicação, antes de o parser rejeitar o corpo C32 · a resposta ao erro do parser, com a aplicação ainda lendo o corpo C32 · a resposta ao tempo limite da requisição, com o corpo incompleto C32 | - |
+| corpo rejeitado pelo parser depois da entrega (4) | chunk inválido sem leitor de corpo C31 · chunk inválido com leitor JSON C31 · chunk inválido com leitor urlencoded C31 · corpo truncado C31 | - |
+| startup config: erro de protocolo em requisição entregue (2 assemblies) | processo real C33 · harness de teste C31 | - |
 
-- Claims naming a status code, route or response shape: C2, C3, C4, C11, C12, C13, C14, C16, C22, C23 - each has a proof that crosses the HTTP boundary
+- Claims naming a status code, route or response shape: C2, C3, C4, C11, C12, C13, C14, C16, C22, C23, C31, C32, C33 - each has a proof that crosses the HTTP boundary
 - C5 é table-driven sobre todas as variáveis obrigatórias do schema; a enumeração vive no teste, lida do próprio schema
 - A door 3 também declara `validation_failed` com `errors[]`, mas nenhuma rota desta feature recebe entrada e o plano não fixou o status dessa resposta. Não há check para ela aqui: o status e a prova entram em `auth-rbac`, na primeira rota com payload (registrado em `.specs/ROADMAP.md`)
-- A camada de protocolo está fora de C15 e das AC 9 e AC 10: a requisição que o servidor HTTP do Node rejeita antes de entregá-la à aplicação (sem `Host`, `Expect` inválido, cabeçalho grande demais, cabeçalhos nunca concluídos, linha de requisição inválida, `Content-Length` inconsistente: `400`, `408`, `417`, `431`) não tem check nem membro em nenhum conjunto acima. Motivo: nesses casos não há método nem caminho interpretados, e em produção o proxy reverso fica na frente da API (decisão do usuário em 2026-10-03, depois da rodada 2 de verificação)
+- A camada de protocolo está fora de C15 e das AC 9 e AC 10: a requisição que o servidor HTTP do Node rejeita antes de entregá-la à aplicação (sem header `Host`, `Expect` inválido, cabeçalho grande demais, cabeçalhos nunca concluídos, linha de requisição inválida, `Content-Length` duplicado ou junto de `Transfer-Encoding`: `400`, `408`, `417`, `431`) não tem check nem membro em nenhum conjunto acima. Motivo: nesses casos a aplicação nunca é chamada, então não existe request id nem resposta dela, e em produção o proxy reverso fica na frente da API (decisão do usuário em 2026-10-03, depois da rodada 2 de verificação). O corpo rejeitado depois da entrega não é camada de protocolo neste sentido e está dentro: C31, C32 e C33 (decisão do usuário depois da rodada 3)
 - "Todos os workspaces" da AC 17 foi lido como em C27: `packages/config` só carrega configuração, e os pacotes internos não precisam de etapa de build
 
 ## Swept
