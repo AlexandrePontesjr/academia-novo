@@ -7,6 +7,7 @@ import { AuditLogsService } from './audit/audit-logs.service.ts';
 import { createAuth } from './auth.ts';
 import { AuthController } from './auth/auth.controller.ts';
 import { LoginThrottle } from './auth/throttle.ts';
+import { ConsentsController } from './consents/consents.controller.ts';
 import { ConsentTermsController } from './consents/consent-terms.controller.ts';
 import { ConsentsService } from './consents/consents.service.ts';
 import { ColumnCipher } from './crypto.ts';
@@ -38,6 +39,7 @@ export class AppModule implements OnApplicationShutdown {
         UsersController,
         AuditLogsController,
         StudentsController,
+        ConsentsController,
         ConsentTermsController,
         OpenApiController,
       ],
