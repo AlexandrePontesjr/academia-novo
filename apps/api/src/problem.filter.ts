@@ -12,13 +12,20 @@ function codeFor(status: number, title: string): string {
     .replace(/^_|_$/g, '');
 }
 
+/** Status de uma exceção do Nest ou de um erro HTTP do Express (corpo ilegível, grande demais...). */
+function statusOf(exception: unknown): number {
+  if (exception instanceof HttpException) return exception.getStatus();
+  const status = (exception as { status?: unknown } | null)?.status;
+  return typeof status === 'number' && status >= 400 && status < 500 ? status : 500;
+}
+
 /** Converte qualquer exceção no contrato de erro. Nada da exceção original chega ao corpo. */
 @Catch()
 export class ProblemFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
     const requestId = String(res.locals.requestId);
-    const status = exception instanceof HttpException ? exception.getStatus() : 500;
+    const status = statusOf(exception);
     const title = STATUS_CODES[status] ?? 'Error';
 
     if (status >= 500) {
