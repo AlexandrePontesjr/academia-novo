@@ -104,3 +104,33 @@ test(
   },
   1_800_000,
 );
+
+test(
+  'verify_fails_below_70_percent_coverage',
+  () => {
+    // funções exportadas que nenhum teste chama, em número bastante para levar a cobertura de
+    // `apps/api/src` para muito abaixo de 70%; o arquivo passa no lint e no typecheck
+    const path = join(clone, 'apps/api/src/injected-uncovered.ts');
+    const content = Array.from(
+      { length: 1500 },
+      (_, index) =>
+        `export function uncovered${index}(value: number): number {\n` +
+        `  if (value > ${index}) return value - ${index};\n` +
+        `  return value + ${index};\n` +
+        `}\n`,
+    ).join('\n');
+    writeFileSync(path, content);
+    try {
+      const broken = runVerify();
+
+      expect(broken.status).not.toBe(0);
+      expect(broken.status).not.toBeNull();
+      const failed = broken.tasks.filter((t) => t.execution && t.execution.exitCode !== 0);
+      expect(failed.map((t) => t.taskId), broken.output.slice(-4000)).toEqual(['@academia/api#test']);
+      expect(broken.output).toMatch(/coverage for (lines|branches)[^\n]*does not meet[^\n]*threshold/i);
+    } finally {
+      rmSync(path, { force: true });
+    }
+  },
+  1_800_000,
+);

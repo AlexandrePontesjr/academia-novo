@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
+import { resolveConfig } from 'vitest/node';
 import { parse as parseYaml } from 'yaml';
 import type { z } from 'zod';
 import { envSchema as apiEnvSchema } from '../../apps/api/src/env.ts';
@@ -94,4 +95,18 @@ test('ci_runs_verify_on_push_and_pr', () => {
 
   const commands = Object.values(workflow.jobs).flatMap((job) => job.steps.map((step) => step.run ?? ''));
   expect(commands.some((run) => /^pnpm verify\s*$/m.test(run))).toBe(true);
+});
+
+test('api_coverage_thresholds_are_70_lines_and_branches', async () => {
+  const { test: resolved } = await resolveConfig({ root: join(repoRoot, 'apps/api') });
+
+  expect(resolved?.coverage?.provider).toBe('v8');
+  expect(resolved?.coverage?.include).toEqual(['src/**']);
+  expect(resolved?.coverage?.thresholds).toMatchObject({ lines: 70, branches: 70 });
+
+  // o `pnpm verify` roda a tarefa `test` de cada workspace; a da API liga a cobertura
+  const root = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
+  expect(root.scripts.verify).toMatch(/^turbo run\b.*\btest\b/);
+  const api = JSON.parse(readFileSync(join(repoRoot, 'apps/api/package.json'), 'utf8'));
+  expect(api.scripts.test).toMatch(/^vitest run( .*)? --coverage( |$)/);
 });
