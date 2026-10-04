@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { withAuditInsertFailing, written } from './support/audit.ts';
 import { createAdmin } from './support/command.ts';
 import { type Stack, startStack } from './support/stack.ts';
 
@@ -40,6 +41,42 @@ test('creates_admin_exits_0_without_printing_password', async () => {
     .client()
     .post('/api/auth/login', { email: 'primeira.admin@exemplo.com', password });
   expect(login.status).toBe(200);
+});
+
+test('create_admin_writes_user_created_row_without_actor', async () => {
+  const { result, rows } = await written(stack, async () =>
+    createAdmin(stack.postgres.url, ['--email', 'auditada.admin@exemplo.com', '--name', 'Auditada'], {
+      ADMIN_PASSWORD: 'senha-valida-123',
+    }),
+  );
+
+  expect(result.status, result.output).toBe(0);
+  const [created] = await stack.query<{ id: string }>('select id from users where email = $1', [
+    'auditada.admin@exemplo.com',
+  ]);
+  expect(result.output).toContain(created!.id);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({
+    action: 'user.created',
+    entity_id: created!.id,
+    user_id: null,
+    ip: null,
+    user_agent: null,
+  });
+});
+
+test('create_admin_exits_1_when_audit_insert_fails', async () => {
+  const before = await counts();
+
+  const result = await withAuditInsertFailing(stack, async () =>
+    createAdmin(stack.postgres.url, ['--email', 'sem.rastro@exemplo.com', '--name', 'Sem-rastro'], {
+      ADMIN_PASSWORD: 'senha-valida-123',
+    }),
+  );
+
+  expect(result.status, result.output).toBe(1);
+  expect(await counts()).toEqual(before);
+  expect(await stack.query('select id from users where email = $1', ['sem.rastro@exemplo.com'])).toEqual([]);
 });
 
 test('rejects_six_invalid_invocations', async () => {

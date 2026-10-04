@@ -12,6 +12,7 @@ import {
 } from '@academia/contracts';
 import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post, Put } from '@nestjs/common';
 import { Roles } from '../access.ts';
+import { Actor, type AuditActor } from '../audit/audit.ts';
 import { ProblemException } from '../problem.filter.ts';
 import { Input, Output } from '../validation.ts';
 import { UsersService } from './users.service.ts';
@@ -31,8 +32,8 @@ export class UsersController {
   @Post()
   @Input(createUserRequestSchema)
   @Output(201, userSchema)
-  async create(@Body() body: CreateUserRequest): Promise<User> {
-    const user = await this.users.create(body);
+  async create(@Body() body: CreateUserRequest, @Actor() actor: AuditActor): Promise<User> {
+    const user = await this.users.create(body, actor);
     if (!user) throw new ProblemException(409, 'email_taken');
     return user;
   }
@@ -40,8 +41,12 @@ export class UsersController {
   @Patch(':id')
   @Input(updateUserRequestSchema)
   @Output(200, userSchema)
-  async update(@Param('id') id: string, @Body() body: UpdateUserRequest): Promise<User> {
-    const change = await this.users.update(id, body);
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateUserRequest,
+    @Actor() actor: AuditActor,
+  ): Promise<User> {
+    const change = await this.users.update(id, body, actor);
     if (change.outcome === 'not_found') throw new NotFoundException();
     if (change.outcome === 'last_admin') throw new ProblemException(409, 'last_admin');
     return change.user;
@@ -50,13 +55,17 @@ export class UsersController {
   @Put(':id/password')
   @Input(resetPasswordRequestSchema)
   @Output(204)
-  async resetPassword(@Param('id') id: string, @Body() body: ResetPasswordRequest): Promise<void> {
-    if (!(await this.users.resetPassword(id, body.password))) throw new NotFoundException();
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() body: ResetPasswordRequest,
+    @Actor() actor: AuditActor,
+  ): Promise<void> {
+    if (!(await this.users.resetPassword(id, body.password, actor))) throw new NotFoundException();
   }
 
   @Delete(':id/two-factor')
   @Output(204)
-  async resetTwoFactor(@Param('id') id: string): Promise<void> {
-    if (!(await this.users.resetTwoFactor(id))) throw new NotFoundException();
+  async resetTwoFactor(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    if (!(await this.users.resetTwoFactor(id, actor))) throw new NotFoundException();
   }
 }

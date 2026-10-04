@@ -1,5 +1,6 @@
 import type { CreateUserRequest, UpdateUserRequest, User } from '@academia/contracts';
 import { and, type Database, eq, ne, schema } from '@academia/database';
+import { audit, type AuditActor, diffOf, NO_ACTOR } from '../audit/audit.ts';
 import { hashPassword, verifyPassword } from '../password.ts';
 
 const { accounts, sessions, twoFactors, users } = schema;
@@ -15,6 +16,9 @@ const publicColumns = {
 
 /** O Better Auth guarda a senha na conta `credential` do usuário. */
 const CREDENTIAL = 'credential';
+
+/** Os campos de `user` cujo valor a trilha de auditoria guarda (AD-026); dos demais, só o nome. */
+const REGISTRABLE = ['role', 'active', 'twoFactorEnabled'];
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const byName = new Intl.Collator('pt-BR');
@@ -47,8 +51,11 @@ export class UsersService {
     return user;
   }
 
-  /** Cria o usuário e a senha dele numa transação; `null` quando o e-mail já existe. */
-  async create(input: CreateUserRequest): Promise<User | null> {
+  /**
+   * Cria o usuário e a senha dele numa transação; `null` quando o e-mail já existe. Sem `actor`, a
+   * linha de auditoria sai sem autor: é o caso do `users:create-admin`.
+   */
+  async create(input: CreateUserRequest, actor: AuditActor = NO_ACTOR): Promise<User | null> {
     const password = await hashPassword(input.password);
     return this.db.transaction(async (tx) => {
       const [user] = await tx
@@ -60,6 +67,13 @@ export class UsersService {
       await tx
         .insert(accounts)
         .values({ userId: user.id, accountId: user.id, providerId: CREDENTIAL, password });
+      await audit.record(tx, {
+        actor,
+        action: 'user.created',
+        entity: 'user',
+        entityId: user.id,
+        diff: diffOf(null, user, ['name', 'email', 'role'], REGISTRABLE),
+      });
       return user;
     });
   }
@@ -69,7 +83,7 @@ export class UsersService {
    * mudança: de duas alterações simultâneas que tirariam os dois últimos, a segunda espera a
    * primeira e já não encontra outro administrador.
    */
-  async update(id: string, change: UpdateUserRequest): Promise<UserChange> {
+  async update(id: string, change: UpdateUserRequest, actor: AuditActor): Promise<UserChange> {
     if (!UUID.test(id)) return { outcome: 'not_found' };
     return this.db.transaction(async (tx) => {
       const admins = await tx
@@ -82,6 +96,9 @@ export class UsersService {
       if (!current) return { outcome: 'not_found' };
 
       const next = { ...current, ...change };
+      const diff = diffOf(current, next, ['name', 'role', 'active'], REGISTRABLE);
+      // nada mudou: nada a gravar, nem em `users` nem na trilha
+      if (!diff) return { outcome: 'ok', user: current };
       const wasAdmin = admins.some((admin) => admin.id === id);
       const staysAdmin = next.role === 'admin' && next.active;
       if (wasAdmin && !staysAdmin && admins.length === 1) return { outcome: 'last_admin' };
@@ -94,12 +111,13 @@ export class UsersService {
       if (next.role !== current.role || (current.active && !next.active)) {
         await tx.delete(sessions).where(eq(sessions.userId, id));
       }
+      await audit.record(tx, { actor, action: 'user.updated', entity: 'user', entityId: id, diff });
       return { outcome: 'ok', user: user! };
     });
   }
 
   /** O Administrador redefine a senha de alguém: as sessões daquele usuário caem. */
-  async resetPassword(id: string, password: string): Promise<boolean> {
+  async resetPassword(id: string, password: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(id)) return false;
     const hash = await hashPassword(password);
     return this.db.transaction(async (tx) => {
@@ -107,6 +125,7 @@ export class UsersService {
       if (!user) return false;
       await this.storePassword(tx, id, hash);
       await tx.delete(sessions).where(eq(sessions.userId, id));
+      await audit.record(tx, { actor, action: 'user.password_reset', entity: 'user', entityId: id });
       return true;
     });
   }
@@ -116,6 +135,7 @@ export class UsersService {
     user: { id: string; sessionId: string },
     currentPassword: string,
     newPassword: string,
+    actor: AuditActor,
   ): Promise<boolean> {
     const [account] = await this.db
       .select({ password: accounts.password })
@@ -127,12 +147,13 @@ export class UsersService {
     await this.db.transaction(async (tx) => {
       await this.storePassword(tx, user.id, hash);
       await tx.delete(sessions).where(and(eq(sessions.userId, user.id), ne(sessions.id, user.sessionId)));
+      await audit.record(tx, { actor, action: 'auth.password_changed', entity: 'user', entityId: user.id });
     });
     return true;
   }
 
   /** Apaga o segredo TOTP e os códigos de recuperação de alguém e encerra as sessões dele. */
-  async resetTwoFactor(id: string): Promise<boolean> {
+  async resetTwoFactor(id: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(id)) return false;
     return this.db.transaction(async (tx) => {
       const [user] = await tx
@@ -143,6 +164,7 @@ export class UsersService {
       if (!user) return false;
       await tx.delete(twoFactors).where(eq(twoFactors.userId, id));
       await tx.delete(sessions).where(eq(sessions.userId, id));
+      await audit.record(tx, { actor, action: 'user.two_factor_reset', entity: 'user', entityId: id });
       return true;
     });
   }

@@ -1,4 +1,5 @@
 import {
+  type AuditAction,
   type ChangePasswordRequest,
   changePasswordRequestSchema,
   type LoginRequest,
@@ -16,6 +17,7 @@ import {
   type TwoFactorVerifyRequest,
   twoFactorVerifyRequestSchema,
 } from '@academia/contracts';
+import type { Database } from '@academia/database';
 import { BadRequestException, Body, Controller, Get, Inject, Post, Put, Req, Res } from '@nestjs/common';
 import { APIError } from 'better-auth/api';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -27,10 +29,11 @@ import {
   Public,
   twoFactorEnrollmentRequired,
 } from '../access.ts';
+import { Actor, audit, type AuditActor } from '../audit/audit.ts';
 import type { Auth } from '../auth.ts';
 import { hashPassword } from '../password.ts';
 import { ProblemException, validationProblem } from '../problem.filter.ts';
-import { AUTH } from '../tokens.ts';
+import { AUTH, DATABASE } from '../tokens.ts';
 import { UsersService } from '../users/users.service.ts';
 import { Input, Output } from '../validation.ts';
 import { logAuth } from './auth-log.ts';
@@ -64,11 +67,16 @@ const tooManyAttempts = (retryAfter: number) =>
 /**
  * Rotas de autenticação. O Better Auth é chamado só por `auth.api` (AD-017); o que sai daqui segue
  * o contrato de erro e os schemas de `packages/contracts`.
+ *
+ * O `auth.api` abre as próprias transações e não recebe uma de fora, então a linha de auditoria
+ * destas ações é gravada logo depois do desfecho, fora de transação. No login ela vem antes de o
+ * cookie ser repassado: se o insert falha, a resposta é `500` sem sessão para o navegador.
  */
 @Controller('api/auth')
 export class AuthController {
   constructor(
     @Inject(AUTH) private readonly auth: Auth,
+    @Inject(DATABASE) private readonly database: Database,
     @Inject(UsersService) private readonly users: UsersService,
     @Inject(LoginThrottle) private readonly throttle: LoginThrottle,
   ) {}
@@ -81,6 +89,7 @@ export class AuthController {
     @Body() body: LoginRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Actor() origin: AuditActor,
   ): Promise<LoginResponse> {
     const email = body.email.toLowerCase();
     const user = await this.users.findByEmail(email);
@@ -93,17 +102,21 @@ export class AuthController {
     const signedIn = await this.signIn(email, body.password, user?.active === false, req);
     if (!signedIn || !user) {
       logAuth(res, 'auth.login_failed', user?.id);
+      // sem o e-mail digitado: de um e-mail que não é de ninguém, a linha fica sem autor e sem alvo
+      await this.record('auth.login_failed', user?.id ?? null, origin);
       throw invalidCredentials();
     }
 
-    forwardCookies(res, signedIn.headers);
     if ('twoFactorRedirect' in signedIn.response) {
+      forwardCookies(res, signedIn.headers);
       // a senha estava certa: a tentativa não conta como falha, e o contador segue para o 2º passo
       await this.throttle.forgive(email, attempt.at);
       return { status: 'two_factor_required' };
     }
     await this.throttle.reset(email);
     logAuth(res, 'auth.login_succeeded', user.id);
+    await this.record('auth.login_succeeded', user.id, origin);
+    forwardCookies(res, signedIn.headers);
     return { status: 'authenticated' };
   }
 
@@ -115,6 +128,7 @@ export class AuthController {
     @Body() body: TwoFactorVerifyRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Actor() origin: AuditActor,
   ): Promise<LoginResponse> {
     const user = await this.pendingLogin(req);
     if (!user) throw invalidCode();
@@ -125,8 +139,9 @@ export class AuthController {
     }
 
     const headers = fromNodeHeaders(req.headers);
+    let verified: { headers: Headers };
     try {
-      const verified =
+      verified =
         body.code !== undefined
           ? await this.auth.api.verifyTOTP({ body: { code: body.code }, headers, returnHeaders: true })
           : await this.auth.api.verifyBackupCode({
@@ -134,14 +149,16 @@ export class AuthController {
               headers,
               returnHeaders: true,
             });
-      forwardCookies(res, verified.headers);
     } catch (error) {
       if (!isRejection(error)) throw error;
       logAuth(res, 'auth.login_failed', user.id);
+      await this.record('auth.login_failed', user.id, origin);
       throw invalidCode();
     }
     await this.throttle.reset(user.email);
     logAuth(res, 'auth.login_succeeded', user.id);
+    await this.record('auth.login_succeeded', user.id, origin);
+    forwardCookies(res, verified.headers);
     return { status: 'authenticated' };
   }
 
@@ -164,12 +181,17 @@ export class AuthController {
   @Post('logout')
   @Authenticated({ duringEnrollment: true })
   @Output(204)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: AuditActor,
+  ): Promise<void> {
     const { headers } = await this.auth.api.signOut({
       headers: fromNodeHeaders(req.headers),
       returnHeaders: true,
     });
     forwardCookies(res, headers);
+    await this.record('auth.logout', actor.userId, actor);
   }
 
   @Put('password')
@@ -179,8 +201,9 @@ export class AuthController {
   async changePassword(
     @Body() body: ChangePasswordRequest,
     @CurrentUser() user: CurrentUser,
+    @Actor() actor: AuditActor,
   ): Promise<void> {
-    const changed = await this.users.changeOwnPassword(user, body.currentPassword, body.newPassword);
+    const changed = await this.users.changeOwnPassword(user, body.currentPassword, body.newPassword, actor);
     if (!changed) {
       throw validationProblem([{ path: 'currentPassword', message: 'Senha atual incorreta.' }]);
     }
@@ -212,6 +235,7 @@ export class AuthController {
     @Body() body: TwoFactorConfirmRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Actor() actor: AuditActor,
   ): Promise<void> {
     try {
       // a confirmação troca a sessão: o cookie novo segue na resposta
@@ -225,6 +249,7 @@ export class AuthController {
       if (!isRejection(error)) throw error;
       throw validationProblem([{ path: 'code', message: 'Código inválido.' }]);
     }
+    await this.record('auth.two_factor_enabled', actor.userId, actor);
   }
 
   @Post('two-factor/disable')
@@ -235,6 +260,7 @@ export class AuthController {
     @Body() body: PasswordConfirmationRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Actor() actor: AuditActor,
   ): Promise<void> {
     const { headers } = await this.confirmingPassword(() =>
       this.auth.api.disableTwoFactor({
@@ -244,6 +270,17 @@ export class AuthController {
       }),
     );
     forwardCookies(res, headers);
+    await this.record('auth.two_factor_disabled', actor.userId, actor);
+  }
+
+  /** A linha de uma ação de autenticação: quem age é também o alvo. */
+  private record(action: AuditAction, userId: string | null, origin: AuditActor) {
+    return audit.record(this.database.db, {
+      actor: { ...origin, userId },
+      action,
+      entity: 'user',
+      entityId: userId,
+    });
   }
 
   /** Confere a senha pelo Better Auth; `null` em qualquer recusa, sem dizer qual. */
