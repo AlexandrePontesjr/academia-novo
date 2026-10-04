@@ -107,6 +107,7 @@ Só rotas novas. Toda rota `/api` também pode responder com a última linha.
 | `DELETE /api/users/:id/two-factor` | nada | nada | `204`, `401`, `403`, `404` |
 | `GET /api/openapi.json` | cookie | documento OpenAPI 3.1 | `200`, `401` |
 | qualquer rota `/api`, em erro (acréscimo à linha da `fundacao`) | a requisição como veio | `application/problem+json`, com `errors[]` no `422` | `401`, `403`, `422`, `429` |
+| qualquer rota `/api`, pela origem do web, com a API fora do ar (acrescentada no Build) | a requisição como veio | `application/problem+json` escrito pelo próprio web, com `code` igual a `bad_gateway` ou `gateway_timeout` | `502`, `504` |
 
 O comando `pnpm users:create-admin` também é superfície; as decisões dele estão em `Observable`.
 
