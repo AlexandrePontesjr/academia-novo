@@ -10,7 +10,7 @@ decisão.
 | # | Feature | O que alguém consegue fazer quando ela entra | Requisitos | Depende de | Estado |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `fundacao` | subir web + API + banco com um comando e saber, por um comando, se o repositório está são | §4 manutenibilidade, logs, segredos | - | concluída; verificação 33/33 na rodada 4 (`d060517`) |
-| 2 | `auth-rbac` | entrar com e-mail e senha (2FA para Administrador), e cada perfil só alcança o que pode | RF-01 a RF-04, gestão de usuários, CSRF, Argon2id | 1 | plano aprovado em 2026-10-03; checks em revisão |
+| 2 | `auth-rbac` | entrar com e-mail e senha (2FA para Administrador), e cada perfil só alcança o que pode | RF-01 a RF-04, gestão de usuários, CSRF, Argon2id | 1 | concluída; verificação 102/102 na rodada 4 (`8789baf`) |
 | 3 | `auditoria` | o Administrador consulta quem fez o quê; toda feature seguinte já nasce auditada | RF-24 a RF-26 | 2 | não iniciada |
 | 4 | `alunos` | cadastrar, buscar, editar e inativar alunos | RF-05, RF-07, RF-08 (inativação), RF-31 | 3 | não iniciada |
 | 5 | `consentimento` | registrar consentimento versionado e o responsável legal de menores | RF-06, RF-27 | 4 | não iniciada |

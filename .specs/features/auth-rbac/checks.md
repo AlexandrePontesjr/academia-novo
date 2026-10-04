@@ -145,7 +145,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/enrollment.test.ts -t "e
 Proof: `pnpm --filter "./apps/api" exec vitest run test/two-factor.test.ts -t "disable_204_deletes_secret_and_backup_codes"`
 
 **C37** - Responde `422` com um item em `errors`: `two-factor/enable` com senha errada (`path` igual a `password`), `two-factor/disable` com senha errada (`path` igual a `password`) e `two-factor/confirm` com código inválido (`path` igual a `code`); em nenhum dos três `twoFactorEnabled` muda (AC 27)
-Proof: `pnpm --filter "./apps/api" exec vitest run test/two-factor.test.ts -t "wrong_password_or_code_422_on_field"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/two-factor.test.ts -t "wrong_password_or_code_422_on_field|long_wrong_password_422_on_enable_and_disable"`
 
 ### S4 - Bloqueio por tentativas · ~4 files · ~20 KB · ~5k
 
@@ -193,7 +193,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/access.test.ts -t "only_
 ### S6 - O Administrador gere os usuários · ~10 files · ~48 KB · ~12k
 
 **C51** - `POST /api/users` feito por um administrador com dados válidos responde `201` com `id`, `name`, `email`, `role`, `active` igual a `true` e `twoFactorEnabled` igual a `false`, sem nenhum campo de senha, e o login daquele usuário com a senha informada responde `200` (AC 37)
-Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "create_user_201_and_user_can_log_in"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts test/password.test.ts -t "create_user_201_and_user_can_log_in|every_password_accepted_on_write_logs_in"`
 
 **C52** - `POST /api/users` com o e-mail de um usuário existente escrito com outras maiúsculas responde `409` com `code` igual a `email_taken`, e a contagem de linhas de `users` não muda (AC 38)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "duplicate_email_409_case_insensitive"`
@@ -220,7 +220,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "last_a
 Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "concurrent_removal_of_last_two_admins"`
 
 **C60** - `PUT /api/users/:id/password` feito por um administrador com uma senha de 12 caracteres responde `204`; a sessão aberta daquele usuário passa a receber `401`, o login dele com a senha nova responde `200` e com a antiga `401` (AC 44)
-Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "admin_resets_password_204"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts test/password.test.ts -t "admin_resets_password_204|every_password_accepted_on_write_logs_in"`
 
 **C61** - `DELETE /api/users/:id/two-factor` feito por um administrador responde `204`; `twoFactorEnabled` daquele usuário passa a `false`, a linha dele em `two_factors` deixa de existir e a sessão aberta dele passa a receber `401` (AC 45)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/users.test.ts -t "admin_resets_two_factor_204"`
