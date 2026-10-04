@@ -27,21 +27,27 @@ Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "up_wai
 
 **C2** - Com o Postgres acessível, `GET /health` sem credencial responde `200` com exatamente `{"status":"ok","checks":{"database":"up"}}` (AC 2)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/health.test.ts -t "health_ok_200"`
+Status: concluído
 
 **C3** - Com o Postgres recusando conexão, `GET /health` responde `503` com exatamente `{"status":"degraded","checks":{"database":"down"}}` (AC 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/health.test.ts -t "health_503_when_db_refuses"`
+Status: concluído
 
 **C4** - Com o Postgres aceitando a conexão e não respondendo, `GET /health` responde `503` com o corpo `degraded` em até 3 s (AC 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/health.test.ts -t "health_503_within_3s_when_db_hangs"`
+Status: concluído
 
 **C5** - Para cada variável obrigatória do schema de ambiente, iniciar o processo real da API sem ela termina com código 1 e imprime o nome dessa variável (AC 4)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/boot.test.ts -t "missing_var_exits_1_naming_it"`
+Status: concluído
 
 **C6** - Iniciar o processo real da API com `DATABASE_URL` de valor inválido termina com código 1 e imprime `DATABASE_URL` (AC 4)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/boot.test.ts -t "invalid_var_exits_1_naming_it"`
+Status: concluído
 
 **C7** - A saída da falha de ambiente não contém o valor de nenhuma variável definida, incluindo a senha dentro de `DATABASE_URL` (AC 4)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/boot.test.ts -t "env_failure_prints_no_values"`
+Status: concluído
 
 **C8** - Toda chave obrigatória dos schemas de ambiente de `apps/api` e `apps/web` aparece em `.env.example` (AC 5)
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "env_example_lists_every_required_key"`
@@ -56,24 +62,30 @@ Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "postgr
 
 **C11** - Uma rota inexistente responde `404` com `Content-Type: application/problem+json` e corpo com `type`, `title`, `status` igual a 404, `code` igual a `not_found` e `requestId` (AC 7, door 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/problem.test.ts -t "unknown_route_404_problem"`
+Status: concluído
 
 **C12** - Um handler que lança exceção não tratada responde `500` em `application/problem+json` com `code` igual a `internal_error`, e o corpo não contém a mensagem da exceção nem stack trace (AC 8, door 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/problem.test.ts -t "unhandled_500_hides_exception"`
+Status: concluído
 
 **C13** - O header `X-Request-Id` está presente e não vazio nas respostas `200`, `503`, `404` e `500` (AC 9)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/request-id.test.ts -t "header_on_every_status"`
+Status: concluído
 
 **C14** - Nas respostas `404` e `500`, o valor de `X-Request-Id` é igual ao campo `requestId` do corpo (AC 9)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/request-id.test.ts -t "header_equals_body_request_id"`
+Status: concluído
 
 **C15** - Cada requisição respondida gera exatamente uma linha de log em JSON com `requestId`, `method`, `path`, `status` e `durationMs`, e o `requestId` é o mesmo do header (AC 10)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/logging.test.ts -t "one_json_line_per_request"`
+Status: concluído
 
 **C16** - No processo real da stack, uma rota inexistente responde `404` em `application/problem+json` com `X-Request-Id` igual ao `requestId` do corpo (AC 7, AC 9)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "running_api_uses_error_contract"`
 
 **C17** - As respostas reais de `GET /health` (`200` e `503`) e o corpo de erro `404` validam contra os schemas exportados por `packages/contracts` (door 5)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/contracts.test.ts -t "responses_match_contract_schemas"`
+Status: concluído
 
 ### S3 - Migrações versionadas · ~6 files · ~8 KB · ~2k
 
