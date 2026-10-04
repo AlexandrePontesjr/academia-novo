@@ -134,7 +134,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(10);
+  expect(AUDIT_ACTIONS).toHaveLength(13);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -153,7 +153,87 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Usuário editado',
     'Senha redefinida',
     '2FA zerado',
+    'Aluno criado',
+    'Aluno editado',
+    'Aluno inativado',
   ]);
+});
+
+const LABELS = [
+  'Login',
+  'Falha de login',
+  'Logout',
+  'Troca da própria senha',
+  '2FA ativado',
+  '2FA desativado',
+  'Usuário criado',
+  'Usuário editado',
+  'Senha redefinida',
+  '2FA zerado',
+  'Aluno criado',
+  'Aluno editado',
+  'Aluno inativado',
+];
+
+test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
+  const studentActions = ['student.created', 'student.updated', 'student.inactivated'] as const;
+  serve(
+    api,
+    studentActions.map((action) => logOf({ action, entity: 'student' })),
+  );
+
+  await page.goto('/audit');
+
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual([
+    'Aluno criado',
+    'Aluno editado',
+    'Aluno inativado',
+  ]);
+  const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
+  expect(options).toEqual(['Todas', ...LABELS]);
+  expect(options.slice(1)).toHaveLength(13);
+  expect(options.slice(11)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
+});
+
+test('student_details_show_status_change_and_changed_phone', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'student.updated',
+      entity: 'student',
+      diff: { fields: ['phone', 'status'], values: { status: { from: 'active', to: 'suspended' } } },
+    }),
+    logOf({
+      action: 'student.updated',
+      entity: 'student',
+      diff: { fields: ['status'], values: { status: { from: 'inactive', to: 'active' } } },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  const first = page.locator('tbody tr:nth-child(1) td:nth-child(7)');
+  await expect(first.getByText('Situação: Ativo → Suspenso', { exact: true })).toBeVisible();
+  await expect(first.getByText('Telefone alterado', { exact: true })).toBeVisible();
+  const second = page.locator('tbody tr:nth-child(2) td:nth-child(7)');
+  await expect(second.getByText('Situação: Inativo → Ativo', { exact: true })).toBeVisible();
+});
+
+test('student_target_links_to_the_ficha', async ({ page, api }) => {
+  const studentId = '018f0000-0000-7000-8000-0000000005aa';
+  serve(api, [
+    logOf({ action: 'student.created', entity: 'student', entityId: studentId }),
+    logOf({ entity: 'user', entityId: USERS[1]!.id }),
+  ]);
+
+  await page.goto('/audit');
+
+  const student = page.locator('tbody tr:nth-child(1) td:nth-child(4)');
+  await expect(student.getByRole('link', { name: 'Ver aluno', exact: true })).toHaveAttribute(
+    'href',
+    `/students/${studentId}`,
+  );
+  await expect(page.locator('tbody tr:nth-child(2) td:nth-child(4)')).toHaveText('Pessoa 2');
+  await expect(page.locator('tbody tr:nth-child(2) td:nth-child(4)').getByRole('link')).toHaveCount(0);
 });
 
 test('row_without_author_shows_dash', async ({ page, api }) => {

@@ -9,6 +9,7 @@ import {
 import { Table, TableCell, TableHead, TableRow } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Shell } from '../../components/shell.tsx';
 import {
   actionLabel,
@@ -80,8 +81,16 @@ async function load(filters: AuditFilterValues, cursor: string): Promise<Loaded>
   }
 }
 
-function target(item: AuditLog, users: User[]): string {
+function target(item: AuditLog, users: User[]): ReactNode {
   if (!item.entityId) return NONE;
+  // a trilha não guarda o nome do aluno: o link leva à ficha
+  if (item.entity === 'student') {
+    return (
+      <Link href={`/students/${item.entityId}`} prefetch={false} className="text-primary underline underline-offset-4">
+        Ver aluno
+      </Link>
+    );
+  }
   // o nome atual do alvo: a trilha não guarda nome
   const user = item.entity === 'user' ? users.find((candidate) => candidate.id === item.entityId) : undefined;
   return user?.name ?? item.entityId;

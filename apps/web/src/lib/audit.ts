@@ -1,5 +1,6 @@
-import type { AuditAction, AuditLog, Role } from '@academia/contracts';
+import type { AuditAction, AuditLog, Role, StudentStatus } from '@academia/contracts';
 import { ROLE_LABELS } from './roles.ts';
+import { STATUS_LABELS } from './students.ts';
 
 /** O fuso das datas da tela: uma instalação por academia (AD-016), sem horário de verão desde 2019. */
 const TIME_ZONE = 'America/Sao_Paulo';
@@ -66,12 +67,23 @@ const FIELD_LABELS: Record<string, string> = {
   role: 'Perfil',
   active: 'Situação',
   twoFactorEnabled: '2FA',
+  // aluno: a trilha guarda o valor só de `status`; dos demais, o nome do campo
+  status: 'Situação',
+  cpf: 'CPF',
+  birthDate: 'Data de nascimento',
+  sex: 'Sexo',
+  phone: 'Telefone',
+  address: 'Endereço',
+  emergencyContactName: 'Contato de emergência (nome)',
+  emergencyContactPhone: 'Contato de emergência (telefone)',
+  healthNotes: 'Observações de saúde',
 };
 
 function valueLabel(field: string, value: unknown): string {
   if (value === null || value === undefined) return '—';
   if (field === 'role') return ROLE_LABELS[value as Role] ?? String(value);
   if (field === 'active') return value ? 'Ativo' : 'Inativo';
+  if (field === 'status') return STATUS_LABELS[value as StudentStatus] ?? String(value);
   if (field === 'twoFactorEnabled') return value ? 'Ativado' : 'Desativado';
   return String(value);
 }
