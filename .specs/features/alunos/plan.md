@@ -36,7 +36,7 @@ próprio.
 
 1. `POST /api/students`, `PATCH|DELETE /api/students/:id` -> `apps/web` (exists) repassa -> checagem de origem (exists) -> `AccessGuard` (exists) com os perfis `admin` e `reception`
 2. `ValidationInterceptor` (exists) - valida o corpo pelo schema de `packages/contracts` (exists) e normaliza CPF e telefones para só dígitos
-3. módulo de alunos em `apps/api` (new, no door - placement per conventions) - abre a transação, trava a linha do aluno, cifra as observações de saúde (door 2) e grava em `students` (door 1); o índice único do CPF (door 1) é quem decide a corrida entre dois cadastros
+3. módulo de alunos em `apps/api` (new, no door - placement per conventions) - abre a transação, trava a linha do aluno, grava em `students` (door 1) e, havendo observações de saúde, cifra-as com o `id` da linha (door 2, door 5) e as grava logo em seguida; o índice único do CPF (door 1) é quem decide a corrida entre dois cadastros
 4. `audit.record(tx, ...)` (exists) - grava a linha com a ação da door 3 na mesma transação; se o insert falha, a transação desfaz
 5. out: `201`/`200`/`204`, ou `409` com `cpf_taken`, ou `500` sem nada gravado
 
@@ -48,7 +48,7 @@ próprio.
 
 **Telas**
 
-1. navegador `GET /students*` -> `proxy.ts` (exists) exige sessão -> página renderizada no servidor chama a API por `fetchApi` (exists) e monta dentro do `Shell` (exists)
+1. navegador `GET /students*` -> `proxy.ts` (exists) exige sessão -> página renderizada no servidor chama a API por `fetchApi` (exists) e monta dentro do `Shell` (exists); a busca e a página seguinte de `/students` vão do navegador a `GET /api/students?...` pelo repasse de `/api/*` (exists), sem pôr o texto buscado no endereço da página
 2. formulários e botões de situação -> `POST|PATCH|DELETE /api/students*` pelo repasse de `/api/*` (exists), e voltam ao caminho de escrita acima
 3. `/audit` (exists) - passa a nomear as três ações novas e a levar do "Alvo" à ficha do aluno
 
