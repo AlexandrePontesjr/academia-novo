@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Tabelas de identidade (auth-rbac, door 3). As chaves em camelCase são os nomes de campo que o
 // Better Auth usa; as colunas ficam em snake_case. O id é sempre gerado pelo banco.
@@ -116,4 +116,35 @@ export const auditLogs = pgTable(
     createdAt: instant('created_at').notNull().defaultNow(),
   },
   (table) => [index('audit_logs_created_at_user_id_idx').on(table.createdAt, table.userId)],
+);
+
+export const STUDENT_STATUSES = ['active', 'inactive', 'suspended'] as const;
+
+// Alunos (alunos, door 1). A situação tem uma fonte só, `status`: inativar é mudar `status`, nunca
+// apagar a linha nem criar `deleted_at`. O CPF fica em 11 dígitos, único entre todas as situações -
+// quem volta é reativado. As observações de saúde só existem cifradas (door 2), no formato
+// `v1.<iv>.<texto cifrado>.<tag>`. `students_fold` tira caixa e acentos: a busca e a ordem por nome
+// usam o mesmo texto que o índice trigram.
+export const students = pgTable(
+  'students',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    cpf: text('cpf').notNull().unique(),
+    birthDate: date('birth_date', { mode: 'string' }).notNull(),
+    sex: text('sex'),
+    email: text('email'),
+    phone: text('phone').notNull(),
+    address: text('address'),
+    emergencyContactName: text('emergency_contact_name'),
+    emergencyContactPhone: text('emergency_contact_phone'),
+    healthNotesEnc: text('health_notes_enc'),
+    status: text('status', { enum: STUDENT_STATUSES }).notNull().default('active'),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('students_status_valid', sql`${table.status} in ('active', 'inactive', 'suspended')`),
+    index('students_name_fold_trgm_idx').using('gin', sql`students_fold(${table.name}) gin_trgm_ops`),
+  ],
 );
