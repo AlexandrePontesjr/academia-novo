@@ -42,7 +42,7 @@ layout próprio.
 
 **Consulta**
 
-1. navegador `GET /audit?<filtros>` -> `proxy.ts` (exists) exige sessão -> página renderizada no servidor chama a API por `fetchApi` (exists)
+1. navegador `GET /audit?<filtros>` -> `proxy.ts` (exists) exige sessão -> página renderizada no servidor chama a API por `fetchApi` (exists): `GET /api/audit-logs` para a trilha e `GET /api/users` (exists) para o nome do "Alvo" e as opções do filtro "Usuário"
 2. `GET /api/audit-logs` -> `AccessGuard` (exists) com perfil `admin` -> validação da query pelo schema de `packages/contracts` (door 7)
 3. leitura de `audit_logs` (door 1) pelo Drizzle (exists), mais recente primeiro, 50 por página, com o nome do autor vindo de `users` (exists)
 4. out: `200` com `items` e `nextCursor`; a página monta a tabela e o link "Próxima página"

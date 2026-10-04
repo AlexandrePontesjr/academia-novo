@@ -19,6 +19,7 @@ export function Shell({ session, children }: { session: SessionResponse; childre
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/">Início</Link>
           {user.role === 'admin' && <Link href="/users">Usuários</Link>}
+          {user.role === 'admin' && <Link href="/audit">Auditoria</Link>}
           <Link href="/account">Minha conta</Link>
           <SignOutButton />
         </nav>
