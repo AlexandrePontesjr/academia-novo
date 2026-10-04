@@ -15,6 +15,7 @@ const validEnv: Record<string, string> = {
   PORT: '39871',
   AUTH_SECRET: `chave-de-teste-${SECRET}-com-mais-de-32`,
   WEB_ORIGIN: 'http://localhost:3000',
+  DATA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
 };
 
 const requiredKeys = Object.entries(envSchema.shape)
@@ -169,6 +170,46 @@ test('real_process_logs_delivered_body_error', async () => {
     const lines = linesFor(requestId);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ requestId, status: 400 });
+  } finally {
+    child.kill();
+  }
+}, 60_000);
+
+test('data_key_rejected_exits_1_naming_var', async () => {
+  const keyOf = (bytes: number) => Buffer.alloc(bytes, 9).toString('base64');
+  const cases: Array<{ name: string; env: Record<string, string> }> = [
+    { name: 'ausente', env: without(validEnv, 'DATA_ENCRYPTION_KEY') },
+    { name: 'não é base64', env: { ...validEnv, DATA_ENCRYPTION_KEY: 'isto nao e base64 de nada!' } },
+    { name: '31 bytes', env: { ...validEnv, DATA_ENCRYPTION_KEY: keyOf(31) } },
+    { name: '33 bytes', env: { ...validEnv, DATA_ENCRYPTION_KEY: keyOf(33) } },
+  ];
+
+  for (const { name, env } of cases) {
+    const { status, output } = startApiProcess(env);
+
+    expect(status, name).toBe(1);
+    expect(output, name).toContain('DATA_ENCRYPTION_KEY');
+    if (env.DATA_ENCRYPTION_KEY) expect(output, name).not.toContain(env.DATA_ENCRYPTION_KEY);
+  }
+
+  // com 32 bytes a API sobe: o banco recusa conexão, e o /health responde 503
+  const port = await freePort();
+  const child = spawn(process.execPath, ['dist/main.js'], {
+    cwd: apiRoot,
+    env: {
+      PATH: process.env.PATH,
+      SystemRoot: process.env.SystemRoot,
+      ...validEnv,
+      DATA_ENCRYPTION_KEY: keyOf(32),
+      DATABASE_URL: await refusingDatabaseUrl(),
+      PORT: String(port),
+    },
+  });
+  try {
+    await vi.waitFor(
+      async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(503),
+      { timeout: 20_000, interval: 200 },
+    );
   } finally {
     child.kill();
   }

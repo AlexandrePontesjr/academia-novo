@@ -143,3 +143,18 @@ test('ui_package_is_the_shared_interface_base', () => {
     expect(task?.command, taskId).toMatch(/\S/);
   }
 });
+
+test('env_example_documents_data_encryption_key', () => {
+  const lines = readFileSync(join(repoRoot, '.env.example'), 'utf8').split(/\r?\n/);
+  const at = lines.findIndex((line) => line.startsWith('DATA_ENCRYPTION_KEY='));
+  expect(at, 'a chave está listada').toBeGreaterThan(0);
+
+  // o comando que gera uma chave de 32 bytes em base64 está nos comentários logo acima
+  let start = at;
+  while (start > 0 && lines[start - 1]!.startsWith('#')) start -= 1;
+  expect(lines.slice(start, at).join('\n')).toContain('openssl rand -base64 32');
+
+  // e o valor de exemplo é uma chave que a API aceita
+  const example = lines[at]!.slice('DATA_ENCRYPTION_KEY='.length);
+  expect(apiEnvSchema.shape.DATA_ENCRYPTION_KEY.safeParse(example).success).toBe(true);
+});

@@ -44,6 +44,7 @@ services:
       PORT: 3001
       AUTH_SECRET: ${AUTH_SECRET:?}
       WEB_ORIGIN: ${WEB_ORIGIN:?}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?}
     ports:
       - 127.0.0.1:${PORT:?}:3001
     depends_on:

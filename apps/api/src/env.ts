@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDataKey } from './crypto.ts';
 
 export const envSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
@@ -7,6 +8,8 @@ export const envSchema = z.object({
   AUTH_SECRET: z.string().min(32),
   /** Origem do web, a única de onde o navegador fala com a API (AD-019, AD-020). */
   WEB_ORIGIN: z.url({ protocol: /^https?$/ }),
+  /** Chave das colunas cifradas em nível de aplicação: o base64 de 32 bytes (AD-031). */
+  DATA_ENCRYPTION_KEY: z.string().refine(isDataKey),
 });
 
 export type Env = z.infer<typeof envSchema>;

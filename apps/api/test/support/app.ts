@@ -9,6 +9,8 @@ import { configureApp } from '../../src/configure-app.ts';
 export const BOOM_MESSAGE = 'segredo-da-excecao-42';
 export const WEB_ORIGIN = 'http://localhost:3000';
 export const AUTH_SECRET = 'segredo-de-teste-com-32-caracteres!';
+/** O base64 de 32 bytes fixos: só serve a testes. */
+export const DATA_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
 
 @Controller()
 export class BoomController {
@@ -27,7 +29,7 @@ interface RouterLayer {
 export async function startApi(databaseUrl: string, controllers: Type[] = []) {
   const moduleRef = await Test.createTestingModule({
     imports: [
-      AppModule.register({ DATABASE_URL: databaseUrl, PORT: 0, AUTH_SECRET, WEB_ORIGIN }),
+      AppModule.register({ DATABASE_URL: databaseUrl, PORT: 0, AUTH_SECRET, WEB_ORIGIN, DATA_ENCRYPTION_KEY }),
     ],
     controllers,
   }).compile();
