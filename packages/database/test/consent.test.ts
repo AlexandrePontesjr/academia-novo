@@ -107,6 +107,9 @@ function insertConsent(
   );
 }
 
+/** `now()` do banco no instante da leitura: cada consulta solta é sua própria transação. */
+const stamp = async (on: pg.Client = client) => (await rows<{ t: Date }>('select now() as t', [], on))[0]!.t;
+
 const count = async (table: string, on: pg.Client = client) =>
   Number((await rows<{ n: string }>(`select count(*) as n from ${table}`, [], on))[0]!.n);
 
@@ -143,18 +146,18 @@ test('students_keeps_the_columns_of_0003_and_gains_no_foreign_key', async () => 
 
 test('guardians_defaults_and_not_null', async () => {
   const studentId = await insertStudent();
-  const [row] = await rows<{ version: number; created_at: Date; before: Date; after: Date }>(
-    `with before as (select clock_timestamp() as t),
-          ins as (insert into guardians (student_id, name, cpf, phone, relationship)
-                  values ($1, 'Ana Souza', '52998224725', '11912345678', 'mother') returning id, created_at)
-     select uuid_extract_version(ins.id) as version, ins.created_at, before.t as before, clock_timestamp() as after
-     from ins, before`,
+  const before = await stamp();
+  const [row] = await rows<{ version: number; created_at: Date }>(
+    `insert into guardians (student_id, name, cpf, phone, relationship)
+     values ($1, 'Ana Souza', '52998224725', '11912345678', 'mother')
+     returning uuid_extract_version(id) as version, created_at`,
     [studentId],
   );
+  const after = await stamp();
   expect(row!.version).toBe(7);
   // o insert aconteceu entre as duas leituras do relógio
-  expect(row!.created_at.getTime()).toBeGreaterThanOrEqual(row!.before.getTime() - 1);
-  expect(row!.created_at.getTime()).toBeLessThanOrEqual(row!.after.getTime() + 1);
+  expect(row!.created_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  expect(row!.created_at.getTime()).toBeLessThanOrEqual(after.getTime());
 
   const full: Record<string, unknown> = {
     student_id: studentId,
@@ -236,15 +239,15 @@ test('consent_terms_text_not_null_and_created_at_default', async () => {
     const error = await failureOf("insert into consent_terms (purpose, version) values ('image_use', 2)", [], own);
     expect(error.code).toBe(NOT_NULL_VIOLATION);
 
-    const [row] = await rows<{ created_at: Date; before: Date; after: Date }>(
-      `with before as (select clock_timestamp() as t),
-            ins as (insert into consent_terms (purpose, version, text) values ('image_use', 2, 'texto') returning created_at)
-       select ins.created_at, before.t as before, clock_timestamp() as after from ins, before`,
+    const before = await stamp(own);
+    const [row] = await rows<{ created_at: Date }>(
+      "insert into consent_terms (purpose, version, text) values ('image_use', 2, 'texto') returning created_at",
       [],
       own,
     );
-    expect(row!.created_at.getTime()).toBeGreaterThanOrEqual(row!.before.getTime() - 1);
-    expect(row!.created_at.getTime()).toBeLessThanOrEqual(row!.after.getTime() + 1);
+    const after = await stamp(own);
+    expect(row!.created_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    expect(row!.created_at.getTime()).toBeLessThanOrEqual(after.getTime());
   } finally {
     await own.end();
   }
@@ -252,18 +255,18 @@ test('consent_terms_text_not_null_and_created_at_default', async () => {
 
 test('consents_defaults_and_not_null', async () => {
   const studentId = await insertStudent();
-  const [row] = await rows<{ version: number; granted_at: Date; revoked_at: Date | null; before: Date; after: Date }>(
-    `with before as (select clock_timestamp() as t),
-          ins as (insert into consents (student_id, purpose, term_version, granted_by)
-                  values ($1, 'image_use', 1, 'student') returning id, granted_at, revoked_at)
-     select uuid_extract_version(ins.id) as version, ins.granted_at, ins.revoked_at, before.t as before, clock_timestamp() as after
-     from ins, before`,
+  const before = await stamp();
+  const [row] = await rows<{ version: number; granted_at: Date; revoked_at: Date | null }>(
+    `insert into consents (student_id, purpose, term_version, granted_by)
+     values ($1, 'image_use', 1, 'student')
+     returning uuid_extract_version(id) as version, granted_at, revoked_at`,
     [studentId],
   );
+  const after = await stamp();
   expect(row!.version).toBe(7);
   expect(row!.revoked_at).toBeNull();
-  expect(row!.granted_at.getTime()).toBeGreaterThanOrEqual(row!.before.getTime() - 1);
-  expect(row!.granted_at.getTime()).toBeLessThanOrEqual(row!.after.getTime() + 1);
+  expect(row!.granted_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  expect(row!.granted_at.getTime()).toBeLessThanOrEqual(after.getTime());
 
   const other = await insertStudent();
   const full: Record<string, unknown> = {
