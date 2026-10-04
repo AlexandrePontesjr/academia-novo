@@ -2,6 +2,8 @@ import { createDatabase, type Database } from '@academia/database';
 import { type DynamicModule, Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, DiscoveryModule } from '@nestjs/core';
 import { AccessDeclarations, AccessGuard } from './access.ts';
+import { AuditLogsController } from './audit/audit-logs.controller.ts';
+import { AuditLogsService } from './audit/audit-logs.service.ts';
 import { createAuth } from './auth.ts';
 import { AuthController } from './auth/auth.controller.ts';
 import { LoginThrottle } from './auth/throttle.ts';
@@ -25,7 +27,13 @@ export class AppModule implements OnApplicationShutdown {
     return {
       module: AppModule,
       imports: [DiscoveryModule],
-      controllers: [HealthController, AuthController, UsersController, OpenApiController],
+      controllers: [
+        HealthController,
+        AuthController,
+        UsersController,
+        AuditLogsController,
+        OpenApiController,
+      ],
       providers: [
         { provide: ENV, useValue: env },
         {
@@ -41,6 +49,11 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: UsersService,
           useFactory: (database: Database) => new UsersService(database.db),
+          inject: [DATABASE],
+        },
+        {
+          provide: AuditLogsService,
+          useFactory: (database: Database) => new AuditLogsService(database.db),
           inject: [DATABASE],
         },
         {

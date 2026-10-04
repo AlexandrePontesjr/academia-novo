@@ -1,4 +1,6 @@
 import {
+  type AuditLogsResponse,
+  auditLogsResponseSchema,
   healthResponseSchema,
   loginResponseSchema,
   problemSchema,
@@ -169,4 +171,24 @@ test('seven_success_bodies_match_contract_schemas', async () => {
     expect(response.status, route).toBe(status);
     expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
   }
+});
+
+test('audit_logs_body_matches_contract_schema', async () => {
+  const admin = await stack.session('admin');
+  const target = await stack.seed({ role: 'reception' });
+  // uma linha com autor e `diff`, e uma sem autor e de `diff` nulo
+  expect((await admin.client.patch(`/api/users/${target.id}`, { role: 'instructor' })).status).toBe(200);
+  const refused = await stack
+    .client()
+    .post('/api/auth/login', { email: 'ninguem.no.contrato@exemplo.com', password: 'senha-errada-000' });
+  expect(refused.status).toBe(401);
+
+  const response = await admin.client.get('/api/audit-logs');
+  const body = (await response.json()) as AuditLogsResponse;
+  const parsed = auditLogsResponseSchema.safeParse(body);
+
+  expect(response.status).toBe(200);
+  expect(body.items.some((item) => item.user?.id === admin.user.id && item.diff !== null)).toBe(true);
+  expect(body.items.some((item) => item.user === null && item.diff === null)).toBe(true);
+  expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
 });

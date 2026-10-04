@@ -386,3 +386,4 @@ Cost: 0 provas além das 73 acima - as linhas descrevem o nível em que elas já
 - **Boundary:** C1 a C29 fechados no commit `feat(api): record audit rows for user management and authentication`: o gravador (door 5), o vocabulário (door 3) e o `diff` (door 4)
 - **Boundary:** C30 a C34 fechados no commit `feat(api): take the audit ip from the forwarded address` (door 6)
 - **Boundary:** C35 e C36 fechados no commit `feat(web): forward the client ip and user agent to the api`
+- **Boundary:** C41 e C44 a C56 fechados no commit `feat(api): add the audit log query route` (door 7)

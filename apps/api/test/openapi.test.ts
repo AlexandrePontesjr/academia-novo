@@ -1,4 +1,5 @@
 import {
+  auditLogsQuerySchema,
   changePasswordRequestSchema,
   createUserRequestSchema,
   loginRequestSchema,
@@ -14,7 +15,16 @@ import { type Stack, startStack } from './support/stack.ts';
 
 interface OpenApiDocument {
   openapi: string;
-  paths: Record<string, Record<string, { requestBody?: { content: Record<string, { schema: unknown }> } }>>;
+  paths: Record<
+    string,
+    Record<
+      string,
+      {
+        requestBody?: { content: Record<string, { schema: unknown }> };
+        parameters?: Array<{ name: string; in: string; required?: boolean; schema: unknown }>;
+      }
+    >
+  >;
 }
 
 let stack: Stack;
@@ -52,6 +62,26 @@ test('paths_equal_registered_api_routes', async () => {
   );
 
   expect(documented.sort()).toEqual(registered.sort());
+});
+
+test('audit_logs_query_parameters_come_from_contract_schema', async () => {
+  const names = ['from', 'to', 'userId', 'action', 'entity', 'entityId', 'ip', 'cursor'];
+  const properties = JSON.parse(JSON.stringify(z.toJSONSchema(auditLogsQuerySchema).properties)) as Record<
+    string,
+    unknown
+  >;
+  expect(Object.keys(properties).sort()).toEqual([...names].sort());
+
+  const { paths } = await document();
+  const parameters = paths['/api/audit-logs']?.get?.parameters ?? [];
+
+  expect(parameters).toHaveLength(8);
+  expect(parameters.map((parameter) => parameter.name).sort()).toEqual([...names].sort());
+  for (const parameter of parameters) {
+    expect(parameter.in, parameter.name).toBe('query');
+    expect(parameter.required, parameter.name).not.toBe(true);
+    expect(parameter.schema, parameter.name).toEqual(properties[parameter.name]);
+  }
 });
 
 test('request_bodies_come_from_contract_schemas', async () => {

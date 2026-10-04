@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
 // os operadores saem daqui para que os apps usem a mesma instância do drizzle-orm que criou as tabelas
-export { and, eq, ne, sql } from 'drizzle-orm';
+export { and, desc, eq, gte, lt, ne, sql } from 'drizzle-orm';
 export * as schema from './schema.ts';
 
 export interface DatabaseOptions {

@@ -128,6 +128,20 @@ test('non_admin_403_on_every_users_route', async () => {
   expect(await snapshot()).toEqual(before);
 });
 
+test('non_admin_403_on_audit_logs', async () => {
+  const roles = ['reception', 'hr_finance', 'instructor'] satisfies Role[];
+  expect(roles).toHaveLength(3);
+
+  for (const role of roles) {
+    const { client } = await stack.session(role);
+
+    const response = await client.get('/api/audit-logs');
+
+    expect(response.status, role).toBe(403);
+    expect((await problem(response)).code, role).toBe('forbidden');
+  }
+});
+
 test('only_three_routes_answer_without_session', async () => {
   const routes = stack.api.routes();
   expect(routes.length).toBeGreaterThanOrEqual(15);

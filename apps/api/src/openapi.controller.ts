@@ -3,7 +3,7 @@ import { DiscoveryService } from '@nestjs/core';
 import { z } from 'zod';
 import { Authenticated } from './access.ts';
 import { isApiRoute, listRoutes, type Route } from './routes.ts';
-import { inputOf, outputOf } from './validation.ts';
+import { inputOf, outputOf, queryOf } from './validation.ts';
 
 const json = (schema: z.ZodType) => ({
   content: { 'application/json': { schema: z.toJSONSchema(schema) } },
@@ -12,12 +12,23 @@ const json = (schema: z.ZodType) => ({
 function operation(route: Route) {
   const input = inputOf(route.handler);
   const output = outputOf(route.handler);
-  const parameters = [...route.path.matchAll(/:(\w+)/g)].map(([, name]) => ({
-    name,
-    in: 'path',
-    required: true,
-    schema: { type: 'string' },
-  }));
+  const query = queryOf(route.handler);
+  const queryProperties = (query ? z.toJSONSchema(query).properties : undefined) ?? {};
+  const parameters = [
+    ...[...route.path.matchAll(/:(\w+)/g)].map(([, name]) => ({
+      name,
+      in: 'path',
+      required: true,
+      schema: { type: 'string' } as unknown,
+    })),
+    // um parâmetro por propriedade do schema de query, todos opcionais
+    ...Object.entries(queryProperties).map(([name, schema]) => ({
+      name,
+      in: 'query',
+      required: false,
+      schema: schema as unknown,
+    })),
+  ];
   return {
     ...(parameters.length > 0 && { parameters }),
     ...(input && { requestBody: { required: true, ...json(input) } }),
