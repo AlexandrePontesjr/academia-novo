@@ -139,6 +139,64 @@ describe('stack de pé', () => {
     expect(rows.output.trim().split(/\r?\n/)).toEqual(['203.0.113.7|teste/1.0']);
   });
 
+  test('student_created_through_web_stores_ciphertext_and_audit_row', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) =>
+      stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+    const email = 'recepcao.da.stack@exemplo.com';
+    const password = 'senha-da-stack-789';
+    const healthNotes = 'Observacao de saude que nao pode aparecer no banco';
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Recepcionista`,
+    );
+    expect(created.status, created.output).toBe(0);
+    // a stack não tem gerador de TOTP, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+    const demoted = psql(`update users set role = 'reception' where email = '${email}'`);
+    expect(demoted.status, demoted.output).toBe(0);
+
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+
+    const response = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: stack.webOrigin,
+        Cookie: cookie,
+        'User-Agent': 'teste-aluno/1.0',
+        'X-Forwarded-For': '203.0.113.9',
+      },
+      body: JSON.stringify({
+        name: 'Aluna da Stack',
+        cpf: '529.982.247-25',
+        birthDate: '2000-01-01',
+        phone: '(11) 91234-5678',
+        healthNotes,
+      }),
+    });
+    expect(response.status).toBe(201);
+    const { id } = (await response.json()) as { id: string };
+
+    // as linhas são lidas do banco da stack, não pelas rotas
+    const row = psql(`select s::text from students s where s.id = '${id}'`);
+    expect(row.status, row.output).toBe(0);
+    expect(row.output).toContain('v1.');
+    expect(row.output).not.toContain(healthNotes);
+    const audit = psql(
+      `select action || '|' || ip || '|' || user_agent from audit_logs where entity = 'student' and entity_id = '${id}'`,
+    );
+    expect(audit.status, audit.output).toBe(0);
+    expect(audit.output.trim().split(/\r?\n/)).toEqual(['student.created|203.0.113.9|teste-aluno/1.0']);
+  });
+
   test('running_api_rejects_foreign_origin_and_anonymous', async () => {
     const foreign = await fetch(`${stack.webOrigin}/api/auth/login`, {
       method: 'POST',
