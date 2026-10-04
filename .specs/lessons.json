@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 4,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::prove a per request pipeline property on a response produced before the framework middleware runs such as a body parser rejection not only on handler and router responses",
+      "text": "Prove a per-request pipeline property on a response produced before the framework middleware runs, such as a body parser rejection, not only on handler and router responses",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C13, C14, C15 - apps/api/src/app.module.ts:39 (api)"
+      ],
+      "created": "2026-10-04T00:11:24Z",
+      "last_seen": "2026-10-04T00:11:24Z"
+    },
+    {
+      "id": "L-002",
+      "key": "spec_precision_gap::enumerate a claim about every response by the pipeline stage that produces the response not by status code",
+      "text": "Enumerate a claim about every response by the pipeline stage that produces the response, not by status code",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C13 - apps/api/test/request-id.test.ts:33 (api)"
+      ],
+      "created": "2026-10-04T00:11:24Z",
+      "last_seen": "2026-10-04T00:11:24Z"
+    },
+    {
+      "id": "L-003",
+      "key": "ac_gap::prove a claim about every answered request on a response written by the http server itself such as a rejected expect header or a missing host not only on responses the framework produces",
+      "text": "Prove a claim about every answered request on a response written by the HTTP server itself, such as a rejected Expect header or a missing Host, not only on responses the framework produces",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C15 - apps/api/src/main.ts:22 (api)"
+      ],
+      "created": "2026-10-04T00:20:13Z",
+      "last_seen": "2026-10-04T00:20:13Z"
+    }
+  ]
+}

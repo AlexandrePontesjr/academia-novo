@@ -28,9 +28,9 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 ## Handoff
 
 **Feature**: fundacao
-**Where**: Build concluído - os 30 checks estão marcados em `checks.md`, cada um no commit que o satisfaz
+**Where**: Build concluído e duas rodadas de verificação feitas. Rodada 1 (`4942cd0`) reprovou C13, C14 e C15; corrigido em `05d3c85`. Rodada 2 (`05d3c85`): 29/30, só C15 reprovado
 **In progress**: nada
-**Next step**: Verifier independente sobre `c90611e..HEAD` com os 30 checks (profile light); a feature só termina quando `validate_verification.py fundacao` sair com 0. Depois, planejar `auth-rbac`
-**Blockers**: nenhum
+**Next step**: decisão do usuário sobre C15 - respostas escritas pelo servidor HTTP do Node antes do Express (sem `Host`, `Expect` inválido, cabeçalho de 20 KB, requisição malformada ou incompleta: 400/408/417/431) saem sem request id e sem linha de log. Ou a API passa a cobrir essa camada, ou o plano e o check declaram que rejeição de protocolo não é "requisição respondida". Depois, rodada 3 do Verifier (a última do limite) até `validate_verification.py fundacao` sair com 0
+**Blockers**: C15 - ver `features/fundacao/verification.md`
 **Uncommitted**: nada
 **Branch**: main

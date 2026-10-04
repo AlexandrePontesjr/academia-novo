@@ -1,0 +1,39 @@
+# LESSONS - auto-maintained by scripts/lessons.py
+
+> Machine-owned. Do NOT hand-edit. Changes are overwritten on the next `lessons.py` write.
+> Canonical state lives in `.specs/lessons.json`. Edit lessons only via the script.
+> promote_threshold=2 distinct features · window_days=45 · quarantine_threshold=2
+
+## Confirmed (load these at Plan/Checks)
+
+Corroborated across multiple features. Safe to apply as guidance.
+
+_none_
+
+## Candidates (under observation - do NOT load as guidance yet)
+
+Seen once or not yet corroborated. Tracked, not trusted.
+
+### L-001 - Prove a per-request pipeline property on a response produced before the framework middleware runs, such as a body parser rejection, not only on handler and router responses
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: C13, C14, C15 - apps/api/src/app.module.ts:39 (api)
+- last seen: 2026-10-04T00:11:24Z
+
+### L-002 - Enumerate a claim about every response by the pipeline stage that produces the response, not by status code
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: C13 - apps/api/test/request-id.test.ts:33 (api)
+- last seen: 2026-10-04T00:11:24Z
+
+### L-003 - Prove a claim about every answered request on a response written by the HTTP server itself, such as a rejected Expect header or a missing Host, not only on responses the framework produces
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: C15 - apps/api/src/main.ts:22 (api)
+- last seen: 2026-10-04T00:20:13Z
+
+## Quarantined (failed when applied - ignore)
+
+A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
+
+_none_

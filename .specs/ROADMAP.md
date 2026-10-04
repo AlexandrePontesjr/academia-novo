@@ -9,7 +9,7 @@ decisão.
 
 | # | Feature | O que alguém consegue fazer quando ela entra | Requisitos | Depende de | Estado |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `fundacao` | subir web + API + banco com um comando e saber, por um comando, se o repositório está são | §4 manutenibilidade, logs, segredos | - | Build concluído, verificação independente pendente |
+| 1 | `fundacao` | subir web + API + banco com um comando e saber, por um comando, se o repositório está são | §4 manutenibilidade, logs, segredos | - | Build concluído; verificação em 29/30, C15 aguardando decisão |
 | 2 | `auth-rbac` | entrar com e-mail e senha (2FA para Administrador), e cada perfil só alcança o que pode | RF-01 a RF-04, gestão de usuários, CSRF, Argon2id | 1 | não iniciada |
 | 3 | `auditoria` | o Administrador consulta quem fez o quê; toda feature seguinte já nasce auditada | RF-24 a RF-26 | 2 | não iniciada |
 | 4 | `alunos` | cadastrar, buscar, editar e inativar alunos | RF-05, RF-07, RF-08 (inativação), RF-31 | 3 | não iniciada |
