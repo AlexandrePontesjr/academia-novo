@@ -1,7 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, expect, test } from 'vitest';
+import { beforeAll, expect, test, vi } from 'vitest';
 import { envSchema } from '../src/env.ts';
+import { invalidChunk, rawExchange } from './support/raw.ts';
+import { freePort, refusingDatabaseUrl } from './support/servers.ts';
 
 const apiRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -72,3 +74,48 @@ test('env_failure_prints_no_values', () => {
     }
   }
 });
+
+test('real_process_logs_delivered_body_error', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['dist/main.js'], {
+    cwd: apiRoot,
+    env: {
+      PATH: process.env.PATH,
+      SystemRoot: process.env.SystemRoot,
+      DATABASE_URL: await refusingDatabaseUrl(),
+      PORT: String(port),
+    },
+  });
+  let stdout = '';
+  child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+  const linesFor = (requestId: string) =>
+    stdout
+      .split('\n')
+      .filter((line) => line.includes(requestId))
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((line) => line.msg === 'request');
+
+  try {
+    await vi.waitFor(
+      async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(503),
+      { timeout: 20_000, interval: 200 },
+    );
+
+    const response = await rawExchange(port, invalidChunk('application/json'));
+    const requestId = response?.headers['x-request-id'] ?? '';
+    const body = JSON.parse(response?.body ?? '') as Record<string, unknown>;
+
+    expect(response?.status).toBe(400);
+    expect(response?.headers['content-type']).toMatch(/^application\/problem\+json\b/);
+    expect(requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(body.requestId).toBe(requestId);
+
+    await vi.waitFor(() => expect(linesFor(requestId).length).toBeGreaterThanOrEqual(1));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const lines = linesFor(requestId);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ requestId, status: 400 });
+  } finally {
+    child.kill();
+  }
+}, 60_000);

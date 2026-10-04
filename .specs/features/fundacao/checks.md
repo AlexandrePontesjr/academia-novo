@@ -162,15 +162,15 @@ enviados e a conexão mantida aberta até o tempo limite de requisição do serv
 
 **C31** - Em cada um dos cinco casos, a requisição gera exatamente uma linha de log em JSON com `requestId`, `method` igual a `POST`, `path` igual a `/health`, `status` e `durationMs`, e o `status` da linha é o da resposta que o cliente recebeu: (a) `404`, (b) `400`, (c) `400`, (d) `400`, (e) `408` (AC 10)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/delivered-body-errors.test.ts -t "delivered_body_error_logs_one_line"`
-Status: pendente
+Status: concluído
 
 **C32** - Em cada um dos cinco casos, a resposta tem o header `X-Request-Id` igual ao `requestId` da linha de log, `Content-Type: application/problem+json` e corpo com `status` igual ao da resposta, `requestId` igual ao header e `code` igual a (a) `not_found`, (b) `bad_request`, (c) `bad_request`, (d) `bad_request`, (e) `request_timeout` (AC 9, door 3)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/delivered-body-errors.test.ts -t "delivered_body_error_has_request_id_and_error_contract"`
-Status: pendente
+Status: concluído
 
 **C33** - No processo real da API (`dist/main.js`), o caso (b) responde `400` em `application/problem+json` com `X-Request-Id` igual ao `requestId` do corpo, e o processo escreve em stdout exatamente uma linha de log com esse `requestId` e `status` igual a 400 (AC 9, AC 10)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/boot.test.ts -t "real_process_logs_delivered_body_error"`
-Status: pendente
+Status: concluído
 
 ## Coverage
 

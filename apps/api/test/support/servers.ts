@@ -7,13 +7,18 @@ export async function startPostgres() {
   return { url: container.getConnectionUri(), stop: () => container.stop() };
 }
 
-/** URL de um Postgres numa porta onde ninguém escuta: a conexão é recusada. */
-export async function refusingDatabaseUrl(): Promise<string> {
+/** Uma porta TCP local em que ninguém escuta. */
+export async function freePort(): Promise<number> {
   const server = createServer();
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as { port: number };
   await new Promise((resolve) => server.close(resolve));
-  return `postgres://academia:academia@127.0.0.1:${port}/academia`;
+  return port;
+}
+
+/** URL de um Postgres numa porta onde ninguém escuta: a conexão é recusada. */
+export async function refusingDatabaseUrl(): Promise<string> {
+  return `postgres://academia:academia@127.0.0.1:${await freePort()}/academia`;
 }
 
 /** Servidor que aceita a conexão TCP e nunca responde nada. */

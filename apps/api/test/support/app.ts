@@ -1,3 +1,4 @@
+import type { Server } from 'node:http';
 import { Controller, Get, type Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module.ts';
@@ -22,6 +23,7 @@ export async function startApi(databaseUrl: string, controllers: Type[] = []) {
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app);
   await app.listen(0, '127.0.0.1');
-  const { port } = app.getHttpServer().address() as { port: number };
-  return { url: `http://127.0.0.1:${port}`, close: () => app.close() };
+  const server = app.getHttpServer() as Server;
+  const { port } = server.address() as { port: number };
+  return { url: `http://127.0.0.1:${port}`, server, close: () => app.close() };
 }

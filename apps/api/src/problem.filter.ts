@@ -19,6 +19,19 @@ function statusOf(exception: unknown): number {
   return typeof status === 'number' && status >= 400 && status < 500 ? status : 500;
 }
 
+/** Escreve a resposta de erro no contrato, com o request id que a requisição já carrega. */
+export function sendProblem(res: Response, status: number) {
+  const title = STATUS_CODES[status] ?? 'Error';
+  const problem: Problem = {
+    type: 'about:blank',
+    title,
+    status,
+    code: codeFor(status, title),
+    requestId: String(res.locals.requestId),
+  };
+  res.status(status).type('application/problem+json').json(problem);
+}
+
 /** Converte qualquer exceção no contrato de erro. Nada da exceção original chega ao corpo. */
 @Catch()
 export class ProblemFilter implements ExceptionFilter {
@@ -26,7 +39,6 @@ export class ProblemFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse<Response>();
     const requestId = String(res.locals.requestId);
     const status = statusOf(exception);
-    const title = STATUS_CODES[status] ?? 'Error';
 
     if (status >= 500) {
       process.stderr.write(
@@ -40,13 +52,7 @@ export class ProblemFilter implements ExceptionFilter {
       );
     }
 
-    const problem: Problem = {
-      type: 'about:blank',
-      title,
-      status,
-      code: codeFor(status, title),
-      requestId,
-    };
-    res.status(status).type('application/problem+json').json(problem);
+    // a resposta já saiu (erro de protocolo respondido em `onClientError`): nada a escrever
+    if (!res.headersSent) sendProblem(res, status);
   }
 }
