@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Tabelas de identidade (auth-rbac, door 3). As chaves em camelCase são os nomes de campo que o
 // Better Auth usa; as colunas ficam em snake_case. O id é sempre gerado pelo banco.
@@ -98,3 +98,22 @@ export const loginThrottles = pgTable('login_throttles', {
   email: text('email').primaryKey(),
   failures: instant('failures').array().notNull(),
 });
+
+// Trilha de auditoria (auditoria, door 1). O autor é opcional e, sem `ON DELETE`, impede apagar o
+// usuário; o alvo (`entity_id`) não tem chave estrangeira, porque muda de tabela conforme `entity`.
+// A tabela é append-only: os gatilhos da migração `0002` recusam UPDATE, DELETE e TRUNCATE.
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: id(),
+    userId: uuid('user_id').references(() => users.id),
+    action: text('action').notNull(),
+    entity: text('entity').notNull(),
+    entityId: uuid('entity_id'),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    diff: jsonb('diff'),
+    createdAt: instant('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('audit_logs_created_at_user_id_idx').on(table.createdAt, table.userId)],
+);
