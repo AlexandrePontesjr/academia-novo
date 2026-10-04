@@ -40,6 +40,22 @@ import { LoginThrottle } from './throttle.ts';
 const isRejection = (error: unknown): error is APIError =>
   error instanceof APIError && error.statusCode < 500;
 
+/**
+ * O identificador do login pendente dentro do cookie, ou `undefined` quando o valor não é um que o
+ * Better Auth escreveria. O cookie vem de fora e esta rota é pública: um valor forjado não pode
+ * chegar à consulta nem derrubar a decodificação.
+ */
+function pendingIdentifier(cookieValue: string): string | undefined {
+  let signed: string;
+  try {
+    signed = decodeURIComponent(cookieValue);
+  } catch {
+    return undefined;
+  }
+  const identifier = signed.slice(0, signed.lastIndexOf('.'));
+  return /^[\w-]+$/.test(identifier) ? identifier : undefined;
+}
+
 const invalidCredentials = () => new ProblemException(401, 'invalid_credentials');
 const invalidCode = () => new ProblemException(401, 'invalid_code');
 const tooManyAttempts = (retryAfter: number) =>
@@ -260,8 +276,8 @@ export class AuthController {
     if (!cookie) return undefined;
 
     // o valor é `identificador.assinatura`; quem confere a assinatura é o Better Auth, na verificação
-    const signed = decodeURIComponent(cookie.slice(cookieName.length + 1));
-    const identifier = signed.slice(0, signed.lastIndexOf('.'));
+    const identifier = pendingIdentifier(cookie.slice(cookieName.length + 1));
+    if (!identifier) return undefined;
     const pending = await context.internalAdapter.findVerificationValue(identifier);
     if (!pending || pending.expiresAt.getTime() <= Date.now()) return undefined;
     return this.users.findEmailById(pending.value);

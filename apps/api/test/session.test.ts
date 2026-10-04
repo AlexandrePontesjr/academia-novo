@@ -100,3 +100,18 @@ test('session_slides_on_use', async () => {
   advance(58);
   expect((await client.get('/api/auth/session')).status).toBe(200);
 });
+
+test('forged_session_cookie_401', async () => {
+  const { client } = await stack.session('reception');
+  const cookieName = [...client.jar.keys()].find((name) => name.includes('session_token'));
+  expect(cookieName).toMatch(/\S/);
+
+  for (const value of ['%E0%A4%A.x', 'ab%00cd.assinatura', 'abc.def', 'semponto', '']) {
+    const response = await stack
+      .client()
+      .get('/api/auth/session', { headers: { Cookie: `${cookieName}=${value}` } });
+
+    expect(response.status, value).toBe(401);
+    expect(await code(response), value).toBe('unauthorized');
+  }
+});

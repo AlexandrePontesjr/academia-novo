@@ -190,3 +190,24 @@ test('wrong_password_or_code_422_on_field', async () => {
     expect(await twoFactorEnabled(client), route).toBe(stays);
   }
 });
+
+test('forged_two_factor_cookie_401_invalid_code', async () => {
+  const { user } = await userWithTwoFactor();
+  // o nome do cookie que o primeiro passo do login deixa
+  const pending = await pendingLogin(user);
+  const cookieName = [...pending.jar.keys()].find((name) => name.includes('two_factor'));
+  expect(cookieName).toMatch(/\S/);
+
+  const forged = ['%E0%A4%A.x', 'ab%00cd.assinatura', 'abc.def', 'semponto', '', "'; drop table users; --.x"];
+  for (const value of forged) {
+    const response = await stack.client().post(
+      '/api/auth/two-factor/verify',
+      { code: '123456' },
+      { headers: { Cookie: `${cookieName}=${value}` } },
+    );
+
+    expect(response.status, value).toBe(401);
+    expect((await problem(response)).code, value).toBe('invalid_code');
+  }
+  expect(await sessionIds(user.id)).toEqual([]);
+});
