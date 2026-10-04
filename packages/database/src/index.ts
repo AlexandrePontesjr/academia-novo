@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
 export { sql } from 'drizzle-orm';
+export * as schema from './schema.ts';
 
 export interface DatabaseOptions {
   /** Limite, em ms, para abrir uma conexão e para cada consulta. */
