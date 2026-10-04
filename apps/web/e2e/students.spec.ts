@@ -599,3 +599,199 @@ test('edit_form_sends_patch_with_typed_values_and_null_for_cleared', async ({ pa
     },
   ]);
 });
+
+const GUARDIAN = {
+  id: '018f0000-0000-7000-8000-0000000003aa',
+  name: 'Ana Souza',
+  cpf: '52998224725',
+  phone: '11912345678',
+  relationship: 'mother' as const,
+  createdAt: '2026-01-01T00:00:00.000Z',
+};
+const TEN_YEARS_AGO = `${new Date().getFullYear() - 10}-01-01`;
+const GUARDIAN_LABELS = ['Nome do responsável', 'CPF do responsável', 'Telefone do responsável', 'Parentesco'];
+const guardianGroup = (page: Page) => page.getByRole('group', { name: 'Responsável legal', exact: true });
+
+/** A edição do aluno com o responsável atual que a ficha de consentimentos devolve (ou nenhum). */
+function serveEdit(api: FakeApi, student: Student, guardian: typeof GUARDIAN | null = null) {
+  api.session = sessionOf('reception');
+  api.on('GET', `/api/students/${student.id}`, { status: 200, body: student });
+  api.on('GET', `/api/students/${student.id}/consents`, { status: 200, body: { guardian, items: [] } });
+}
+
+test('guardian_block_shown_only_for_minor_on_both_forms', async ({ browser, api, baseURL }) => {
+  const student = studentOf();
+  serveEdit(api, student);
+  // 02:30 UTC de 5/10 são 23:30 de 4/10 em São Paulo; o navegador está em UTC
+  const context = await browser.newContext({ baseURL, timezoneId: 'UTC' });
+  try {
+    const page = await context.newPage();
+    await page.clock.setFixedTime(new Date('2026-10-04T23:30:00-03:00'));
+
+    for (const path of ['/students/new', `/students/${student.id}/edit`]) {
+      await page.goto(path);
+      const birthDate = page.getByLabel('Data de nascimento', { exact: true });
+
+      await birthDate.fill('2008-10-05');
+      await expect(guardianGroup(page), `${path} faz 18 anos amanhã`).toBeVisible();
+      for (const label of GUARDIAN_LABELS) {
+        await expect(guardianGroup(page).getByLabel(label, { exact: true }), `${path} ${label}`).toBeVisible();
+      }
+      expect(
+        await guardianGroup(page).getByLabel('Parentesco', { exact: true }).locator('option').allTextContents(),
+        path,
+      ).toEqual(['', 'Mãe', 'Pai', 'Responsável legal', 'Outro']);
+
+      await birthDate.fill('2008-10-04');
+      await expect(guardianGroup(page), `${path} faz 18 anos hoje`).toHaveCount(0);
+      await birthDate.fill('1990-11-30');
+      await expect(guardianGroup(page), `${path} adulto`).toHaveCount(0);
+      await birthDate.fill('2008-10-05');
+      await expect(guardianGroup(page), `${path} de novo menor`).toBeVisible();
+      await birthDate.fill('2000-01-01');
+      await expect(guardianGroup(page), `${path} de volta a adulto`).toHaveCount(0);
+
+      // com o bloco exibido e os quatro campos vazios, salvar não envia nada
+      await birthDate.fill('2008-10-05');
+      if (path === '/students/new') {
+        await page.getByLabel('Nome completo', { exact: true }).fill('Menor Digitado');
+        await page.getByLabel('CPF', { exact: true }).fill('123.456.789-09');
+        await page.getByLabel('Telefone', { exact: true }).fill('(11) 91234-5678');
+      }
+      await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+      await expect(guardianGroup(page).getByLabel('Nome do responsável', { exact: true })).toHaveAccessibleDescription(/.+/);
+      expect(api.writes(), path).toHaveLength(0);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('form_sends_guardian_in_the_same_write_and_prefills_on_edit', async ({ page, api }) => {
+  api.session = sessionOf('reception');
+  const created = studentOf({ birthDate: TEN_YEARS_AGO });
+  api.on('POST', '/api/students', { status: 201, body: created });
+  api.on('GET', `/api/students/${created.id}`, { status: 200, body: created });
+  api.on('GET', `/api/students/${created.id}/consents`, { status: 200, body: { guardian: null, items: [] } });
+
+  const options: Array<[string, string]> = [
+    ['Mãe', 'mother'],
+    ['Pai', 'father'],
+    ['Responsável legal', 'legal_guardian'],
+    ['Outro', 'other'],
+  ];
+  for (const [label, value] of options) {
+    api.requests = [];
+    await page.goto('/students/new');
+    await page.getByLabel('Nome completo', { exact: true }).fill('Menor Novo');
+    await page.getByLabel('CPF', { exact: true }).fill('123.456.789-09');
+    await page.getByLabel('Data de nascimento', { exact: true }).fill(TEN_YEARS_AGO);
+    await page.getByLabel('Telefone', { exact: true }).fill('(11) 98765-4321');
+    await page.getByLabel('Nome do responsável', { exact: true }).fill('Ana Souza');
+    await page.getByLabel('CPF do responsável', { exact: true }).fill('529.982.247-25');
+    await page.getByLabel('Telefone do responsável', { exact: true }).fill('(11) 91234-5678');
+    await page.getByLabel('Parentesco', { exact: true }).selectOption({ label });
+
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+
+    await expect.poll(() => api.writes().length, label).toBe(1);
+    expect(api.writes()[0]!.method, label).toBe('POST');
+    expect((api.writes()[0]!.body as { guardian: unknown }).guardian, label).toEqual({
+      name: 'Ana Souza',
+      cpf: '529.982.247-25',
+      phone: '(11) 91234-5678',
+      relationship: value,
+    });
+  }
+
+  // a edição do menor que já tem responsável abre com ele e o devolve inteiro
+  const minor = studentOf({ birthDate: TEN_YEARS_AGO });
+  serveEdit(api, minor, GUARDIAN);
+  api.on('PATCH', `/api/students/${minor.id}`, { status: 200, body: minor });
+  api.requests = [];
+  await page.goto(`/students/${minor.id}/edit`);
+
+  await expect(page.getByLabel('Nome do responsável', { exact: true })).toHaveValue('Ana Souza');
+  await expect(page.getByLabel('CPF do responsável', { exact: true })).toHaveValue('529.982.247-25');
+  await expect(page.getByLabel('Telefone do responsável', { exact: true })).toHaveValue('(11) 91234-5678');
+  await expect(page.getByLabel('Parentesco', { exact: true })).toHaveValue('mother');
+  expect(
+    api.requests.some((request) => request.method === 'GET' && request.path === `/api/students/${minor.id}/consents`),
+  ).toBe(true);
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect.poll(() => api.writes().length).toBe(1);
+  const sent = (api.writes()[0]!.body as { guardian: Record<string, string> }).guardian;
+  expect(sent.name).toBe('Ana Souza');
+  expect(sent.relationship).toBe('mother');
+  expect(sent.cpf!.replace(/\D/g, '')).toBe('52998224725');
+  expect(sent.phone!.replace(/\D/g, '')).toBe('11912345678');
+
+  // o adulto não leva a chave, com ou sem responsável gravado
+  const adult = studentOf();
+  for (const guardian of [null, GUARDIAN]) {
+    const label = `PATCH ${guardian ? 'com' : 'sem'} responsável`;
+    serveEdit(api, adult, guardian);
+    api.on('PATCH', `/api/students/${adult.id}`, { status: 200, body: adult });
+    api.requests = [];
+    await page.goto(`/students/${adult.id}/edit`);
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect.poll(() => api.writes().length, label).toBe(1);
+    expect(Object.keys(api.writes()[0]!.body as object), label).not.toContain('guardian');
+  }
+  api.requests = [];
+  await page.goto('/students/new');
+  await page.getByLabel('Nome completo', { exact: true }).fill('Adulta Nova');
+  await page.getByLabel('CPF', { exact: true }).fill('123.456.789-09');
+  await page.getByLabel('Data de nascimento', { exact: true }).fill('1990-11-30');
+  await page.getByLabel('Telefone', { exact: true }).fill('(11) 98765-4321');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect.poll(() => api.writes().length).toBe(1);
+  expect(Object.keys(api.writes()[0]!.body as object)).not.toContain('guardian');
+});
+
+test('guardian_422_shown_on_each_field_keeps_the_rest', async ({ page, api }) => {
+  const minor = studentOf({ birthDate: TEN_YEARS_AGO });
+  serveEdit(api, minor, GUARDIAN);
+  const cases: Array<[path: string, label: string | undefined]> = [
+    ['guardian.name', 'Nome do responsável'],
+    ['guardian.cpf', 'CPF do responsável'],
+    ['guardian.phone', 'Telefone do responsável'],
+    ['guardian.relationship', 'Parentesco'],
+    ['guardian', undefined],
+  ];
+  expect(cases).toHaveLength(5);
+
+  for (const target of ['new', 'edit']) {
+    for (const [path, label] of cases) {
+      const message = `Mensagem da API para ${path}`;
+      api.on('POST', '/api/students', problem(422, 'validation_failed', [{ path, message }]));
+      api.on('PATCH', `/api/students/${minor.id}`, problem(422, 'validation_failed', [{ path, message }]));
+      await page.goto(target === 'new' ? '/students/new' : `/students/${minor.id}/edit`);
+      if (target === 'new') {
+        await page.getByLabel('Nome completo', { exact: true }).fill('Menor Digitado');
+        await page.getByLabel('CPF', { exact: true }).fill('123.456.789-09');
+        await page.getByLabel('Data de nascimento', { exact: true }).fill(TEN_YEARS_AGO);
+        await page.getByLabel('Telefone', { exact: true }).fill('(11) 98765-4321');
+        await page.getByLabel('Nome do responsável', { exact: true }).fill('Ana Souza');
+        await page.getByLabel('CPF do responsável', { exact: true }).fill('529.982.247-25');
+        await page.getByLabel('Telefone do responsável', { exact: true }).fill('(11) 91234-5678');
+        await page.getByLabel('Parentesco', { exact: true }).selectOption({ label: 'Mãe' });
+      } else {
+        await page.getByLabel('Nome completo', { exact: true }).fill('Menor Digitado');
+      }
+
+      await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+
+      if (label) {
+        await expect(page.getByLabel(label, { exact: true }), `${target} ${path}`).toHaveAccessibleDescription(message);
+      } else {
+        await expect(guardianGroup(page).getByText(message, { exact: true }), `${target} ${path}`).toBeVisible();
+      }
+      await expect(page.getByLabel('Nome completo', { exact: true }), `${target} ${path}`).toHaveValue('Menor Digitado');
+      if (target === 'new') {
+        await expect(page.getByLabel('Telefone', { exact: true }), `${target} ${path}`).toHaveValue('(11) 98765-4321');
+        await expect(page.getByLabel('Nome do responsável', { exact: true }), `${target} ${path}`).toHaveValue('Ana Souza');
+      }
+    }
+  }
+});

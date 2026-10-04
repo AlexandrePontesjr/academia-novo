@@ -1,4 +1,4 @@
-import { type Student, studentSchema } from '@academia/contracts';
+import { type Guardian, type Student, studentConsentsResponseSchema, studentSchema } from '@academia/contracts';
 import { headers } from 'next/headers';
 import { Shell } from '../../../../components/shell.tsx';
 import { fetchApi, requireSession } from '../../../../lib/session.ts';
@@ -20,11 +20,23 @@ async function load(id: string): Promise<Student | 'notfound' | 'failed'> {
   }
 }
 
+/** O responsável atual para preencher o formulário; sem a ficha, o formulário abre sem ele. */
+async function loadGuardian(id: string): Promise<Guardian | null> {
+  try {
+    const response = await fetchApi(`/api/students/${encodeURIComponent(id)}/consents`, await headers());
+    if (response.status !== 200) return null;
+    return studentConsentsResponseSchema.parse(await response.json()).guardian;
+  } catch {
+    return null;
+  }
+}
+
 export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
   // quem não edita não chega a pedir a ficha; a API recusaria de qualquer forma
   const student = canWriteStudents(session.user.role) ? await load(id) : 'forbidden';
+  const guardian = typeof student === 'object' ? await loadGuardian(id) : null;
 
   return (
     <Shell session={session}>
@@ -36,7 +48,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
       ) : student === 'notfound' ? (
         <p>Aluno não encontrado.</p>
       ) : (
-        <StudentForm student={student} />
+        <StudentForm student={student} guardian={guardian} />
       )}
     </Shell>
   );

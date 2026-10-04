@@ -2,16 +2,21 @@
 
 import {
   createStudentRequestSchema,
+  GUARDIAN_RELATIONSHIPS,
+  type Guardian,
+  isMinor,
+  saoPauloToday,
   type Student,
   STUDENT_SEXES,
   updateStudentRequestSchema,
 } from '@academia/contracts';
 import { Alert, Button, Label, Select } from '@academia/ui';
 import { useRouter } from 'next/navigation';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { TextField } from '../../components/text-field.tsx';
 import { callApi, showFieldErrors, UNAVAILABLE } from '../../lib/api.ts';
+import { RELATIONSHIP_LABELS } from '../../lib/consents.ts';
 import { formatCpf, formatPhone, SEX_LABELS } from '../../lib/students.ts';
 
 interface FormValues {
@@ -25,11 +30,12 @@ interface FormValues {
   emergencyContactName: string;
   emergencyContactPhone: string;
   healthNotes: string;
+  guardian: { name: string; cpf: string; phone: string; relationship: string };
 }
 
 const OPTIONAL = ['sex', 'email', 'address', 'emergencyContactName', 'emergencyContactPhone', 'healthNotes'] as const;
 
-function defaultsOf(student?: Student): FormValues {
+function defaultsOf(student?: Student, guardian?: Guardian | null): FormValues {
   return {
     name: student?.name ?? '',
     cpf: formatCpf(student?.cpf ?? ''),
@@ -41,6 +47,12 @@ function defaultsOf(student?: Student): FormValues {
     emergencyContactName: student?.emergencyContactName ?? '',
     emergencyContactPhone: formatPhone(student?.emergencyContactPhone ?? ''),
     healthNotes: student?.healthNotes ?? '',
+    guardian: {
+      name: guardian?.name ?? '',
+      cpf: formatCpf(guardian?.cpf ?? ''),
+      phone: formatPhone(guardian?.phone ?? ''),
+      relationship: guardian?.relationship ?? '',
+    },
   };
 }
 
@@ -48,7 +60,7 @@ function defaultsOf(student?: Student): FormValues {
  * O corpo da requisição com o que foi digitado: os quatro campos obrigatórios aparados e, dos
  * opcionais, só os preenchidos. Na edição, o campo opcional em branco vai como `null`, que o limpa.
  */
-function bodyOf(values: FormValues, editing: boolean): Record<string, unknown> {
+function bodyOf(values: FormValues, editing: boolean, withGuardian: boolean): Record<string, unknown> {
   const body: Record<string, unknown> = {
     name: values.name.trim(),
     cpf: values.cpf.trim(),
@@ -61,21 +73,32 @@ function bodyOf(values: FormValues, editing: boolean): Record<string, unknown> {
     if (value.trim() !== '') body[key] = value;
     else if (editing) body[key] = null;
   }
+  // só o menor envia o responsável: o bloco só existe para ele
+  if (withGuardian) {
+    const { name, cpf, phone, relationship } = values.guardian;
+    body.guardian = { name: name.trim(), cpf: cpf.trim(), phone: phone.trim(), relationship };
+  }
   return body;
 }
 
 /** Formulário de cadastro (`/students/new`) e de edição (`/students/<id>/edit`) de aluno. */
-export function StudentForm({ student }: { student?: Student }) {
+export function StudentForm({ student, guardian }: { student?: Student; guardian?: Guardian | null }) {
   const router = useRouter();
   const sexId = useId();
   const notesId = useId();
   const [alert, setAlert] = useState<string>();
-  const form = useForm<FormValues>({ defaultValues: defaultsOf(student) });
+  const guardianRelationshipId = useId();
+  const form = useForm<FormValues>({ defaultValues: defaultsOf(student, guardian) });
   const { errors, isSubmitting } = form.formState;
+  // o dia de hoje só é lido depois da hidratação: o servidor e o navegador podem discordar do dia
+  const [today, setToday] = useState<string>();
+  useEffect(() => setToday(saoPauloToday()), []);
+  const birthDate = form.watch('birthDate');
+  const showGuardian = today !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(birthDate) && isMinor(birthDate, today);
 
   async function submit(values: FormValues) {
     setAlert(undefined);
-    const body = bodyOf(values, student !== undefined);
+    const body = bodyOf(values, student !== undefined, showGuardian);
     // a mesma conferência que a API faz, antes de enviar
     const checked = (student ? updateStudentRequestSchema : createStudentRequestSchema).safeParse(body);
     if (!checked.success) {
@@ -128,6 +151,53 @@ export function StudentForm({ student }: { student?: Student }) {
           </p>
         )}
       </div>
+      {showGuardian && (
+        <fieldset className="grid gap-4 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">Responsável legal</legend>
+          {errors.guardian?.message && <p className="text-sm text-destructive">{errors.guardian.message}</p>}
+          <TextField
+            label="Nome do responsável"
+            autoComplete="off"
+            error={errors.guardian?.name?.message}
+            registration={form.register('guardian.name')}
+          />
+          <TextField
+            label="CPF do responsável"
+            inputMode="numeric"
+            autoComplete="off"
+            error={errors.guardian?.cpf?.message}
+            registration={form.register('guardian.cpf')}
+          />
+          <TextField
+            label="Telefone do responsável"
+            type="tel"
+            autoComplete="off"
+            error={errors.guardian?.phone?.message}
+            registration={form.register('guardian.phone')}
+          />
+          <div className="grid gap-1.5">
+            <Label htmlFor={guardianRelationshipId}>Parentesco</Label>
+            <Select
+              id={guardianRelationshipId}
+              aria-invalid={errors.guardian?.relationship ? true : undefined}
+              aria-describedby={errors.guardian?.relationship ? `${guardianRelationshipId}-error` : undefined}
+              {...form.register('guardian.relationship')}
+            >
+              <option value=""></option>
+              {GUARDIAN_RELATIONSHIPS.map((relationship) => (
+                <option key={relationship} value={relationship}>
+                  {RELATIONSHIP_LABELS[relationship]}
+                </option>
+              ))}
+            </Select>
+            {errors.guardian?.relationship && (
+              <p id={`${guardianRelationshipId}-error`} className="text-sm text-destructive">
+                {errors.guardian.relationship.message}
+              </p>
+            )}
+          </div>
+        </fieldset>
+      )}
       <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
       <TextField label="Telefone" type="tel" autoComplete="off" error={errors.phone?.message} registration={form.register('phone')} />
       <TextField label="Endereço" autoComplete="off" error={errors.address?.message} registration={form.register('address')} />

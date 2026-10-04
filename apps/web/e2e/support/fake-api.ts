@@ -1,6 +1,6 @@
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { Socket } from 'node:net';
-import type { Role, SessionResponse, User } from '@academia/contracts';
+import type { Consent, ConsentTerm, Guardian, Role, SessionResponse, User } from '@academia/contracts';
 import { test as base } from '@playwright/test';
 import { FAKE_API_PORT } from '../../playwright.config.ts';
 
@@ -115,6 +115,61 @@ export class FakeApi {
     for (const socket of this.sockets) socket.destroy();
     await new Promise((resolve) => this.server?.close(resolve));
   }
+}
+
+/** O que a API falsa sabe de um aluno: o responsável atual, os consentimentos e os termos vigentes. */
+export interface ConsentsState {
+  guardian: Guardian | null;
+  items: Consent[];
+  terms: ConsentTerm[];
+  /** O instante que a API falsa grava em `grantedAt` e `revokedAt`. */
+  now: string;
+}
+
+/** Os termos vigentes, versão 1 de cada finalidade, com um texto qualquer. */
+export const termsOf = (version = 1, text = 'Texto do termo.'): ConsentTerm[] =>
+  (['data_processing', 'image_use'] as const).map((purpose) => ({
+    purpose,
+    version,
+    text: `${text} (${purpose})`,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }));
+
+/**
+ * Responde às rotas de consentimento de um aluno com o estado dado, que a concessão e a revogação
+ * mudam como a API mudaria: o que a leitura seguinte devolve é o que a escrita deixou.
+ */
+export function serveConsents(api: FakeApi, studentId: string, state: ConsentsState) {
+  let granted = 0;
+  const watch = (item: Consent) => {
+    api.on('DELETE', `/api/students/${studentId}/consents/${item.id}`, () => {
+      state.items = state.items.map((current) => (current.id === item.id ? { ...current, revokedAt: state.now } : current));
+      return { status: 204 };
+    });
+  };
+  state.items.forEach(watch);
+  api.on('GET', `/api/students/${studentId}/consents`, () => ({
+    status: 200,
+    body: { guardian: state.guardian, items: state.items },
+  }));
+  api.on('GET', '/api/consent-terms', () => ({ status: 200, body: { items: state.terms } }));
+  api.on('POST', `/api/students/${studentId}/consents`, (request) => {
+    const sent = request.body as Pick<Consent, 'purpose' | 'termVersion' | 'grantedBy'>;
+    granted += 1;
+    const item: Consent = {
+      id: `018f0000-0000-7000-8000-0000000007${String(granted).padStart(2, '0')}`,
+      purpose: sent.purpose,
+      termVersion: sent.termVersion,
+      grantedBy: sent.grantedBy,
+      guardian:
+        sent.grantedBy === 'guardian' && state.guardian ? { id: state.guardian.id, name: state.guardian.name } : null,
+      grantedAt: state.now,
+      revokedAt: null,
+    };
+    state.items = [item, ...state.items];
+    watch(item);
+    return { status: 201, body: item };
+  });
 }
 
 /** `test` com a API falsa de pé durante o teste. */

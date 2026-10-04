@@ -1,4 +1,11 @@
-import { type Student, studentSchema } from '@academia/contracts';
+import {
+  isMinor,
+  saoPauloToday,
+  type Student,
+  type StudentConsentsResponse,
+  studentConsentsResponseSchema,
+  studentSchema,
+} from '@academia/contracts';
 import { Button } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
@@ -6,6 +13,8 @@ import { Shell } from '../../../components/shell.tsx';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
+import { ConsentsBlock } from './consents-block.tsx';
+import { ConsentsLoadError } from './consents-load-error.tsx';
 import { StatusActions } from './status-actions.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -22,11 +31,24 @@ async function load(id: string): Promise<Student | 'notfound' | 'failed'> {
   }
 }
 
+/** A ficha de responsável e consentimentos, ou `failed`; só se pede a quem pode vê-la. */
+async function loadConsents(id: string): Promise<StudentConsentsResponse | 'failed'> {
+  try {
+    const response = await fetchApi(`/api/students/${encodeURIComponent(id)}/consents`, await headers());
+    if (response.status !== 200) return 'failed';
+    return studentConsentsResponseSchema.parse(await response.json());
+  } catch {
+    return 'failed';
+  }
+}
+
 export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
   const student = await load(id);
   const canWrite = canWriteStudents(session.user.role);
+  // quem não vê o bloco não chega a pedir os dados dele; a API recusaria de qualquer forma
+  const consents = typeof student === 'object' && canWrite ? await loadConsents(id) : undefined;
 
   return (
     <Shell session={session}>
@@ -59,6 +81,15 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               </div>
             ))}
           </dl>
+          {consents === 'failed' && <ConsentsLoadError />}
+          {consents && consents !== 'failed' && (
+            <ConsentsBlock
+              studentId={student.id}
+              studentName={student.name}
+              minor={student.birthDate !== undefined && isMinor(student.birthDate, saoPauloToday())}
+              data={consents}
+            />
+          )}
         </>
       )}
     </Shell>
