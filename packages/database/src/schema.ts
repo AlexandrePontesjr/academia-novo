@@ -1,5 +1,19 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  date,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // Tabelas de identidade (auth-rbac, door 3). As chaves em camelCase são os nomes de campo que o
 // Better Auth usa; as colunas ficam em snake_case. O id é sempre gerado pelo banco.
@@ -146,5 +160,85 @@ export const students = pgTable(
   (table) => [
     check('students_status_valid', sql`${table.status} in ('active', 'inactive', 'suspended')`),
     index('students_name_fold_trgm_idx').using('gin', sql`students_fold(${table.name}) gin_trgm_ops`),
+  ],
+);
+
+export const GUARDIAN_RELATIONSHIPS = ['mother', 'father', 'legal_guardian', 'other'] as const;
+
+// Responsável legal (consentimento, door 1). Uma linha por versão dos dados, nunca editada: mudar
+// nome, CPF, telefone ou parentesco insere outra, e o atual é a de maior `id` do aluno (uuid v7).
+// Sem `UNIQUE` sobre `student_id` nem sobre `cpf`: irmãos repetem o mesmo responsável. O CPF fica
+// em 11 dígitos e em claro, como o do aluno (AD-030).
+export const guardians = pgTable(
+  'guardians',
+  {
+    id: id(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id),
+    name: text('name').notNull(),
+    cpf: text('cpf').notNull(),
+    phone: text('phone').notNull(),
+    relationship: text('relationship', { enum: GUARDIAN_RELATIONSHIPS }).notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('guardians_relationship_valid', sql`${table.relationship} in ('mother', 'father', 'legal_guardian', 'other')`),
+    index('guardians_student_id_idx').on(table.studentId, table.id),
+  ],
+);
+
+export const CONSENT_PURPOSES = ['data_processing', 'image_use'] as const;
+
+// Termos de consentimento (consentimento, door 2): o texto de uma finalidade numa versão. Append-only
+// como `audit_logs` (AD-024): os gatilhos da migração `0004` recusam UPDATE, DELETE e TRUNCATE. A
+// versão seguinte é uma migração que insere a linha; o termo vigente é a maior `version`.
+export const consentTerms = pgTable(
+  'consent_terms',
+  {
+    purpose: text('purpose', { enum: CONSENT_PURPOSES }).notNull(),
+    version: integer('version').notNull(),
+    text: text('text').notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.purpose, table.version] }),
+    check('consent_terms_purpose_valid', sql`${table.purpose} in ('data_processing', 'image_use')`),
+    check('consent_terms_version_positive', sql`${table.version} >= 1`),
+  ],
+);
+
+export const CONSENT_GRANTORS = ['student', 'guardian'] as const;
+
+// Consentimentos (consentimento, door 3): quem aceitou qual versão de qual termo, para qual aluno.
+// Só `revoked_at` muda, de nulo para um instante, uma vez; conceder de novo insere outra linha. O
+// índice parcial decide a corrida entre duas concessões da mesma finalidade. `granted_at` é sempre
+// o do banco.
+export const consents = pgTable(
+  'consents',
+  {
+    id: id(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id),
+    purpose: text('purpose', { enum: CONSENT_PURPOSES }).notNull(),
+    termVersion: integer('term_version').notNull(),
+    grantedBy: text('granted_by', { enum: CONSENT_GRANTORS }).notNull(),
+    guardianId: uuid('guardian_id').references(() => guardians.id),
+    grantedAt: instant('granted_at').notNull().defaultNow(),
+    revokedAt: instant('revoked_at'),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.purpose, table.termVersion],
+      foreignColumns: [consentTerms.purpose, consentTerms.version],
+    }),
+    check('consents_granted_by_valid', sql`${table.grantedBy} in ('student', 'guardian')`),
+    check(
+      'consents_guardian_iff_granted_by_guardian',
+      sql`(${table.grantedBy} = 'guardian') = (${table.guardianId} is not null)`,
+    ),
+    uniqueIndex('consents_one_active_idx').on(table.studentId, table.purpose).where(sql`${table.revokedAt} is null`),
+    index('consents_student_id_granted_at_idx').on(table.studentId, table.grantedAt),
   ],
 );
