@@ -36,8 +36,9 @@ test('unavailable_api_message_on_five_screens', async ({ page, api }) => {
 
       await page.getByRole('button', { name: form.submit, exact: true }).click();
 
+      // a tela desiste da API aos 3 s; a mensagem tem de estar lá antes dos 4 s
       await expect(page.getByText(UNAVAILABLE, { exact: true }), `${form.name}, API ${mode}`).toBeVisible({
-        timeout: 8000,
+        timeout: 4000,
       });
       expect(page.url(), `${form.name}, API ${mode}`).toBe(url);
       combinations += 1;

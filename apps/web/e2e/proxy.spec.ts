@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'node:http';
+import type { Socket } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { FAKE_API_PORT } from '../playwright.config.ts';
 
@@ -40,7 +41,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await new Promise((resolve) => server?.close(resolve));
+  if (server) await new Promise((resolve) => server!.close(resolve));
   server = undefined;
 });
 
@@ -90,4 +91,36 @@ test('proxy_forwards_request_and_response', async ({ page, context, baseURL }) =
     });
     expect(cookies.find((cookie) => cookie.name === `outro_${lower}`)?.value, method).toBe('dois');
   }
+});
+
+test('unreachable_api_answers_502_or_504_problem', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  const call = () =>
+    page.evaluate(async () => {
+      const answer = await fetch('/api/auth/session');
+      return { status: answer.status, type: answer.headers.get('content-type'), body: await answer.json() };
+    });
+
+  // a API aceita a conexão e não responde: o web desiste e responde ele mesmo
+  await new Promise((resolve) => server?.close(resolve));
+  const sockets = new Set<Socket>();
+  server = createServer(() => {});
+  server.on('connection', (socket) => sockets.add(socket));
+  await new Promise<void>((resolve) => server!.listen(FAKE_API_PORT, '127.0.0.1', resolve));
+  const hung = await call();
+  expect(hung.status).toBe(504);
+  expect(hung.type).toMatch(/^application\/problem\+json\b/);
+  expect(hung.body).toMatchObject({ status: 504, code: 'gateway_timeout' });
+  expect(hung.body.requestId).toMatch(/\S/);
+
+  // ninguém escuta na porta da API
+  for (const socket of sockets) socket.destroy();
+  await new Promise((resolve) => server?.close(resolve));
+  server = undefined;
+  const refused = await call();
+  expect(refused.status).toBe(502);
+  expect(refused.type).toMatch(/^application\/problem\+json\b/);
+  expect(refused.body).toMatchObject({ status: 502, code: 'bad_gateway' });
+  expect(refused.body.requestId).toMatch(/\S/);
 });
