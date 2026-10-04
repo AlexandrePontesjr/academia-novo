@@ -13,7 +13,10 @@ export const newPasswordSchema = z
   .min(12, 'A senha deve ter pelo menos 12 caracteres.')
   .max(128, 'A senha deve ter no máximo 128 caracteres.');
 
-export const emailSchema = z.email('Informe um e-mail válido.');
+/** 254 caracteres é o maior endereço que cabe num envelope SMTP (RFC 5321). */
+export const emailSchema = z
+  .email('Informe um e-mail válido.')
+  .max(254, 'O e-mail deve ter no máximo 254 caracteres.');
 
 export const loginRequestSchema = z.object({
   email: emailSchema,

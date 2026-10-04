@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { User, UsersResponse } from '@academia/contracts';
 import pg from 'pg';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
@@ -283,4 +283,28 @@ test('unknown_or_malformed_id_404', async () => {
     }
   }
   expect(combinations).toBe(6);
+});
+
+test('input_the_database_cannot_store_is_422', async () => {
+  const target = await stack.seed({ name: 'Nome intacto' });
+  const before = await stack.query('select id from users');
+  const longEmail = `${randomBytes(1500).toString('hex')}@exemplo.com`;
+  const valid = { name: 'Pessoa válida', email: 'valida@exemplo.com', role: 'reception', password: 'senha-valida-123' };
+  const cases: Array<[name: string, path: string, send: () => Promise<Response>]> = [
+    ['POST com U+0000 no nome', 'name', () => admin.post('/api/users', { ...valid, name: 'Ana\u0000Lima' })],
+    ['PATCH com U+0000 no nome', 'name', () => admin.patch(`/api/users/${target.id}`, { name: 'Ana\u0000Lima' })],
+    ['POST com e-mail de 3012 caracteres', 'email', () => admin.post('/api/users', { ...valid, email: longEmail })],
+    ['POST com nome de 121 caracteres', 'name', () => admin.post('/api/users', { ...valid, name: 'n'.repeat(121) })],
+  ];
+
+  for (const [name, path, send] of cases) {
+    const response = await send();
+    const body = await problem(response);
+
+    expect(response.status, name).toBe(422);
+    expect(body.code, name).toBe('validation_failed');
+    expect(body.errors?.map((error) => error.path), name).toEqual([path]);
+  }
+  expect(await stack.query('select id from users')).toHaveLength(before.length);
+  expect(await stack.query('select name from users where id = $1', [target.id])).toEqual([{ name: 'Nome intacto' }]);
 });

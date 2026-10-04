@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { emailSchema, newPasswordSchema, roleSchema } from './auth.ts';
 
-const nameSchema = z.string('Informe o nome.').trim().min(1, 'Informe o nome.').max(120, 'O nome deve ter no máximo 120 caracteres.');
+const nameSchema = z
+  .string('Informe o nome.')
+  .trim()
+  .min(1, 'Informe o nome.')
+  .max(120, 'O nome deve ter no máximo 120 caracteres.')
+  // o Postgres não guarda U+0000 em texto
+  .refine((name) => !name.includes('\0'), 'O nome contém um caractere inválido.');
 
 /** Um usuário como a API o devolve: nunca com senha nem segredo. */
 export const userSchema = z.strictObject({

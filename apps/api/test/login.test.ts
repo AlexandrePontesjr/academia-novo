@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { type Stack, startStack } from './support/stack.ts';
+import { randomBytes } from 'node:crypto';
+import { problem, type Stack, startStack } from './support/stack.ts';
 
 let stack: Stack;
 
@@ -77,4 +78,30 @@ test('better_auth_handler_is_not_mounted', async () => {
     expect(((await response.json()) as { code: string }).code).toBe('not_found');
   }
   expect(await stack.query('select id from users')).toEqual(usersBefore);
+});
+
+test('email_longer_than_254_is_422_and_never_500', async () => {
+  // conteúdo aleatório: um e-mail repetitivo é comprimido e passaria pelo limite do índice
+  const local = (length: number) => randomBytes(length).toString('hex').slice(0, length);
+  const email = (length: number) => `${local(length - '@exemplo.com'.length)}@exemplo.com`;
+  expect(email(254)).toHaveLength(254);
+
+  for (const length of [255, 3000]) {
+    const response = await stack.client().post('/api/auth/login', { email: email(length), password: 'senha-qualquer-123' });
+    const body = await problem(response);
+
+    expect(response.status, `${length} caracteres`).toBe(422);
+    expect(body.errors?.map((error) => error.path), `${length} caracteres`).toEqual(['email']);
+  }
+
+  // no limite, o e-mail é tratado como qualquer outro que não pertence a ninguém: conta e bloqueia
+  const longest = email(254);
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const response = await stack.client().post('/api/auth/login', { email: longest, password: 'senha-qualquer-123' });
+    expect(response.status, `tentativa ${attempt}`).toBe(401);
+    expect((await problem(response)).code, `tentativa ${attempt}`).toBe('invalid_credentials');
+  }
+  const sixth = await stack.client().post('/api/auth/login', { email: longest, password: 'senha-qualquer-123' });
+  expect(sixth.status).toBe(429);
+  expect((await problem(sixth)).code).toBe('too_many_attempts');
 });
