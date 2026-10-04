@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 8,
   "lessons": [
     {
       "id": "L-001",
@@ -94,6 +94,42 @@
       ],
       "created": "2026-10-04T02:14:59Z",
       "last_seen": "2026-10-04T02:14:59Z"
+    },
+    {
+      "id": "L-006",
+      "key": "spec_precision_gap::state which status a request log line records when the client disconnects before any response is sent",
+      "text": "State which status a request log line records when the client disconnects before any response is sent",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F2 - apps/api/src/request-context.ts:44 (probes R28, N8, S3) (api)"
+      ],
+      "created": "2026-10-04T02:50:59Z",
+      "last_seen": "2026-10-04T02:50:59Z"
+    },
+    {
+      "id": "L-007",
+      "key": "spec_precision_gap::when a check adds a response code or status add it as a member of every coverage set that enumerates codes or statuses",
+      "text": "When a check adds a response code or status, add it as a member of every coverage set that enumerates codes or statuses",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "fundacao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F3 - .specs/features/fundacao/checks.md:183 (C32) (api)"
+      ],
+      "created": "2026-10-04T02:50:59Z",
+      "last_seen": "2026-10-04T02:50:59Z"
     }
   ]
 }

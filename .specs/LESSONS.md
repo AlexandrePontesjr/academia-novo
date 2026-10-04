@@ -44,6 +44,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C15 - .specs/features/fundacao/plan.md:107 (api)
 - last seen: 2026-10-04T02:14:59Z
 
+### L-006 - State which status a request log line records when the client disconnects before any response is sent
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: F2 - apps/api/src/request-context.ts:44 (probes R28, N8, S3) (api)
+- last seen: 2026-10-04T02:50:59Z
+
+### L-007 - When a check adds a response code or status, add it as a member of every coverage set that enumerates codes or statuses
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: fundacao
+- evidence: F3 - .specs/features/fundacao/checks.md:183 (C32) (api)
+- last seen: 2026-10-04T02:50:59Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

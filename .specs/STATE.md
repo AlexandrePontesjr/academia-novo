@@ -28,9 +28,9 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 ## Handoff
 
 **Feature**: fundacao
-**Where**: Build concluído e duas rodadas de verificação feitas. Rodada 1 (`4942cd0`) reprovou C13, C14 e C15; corrigido em `05d3c85`. Rodada 2 (`05d3c85`): 29/30, só C15 reprovado
+**Where**: concluída. Quatro rodadas de verificação; a rodada 4 (`d060517`, autorizada pelo usuário além do limite de três) passou com 33/33 e `validate_verification.py fundacao` sai com 0
 **In progress**: nada
-**Next step**: decisão do usuário sobre C15 - respostas escritas pelo servidor HTTP do Node antes do Express (sem `Host`, `Expect` inválido, cabeçalho de 20 KB, requisição malformada ou incompleta: 400/408/417/431) saem sem request id e sem linha de log. Ou a API passa a cobrir essa camada, ou o plano e o check declaram que rejeição de protocolo não é "requisição respondida". Depois, rodada 3 do Verifier (a última do limite) até `validate_verification.py fundacao` sair com 0
-**Blockers**: C15 - ver `features/fundacao/verification.md`
+**Next step**: planejar `auth-rbac` (ver `ROADMAP.md`). Achados da rodada 4 que não reprovam check e ficam para decisão do usuário, em `features/fundacao/verification.md`: aviso `MaxListenersExceededWarning` com mais de 10 requisições em voo na mesma conexão (F1); status da linha de log quando o cliente abandona a requisição, hoje `499` ou `400` conforme o caso (F2); textos desatualizados em `plan.md` e `checks.md` (F3)
+**Blockers**: nenhum
 **Uncommitted**: nada
 **Branch**: main
