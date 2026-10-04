@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 14,
+  "next_id": 17,
   "lessons": [
     {
       "id": "L-001",
@@ -238,6 +238,60 @@
       ],
       "created": "2026-10-04T05:11:13Z",
       "last_seen": "2026-10-04T05:11:13Z"
+    },
+    {
+      "id": "L-014",
+      "key": "ac_gap::bound every string a request schema accepts to what its column and indexes can store and prove the upper bound at the http boundary",
+      "text": "Bound every string a request schema accepts to what its column and indexes can store, and prove the upper bound at the HTTP boundary",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C3, C41, C51 - packages/contracts/src/auth.ts:16 (N1) (api)"
+      ],
+      "created": "2026-10-04T05:54:53Z",
+      "last_seen": "2026-10-04T05:54:53Z"
+    },
+    {
+      "id": "L-015",
+      "key": "ac_gap::reject the nul character in every text field that reaches a postgres text column and prove the rejection at the http boundary",
+      "text": "Reject the NUL character in every text field that reaches a Postgres text column, and prove the rejection at the HTTP boundary",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C51, C56 - packages/contracts/src/users.ts:4 (N2) (api)"
+      ],
+      "created": "2026-10-04T05:54:53Z",
+      "last_seen": "2026-10-04T05:54:53Z"
+    },
+    {
+      "id": "L-016",
+      "key": "ac_gap::prove a route that parses a cookie itself on a malformed cookie value such as invalid percent encoding or a nul byte not only on an absent cookie",
+      "text": "Prove a route that parses a cookie itself on a malformed cookie value, such as invalid percent-encoding or a NUL byte, not only on an absent cookie",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "auth-rbac"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C32 - apps/api/src/auth/auth.controller.ts:263 (N3) (api)"
+      ],
+      "created": "2026-10-04T05:54:53Z",
+      "last_seen": "2026-10-04T05:54:53Z"
     }
   ]
 }

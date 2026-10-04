@@ -92,6 +92,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: F3 - .specs/features/auth-rbac/plan.md:110 (web)
 - last seen: 2026-10-04T05:11:13Z
 
+### L-014 - Bound every string a request schema accepts to what its column and indexes can store, and prove the upper bound at the HTTP boundary
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C3, C41, C51 - packages/contracts/src/auth.ts:16 (N1) (api)
+- last seen: 2026-10-04T05:54:53Z
+
+### L-015 - Reject the NUL character in every text field that reaches a Postgres text column, and prove the rejection at the HTTP boundary
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C51, C56 - packages/contracts/src/users.ts:4 (N2) (api)
+- last seen: 2026-10-04T05:54:53Z
+
+### L-016 - Prove a route that parses a cookie itself on a malformed cookie value, such as invalid percent-encoding or a NUL byte, not only on an absent cookie
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac
+- evidence: C32 - apps/api/src/auth/auth.controller.ts:263 (N3) (api)
+- last seen: 2026-10-04T05:54:53Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
