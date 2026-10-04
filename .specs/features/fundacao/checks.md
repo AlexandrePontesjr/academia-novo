@@ -24,6 +24,7 @@ Três regras valem para todas:
 
 **C1** - Num clone limpo com `.env` copiado de `.env.example`, `docker compose up --build --wait` sai com código 0 e os serviços `postgres`, `api` e `web` estão `healthy` (AC 1)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "up_wait_exits_zero_with_three_healthy"`
+Status: concluído
 
 **C2** - Com o Postgres acessível, `GET /health` sem credencial responde `200` com exatamente `{"status":"ok","checks":{"database":"up"}}` (AC 2)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/health.test.ts -t "health_ok_200"`
@@ -57,6 +58,7 @@ Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "dotenv_is_
 
 **C10** - O serviço `postgres` da stack roda PostgreSQL de versão principal 18 (door 2)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "postgres_major_is_18"`
+Status: concluído
 
 ### S2 - Erro e log têm uma forma só · ~8 files · ~16 KB · ~4k
 
@@ -82,6 +84,7 @@ Status: concluído
 
 **C16** - No processo real da stack, uma rota inexistente responde `404` em `application/problem+json` com `X-Request-Id` igual ao `requestId` do corpo (AC 7, AC 9)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "running_api_uses_error_contract"`
+Status: concluído
 
 **C17** - As respostas reais de `GET /health` (`200` e `503`) e o corpo de erro `404` validam contra os schemas exportados por `packages/contracts` (door 5)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/contracts.test.ts -t "responses_match_contract_schemas"`
@@ -103,6 +106,7 @@ Status: concluído
 
 **C21** - Quando o serviço `migrate` termina com código diferente de 0, `docker compose up --wait` sai com código diferente de 0 e o container `api` nunca chega a iniciar (AC 14)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "api_never_starts_when_migrate_fails"`
+Status: concluído
 
 ### S4 - Casca web · ~8 files · ~12 KB · ~3k
 
@@ -120,6 +124,7 @@ Status: concluído
 
 **C25** - Na stack de pé, a página `/` servida pelo container `web` exibe "API: operacional" (AC 15)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "home_reports_api_operational"`
+Status: concluído
 
 ### S5 - Portão de qualidade · ~10 files · ~14 KB · ~4k
 
