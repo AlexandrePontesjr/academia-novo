@@ -18,6 +18,7 @@ import {
   cpfOf,
   fieldErrorPaths,
   maskCpf,
+  releasedTogether,
   studentBody,
   studentCount,
   studentRow,
@@ -316,4 +317,50 @@ test('rejected_student_writes_leave_guardians_untouched', async () => {
   expect(patchShort.status, 'PATCH phone de 9 dígitos').toBe(422);
 
   expect(await allGuardianRows(stack)).toEqual(before);
+});
+
+test('ten_concurrent_patches_with_same_guardian_insert_one_row', async () => {
+  const student = await createAdult(reception, next());
+
+  for (let round = 0; round < 10; round += 1) {
+    const guardian = guardianBody({ phone: `1190000${String(round).padStart(4, '0')}` });
+    const before = (await guardianRows(stack, student.id)).length;
+
+    const { result: responses, rows } = await written(stack, () =>
+      releasedTogether([
+        () => reception.patch(`/api/students/${student.id}`, { guardian }),
+        () => reception.patch(`/api/students/${student.id}`, { guardian }),
+      ]),
+    );
+
+    expect(responses.map((response) => response.status), `rodada ${round}`).toEqual([200, 200]);
+    expect((await guardianRows(stack, student.id)).length, `rodada ${round}`).toBe(before + 1);
+    expect(rows.filter((row) => row.action === 'student.guardian_saved'), `rodada ${round}`).toHaveLength(1);
+  }
+});
+
+test('ten_concurrent_patches_with_different_guardians_insert_two_rows', async () => {
+  const student = await createAdult(reception, next());
+
+  for (let round = 0; round < 10; round += 1) {
+    const suffix = String(round).padStart(2, '0');
+    const first = guardianBody({ name: `Ana ${suffix}`, phone: `11911110${suffix}0` });
+    const second = guardianBody({ name: `Bia ${suffix}`, phone: `11922220${suffix}0`, relationship: 'father' });
+    const before = (await guardianRows(stack, student.id)).length;
+
+    const responses = await releasedTogether([
+      () => reception.patch(`/api/students/${student.id}`, { guardian: first }),
+      () => reception.patch(`/api/students/${student.id}`, { guardian: second }),
+    ]);
+
+    expect(responses.map((response) => response.status), `rodada ${round}`).toEqual([200, 200]);
+    expect((await guardianRows(stack, student.id)).length, `rodada ${round}`).toBe(before + 2);
+    const ficha = (await (await reception.get(`/api/students/${student.id}/consents`)).json()) as {
+      guardian: { name: string; phone: string; relationship: string };
+    };
+    // o atual é um dos dois inteiros, nunca um misto dos campos
+    const whole = [first, second].map(({ name, phone, relationship }) => ({ name, phone, relationship }));
+    const { name, phone, relationship } = ficha.guardian;
+    expect(whole, `rodada ${round}`).toContainEqual({ name, phone, relationship });
+  }
 });

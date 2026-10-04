@@ -3,6 +3,8 @@ import {
   changePasswordRequestSchema,
   createStudentRequestSchema,
   createUserRequestSchema,
+  grantConsentRequestSchema,
+  guardianRequestSchema,
   loginRequestSchema,
   passwordConfirmationRequestSchema,
   resetPasswordRequestSchema,
@@ -122,8 +124,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['put', '/api/users/{id}/password', resetPasswordRequestSchema],
     ['post', '/api/students', createStudentRequestSchema],
     ['patch', '/api/students/{id}', updateStudentRequestSchema],
+    ['post', '/api/students/{id}/consents', grantConsentRequestSchema],
   ];
-  expect(contracts).toHaveLength(11);
+  expect(contracts).toHaveLength(12);
 
   const { paths } = await document();
 
@@ -139,4 +142,29 @@ test('request_bodies_come_from_contract_schemas', async () => {
       .map(([method]) => `${method} ${path}`),
   );
   expect(withBody.sort()).toEqual(contracts.map(([method, path]) => `${method} ${path}`).sort());
+});
+
+test('consent_paths_and_guardian_body_come_from_contract_schemas', async () => {
+  const { paths } = await document();
+  const json = (schema: z.ZodType) => JSON.parse(JSON.stringify(z.toJSONSchema(schema))) as Record<string, unknown>;
+
+  expect(Object.keys(paths['/api/consent-terms'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths['/api/students/{id}/consents'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/students/{id}/consents/{consentId}'] ?? {})).toEqual(['delete']);
+
+  expect(paths['/api/students/{id}/consents']?.post?.requestBody?.content['application/json']?.schema).toEqual(
+    json(grantConsentRequestSchema),
+  );
+  // o `guardian` do corpo de alunos é o mesmo schema do contrato, sem o `$schema` de quem está sozinho
+  const guardian = { ...json(guardianRequestSchema), $schema: undefined };
+  delete guardian.$schema;
+  for (const [method, path] of [
+    ['post', '/api/students'],
+    ['patch', '/api/students/{id}'],
+  ] as const) {
+    const body = paths[path]?.[method]?.requestBody?.content['application/json']?.schema as {
+      properties: Record<string, unknown>;
+    };
+    expect(body.properties.guardian, `${method} ${path}`).toEqual(guardian);
+  }
 });

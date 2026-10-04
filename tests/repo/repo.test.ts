@@ -158,3 +158,22 @@ test('env_example_documents_data_encryption_key', () => {
   const example = lines[at]!.slice('DATA_ENCRYPTION_KEY='.length);
   expect(apiEnvSchema.shape.DATA_ENCRYPTION_KEY.safeParse(example).success).toBe(true);
 });
+
+test('is_minor_defined_once_in_contracts', () => {
+  const declaration = /\b(?:function|const|let|var)\s+isMinor\b/;
+  const found: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(join(repoRoot, dir), { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (!['node_modules', 'dist', '.next', 'coverage', '.turbo'].includes(entry.name)) walk(path);
+      } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name) && declaration.test(readFileSync(join(repoRoot, path), 'utf8'))) {
+        found.push(path);
+      }
+    }
+  };
+  for (const root of ['apps', 'packages']) walk(root);
+
+  expect(found).toEqual(['packages/contracts/src/students.ts']);
+  expect(readFileSync(join(repoRoot, 'packages/contracts/src/index.ts'), 'utf8')).toContain("export * from './students.ts';");
+});

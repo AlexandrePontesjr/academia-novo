@@ -197,6 +197,86 @@ describe('stack de pé', () => {
     expect(audit.output.trim().split(/\r?\n/)).toEqual(['student.created|203.0.113.9|teste-aluno/1.0']);
   });
 
+  test('minor_with_guardian_and_consent_through_web_store_rows_and_audit', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) =>
+      stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+    const email = 'recepcao.consentimento@exemplo.com';
+    const password = 'senha-da-stack-321';
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Consentimento`,
+    );
+    expect(created.status, created.output).toBe(0);
+    // a stack não tem gerador de TOTP, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+    expect(psql(`update users set role = 'reception' where email = '${email}'`).status).toBe(0);
+
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+    const send = (method: string, path: string, body?: unknown) =>
+      fetch(`${stack.webOrigin}${path}`, {
+        method,
+        headers: {
+          ...(body !== undefined && { 'Content-Type': 'application/json' }),
+          Origin: stack.webOrigin,
+          Cookie: cookie,
+          'User-Agent': 'teste-consentimento/1.0',
+          'X-Forwarded-For': '203.0.113.11',
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    const tenYearsAgo = `${new Date().getFullYear() - 10}-01-01`;
+
+    const student = await send('POST', '/api/students', {
+      name: 'Menor da Stack',
+      cpf: '123.456.789-09',
+      birthDate: tenYearsAgo,
+      phone: '(11) 91234-5678',
+      guardian: { name: 'Ana Souza', cpf: '529.982.247-25', phone: '(11) 98888-7777', relationship: 'mother' },
+    });
+    expect(student.status).toBe(201);
+    const { id } = (await student.json()) as { id: string };
+
+    const terms = await send('GET', '/api/consent-terms');
+    expect(terms.status).toBe(200);
+    const { items } = (await terms.json()) as { items: Array<{ purpose: string; version: number }> };
+    const imageTerm = items.find((item) => item.purpose === 'image_use')!;
+
+    const granted = await send('POST', `/api/students/${id}/consents`, {
+      purpose: 'image_use',
+      termVersion: imageTerm.version,
+      grantedBy: 'guardian',
+    });
+    expect(granted.status).toBe(201);
+    const consent = (await granted.json()) as { id: string };
+    expect((await send('DELETE', `/api/students/${id}/consents/${consent.id}`)).status).toBe(204);
+
+    // as linhas são lidas do banco da stack, não pelas rotas
+    const guardians = psql(`select cpf || '|' || phone || '|' || relationship from guardians where student_id = '${id}'`);
+    expect(guardians.status, guardians.output).toBe(0);
+    expect(guardians.output.trim().split(/\r?\n/)).toEqual(['52998224725|11988887777|mother']);
+    const consents = psql(`select (revoked_at is not null) || '|' || granted_by from consents where student_id = '${id}'`);
+    expect(consents.output.trim().split(/\r?\n/)).toEqual(['true|guardian']);
+    const termRows = psql('select purpose || version from consent_terms order by 1');
+    expect(termRows.output.trim().split(/\r?\n/)).toEqual(['data_processing1', 'image_use1']);
+    const audit = psql(
+      `select action || '|' || ip || '|' || user_agent from audit_logs where entity = 'student' and entity_id = '${id}' order by created_at, id`,
+    );
+    expect(audit.status, audit.output).toBe(0);
+    expect(audit.output.trim().split(/\r?\n/)).toEqual(
+      ['student.created', 'student.guardian_saved', 'student.consent_granted', 'student.consent_revoked'].map(
+        (action) => `${action}|203.0.113.11|teste-consentimento/1.0`,
+      ),
+    );
+  });
+
   test('running_api_rejects_foreign_origin_and_anonymous', async () => {
     const foreign = await fetch(`${stack.webOrigin}/api/auth/login`, {
       method: 'POST',

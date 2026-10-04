@@ -2,6 +2,7 @@ import {
   AUDIT_ACTIONS,
   auditActionSchema,
   consentSchema,
+  consentTermsResponseSchema,
   createStudentRequestSchema,
   grantConsentRequestSchema,
   isMinor,
@@ -25,6 +26,7 @@ import type { z } from 'zod';
 import { startApi } from './support/app.ts';
 import { refusingDatabaseUrl, startPostgres } from './support/servers.ts';
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
+import { createAdult, createMinorWithGuardian, insertTerm } from './support/consents.ts';
 import { createStudent, studentBody } from './support/students.ts';
 import { totpCode } from './support/totp.ts';
 
@@ -428,4 +430,81 @@ test('is_minor_boundaries_in_sao_paulo', () => {
     ['29/02 em 01/03 de ano comum', '2008-02-29', '2026-03-01', false],
   ];
   for (const [label, birthDate, today, minor] of cases) expect(isMinor(birthDate, today), label).toBe(minor);
+});
+
+test('consent_bodies_match_contract_schemas', async () => {
+  const { client } = await stack.session('reception');
+  const withEverything = await createMinorWithGuardian(client, 7101);
+  const empty = await createAdult(client, 7102);
+  const adult = await createAdult(client, 7103);
+  const granted = await client.post(`/api/students/${withEverything.id}/consents`, {
+    purpose: 'image_use',
+    termVersion: 1,
+    grantedBy: 'guardian',
+  });
+  const created = (await granted.clone().json()) as { id: string };
+  const adultGrant = await client.post(`/api/students/${adult.id}/consents`, {
+    purpose: 'data_processing',
+    termVersion: 1,
+    grantedBy: 'student',
+  });
+  // um revogado e um ativo, para a ficha ter os dois estados
+  await client.delete(`/api/students/${withEverything.id}/consents/${created.id}`);
+  await client.post(`/api/students/${withEverything.id}/consents`, { purpose: 'image_use', termVersion: 1, grantedBy: 'guardian' });
+
+  const cases: Array<[route: string, status: number, schema: z.ZodType, response: Response]> = [
+    ['GET /api/consent-terms', 200, consentTermsResponseSchema, await client.get('/api/consent-terms')],
+    [
+      'GET /api/students/:id/consents (com responsável e consentimentos)',
+      200,
+      studentConsentsResponseSchema,
+      await client.get(`/api/students/${withEverything.id}/consents`),
+    ],
+    [
+      'GET /api/students/:id/consents (sem nada)',
+      200,
+      studentConsentsResponseSchema,
+      await client.get(`/api/students/${empty.id}/consents`),
+    ],
+    ['POST /api/students/:id/consents (guardian)', 201, consentSchema, granted],
+    ['POST /api/students/:id/consents (student)', 201, consentSchema, adultGrant],
+  ];
+  expect(cases).toHaveLength(5);
+
+  for (const [route, status, schema, response] of cases) {
+    const body: unknown = await response.json();
+    const parsed = schema.safeParse(body);
+
+    expect(response.status, route).toBe(status);
+    expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+  }
+});
+
+test('consent_codes_are_known_409_codes', async () => {
+  // o termo é append-only: a versão antiga só existe num banco com a versão 2
+  const own = await startStack();
+  try {
+    await insertTerm(own, 'data_processing', 2);
+    const { client } = await own.session('reception');
+    const student = await createAdult(client, 7201);
+    const path = `/api/students/${student.id}/consents`;
+    expect((await client.post(path, { purpose: 'image_use', termVersion: 1, grantedBy: 'student' })).status).toBe(201);
+
+    const cases: Array<[code: string, body: Record<string, unknown>]> = [
+      ['consent_active', { purpose: 'image_use', termVersion: 1, grantedBy: 'student' }],
+      ['consent_term_outdated', { purpose: 'data_processing', termVersion: 1, grantedBy: 'student' }],
+    ];
+    for (const [code, body] of cases) {
+      const response = await client.post(path, body);
+      const problem = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status, code).toBe(409);
+      expect(problem.status, code).toBe(409);
+      expect(problem.code, code).toBe(code);
+      expect(response.headers.get('content-type'), code).toMatch(/^application\/problem\+json\b/);
+      expect(problemSchema.safeParse(problem).success, code).toBe(true);
+    }
+  } finally {
+    await own.close();
+  }
 });
