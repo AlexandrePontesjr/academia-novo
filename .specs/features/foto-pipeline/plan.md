@@ -104,6 +104,8 @@ de erro comum da `auth-rbac`.
 | `GET /api/students/:id` (existente) | nada | o aluno de hoje mais `photoUrl` (`medium`, ou `null`) | `200`, `401`, `403`, `404` |
 | `GET /api/students` (existente) | query de hoje | `items[]` de hoje, cada um com `photoUrl` (`thumb`, ou `null`) | `200`, `401`, `403`, `422` |
 
+Acréscimo da rodada 1 de verificação (a linha de `GET /api/photo-files/:photoId/:variant` acima não é reescrita): com o armazenamento fora, essa rota também responde `503` com `code` igual a `storage_unavailable`, como o `POST` (AD-009, AD-010); a linha existe e o objeto sumiu do bucket continua `404`.
+
 ## Landing
 
 | One-way door | Literal shape | Alternative rejected |

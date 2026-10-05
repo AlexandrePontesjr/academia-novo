@@ -5,7 +5,7 @@ Plan: `.specs/features/foto-pipeline/plan.md`
 
 ## Intent
 
-80 checks in 10 slices (S0, as 8 do plano e S9 de montagem e contrato) · 7 one-way doors · 1 open (a 4, credenciais do bucket e backup, é do go-live e da `operacao`), of which 0 block the Build
+81 checks in 10 slices (S0, as 8 do plano e S9 de montagem e contrato) · 7 one-way doors · 1 open (a 4, credenciais do bucket e backup, é do go-live e da `operacao`), of which 0 block the Build
 
 ## Checks
 
@@ -310,8 +310,11 @@ Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "photo_
 **C79** - Na stack de pé, `GET /health` na API responde `200` com `checks.storage` igual a `up`; depois de parar o serviço de armazenamento, responde `503` com `checks.storage` igual a `down` e `checks.database` igual a `up` (AC 48, AD-010)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "health_storage_up_then_down_when_storage_stops"`
 
-**C80** - Se a execução única que cria o bucket sai com código diferente de 0, `docker compose up --wait` termina com erro e o container `api` nunca é criado (door 3, Impact "ambiente")
+**C80** - Se a execução única que cria o bucket sai com código diferente de 0, `docker compose up --wait` termina com erro e o container `api` nunca é iniciado (door 3, Impact "ambiente"; a rodada 1 de verificação trocou "criado" por "iniciado": o Compose cria os containers antes de iniciá-los em ordem, e a prova sempre afirmou `State` `created` e `StartedAt` zerado)
 Proof: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "api_never_starts_when_bucket_init_fails"`
+
+**C81** - Com o armazenamento fora (endpoint sem ninguém ouvindo), `GET /api/photo-files/:photoId/:variant` com assinatura válida de uma foto que existe responde `503` com `code` igual a `storage_unavailable` em `application/problem+json`; corpo e cabeçalhos não contêm o endereço do armazenamento, o nome do bucket, o prefixo `photos/main/`, a chave de acesso nem a chave secreta, nem bytes de imagem (Surface acrescentada, AD-009, AD-010, `Test policy` "Falha de dependência"; da slice S4, acrescentado na rodada 1 de verificação)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/photos-urls.test.ts -t "file_route_503_storage_unavailable_without_storage_data_when_storage_is_down"`
 
 ## Coverage
 
@@ -324,7 +327,7 @@ resposta `200` muda; os demais status delas são os da `alunos` (ver abaixo).
 | `POST /api/students/:id/photo` statuses (9) | 201 C11 · 401 C16 · 403 C15 · 404 C14 · 409 C12 · 413 C21 · 415 C19 · 422 C22 · 503 C32 | - |
 | `GET /api/students/:id/photo` statuses (4) | 200 C34 · 401 C16 · 404 C37 · 422 C36 | - |
 | `DELETE /api/students/:id/photo` statuses (4) | 204 C47 · 401 C16 · 403 C15 · 404 C49 | - |
-| `GET /api/photo-files/:photoId/:variant` statuses (3) | 200 C38 · 403 C39 · 404 C41 | - |
+| `GET /api/photo-files/:photoId/:variant` statuses (4) | 200 C38 · 403 C39 · 404 C41 · 503 C81 | - |
 | `GET /api/students/:id` resposta que muda (1) | 200 com `photoUrl` C45 | - |
 | `GET /api/students` resposta que muda (1) | 200 com `photoUrl` C46 | - |
 | status fora da `Surface`, `500` (2) | `POST` C33 · `DELETE` C55 | - |
