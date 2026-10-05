@@ -140,7 +140,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/consent-terms.test.ts -t
 **C29** - Com as versões 2 e 10 inseridas para `data_processing`, `GET /api/consent-terms` devolve `data_processing` na versão 10, com o texto dela, e `image_use` na versão 1, dois itens ao todo: a maior versão é a numérica, não a de texto (AC 14)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/consent-terms.test.ts -t "terms_returns_only_the_highest_version_numerically"`
 
-**C30** - Em `consent_terms`, um `UPDATE` de cada uma das colunas `purpose`, `version`, `text` e `created_at`, um `UPDATE` que grava na coluna o valor que ela já tem, um `DELETE` e um `TRUNCATE` falham com a mensagem `consent_terms is append-only`, e as linhas lidas depois são idênticas às de antes (AC 15, door 2, AD-024)
+**C30** - Em `consent_terms`, um `UPDATE` de cada uma das colunas `purpose`, `version`, `text` e `created_at`, um `UPDATE` que grava na coluna o valor que ela já tem, e um `DELETE` falham com a mensagem `consent_terms is append-only`; um `TRUNCATE ... CASCADE` falha com a mesma mensagem; um `TRUNCATE` simples falha recusado pelo Postgres por chave estrangeira (SQLSTATE `0A000`), antes do gatilho; e as linhas lidas depois são idênticas às de antes em todos os casos (AC 15, door 2, AD-024)
 Proof: `pnpm --filter "./packages/database" exec vitest run test/consent.test.ts -t "consent_terms_update_delete_truncate_refused"`
 
 **C31** - Em `consent_terms`, o insert de `marketing`, de `Data_Processing`, de `version` 0, de `version` -1 e da versão 1 de `data_processing` que já existe falha, nos cinco casos; o insert da versão 2 de `data_processing` e da versão 2 de `image_use` é aceito (AC 16, door 2)
@@ -353,7 +353,7 @@ seguem provados em `alunos`.
 | one-way doors (4) | door 1 C4 · door 2 C30 · door 3 C11 · door 4 C13 | - |
 | entidades de `Relations` (3) | `guardians` C2 · `consent_terms` C6 · `consents` C7 | - |
 | one-way constraints de `Relations` (7) | `students` sem coluna de responsável C1 · finalidade e versão como chave C31 · finalidade restrita a dois valores C31 · consentimento aponta para a versão exata do termo C8 · consentimento aponta para o aluno C8 · `guardian_id` se e somente se `granted_by` é `guardian` C10 · um consentimento ativo por aluno e finalidade C11 | - |
-| operações recusadas em `consent_terms` (3) | `UPDATE` C30 · `DELETE` C30 · `TRUNCATE` C30 | - |
+| operações recusadas em `consent_terms` (4) | `UPDATE` C30 · `DELETE` C30 · `TRUNCATE ... CASCADE` C30 · `TRUNCATE` simples C30 (`0A000`) | - |
 | colunas de `consent_terms` sob `UPDATE` (4) | C30, table-driven over all 4: `purpose`, `version`, `text`, `created_at` | - |
 | operações recusadas pelo banco em `guardians` e `consents` (4) | `DELETE` do aluno com responsável C5 · `DELETE` do aluno com consentimento C12 · `DELETE` do responsável referenciado C12 · segundo consentimento ativo C11 | - |
 | `relationship` do responsável (4) | `mother` C3, C19 · `father` C3, C19 · `legal_guardian` C3, C19 · `other` C3, C19; `uncle` recusado C3, C19 | - |

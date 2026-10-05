@@ -121,7 +121,7 @@ O texto que a pessoa lê é o que fica provado (RF-27).
 
 13. WHEN um usuário de perfil `admin` ou `reception` chama `GET /api/consent-terms` THEN the system SHALL responder `200` com um item por finalidade (`data_processing` e `image_use`), cada um com a maior `version` e o `text` dela
 14. WHEN existem duas versões de uma finalidade THEN the system SHALL devolver em `GET /api/consent-terms` só a de maior `version` daquela finalidade
-15. IF alguém executa `UPDATE`, `DELETE` ou `TRUNCATE` em `consent_terms` THEN the system SHALL recusar com a mensagem `consent_terms is append-only`, deixando as linhas como estavam
+15. IF alguém executa `TRUNCATE` simples em `consent_terms` THEN the system SHALL recusar pela chave estrangeira de `consents` (SQLSTATE `0A000`); IF alguém executa `TRUNCATE ... CASCADE`, `UPDATE` ou `DELETE` em `consent_terms` THEN the system SHALL recusar com a mensagem `consent_terms is append-only`; em todos os casos as linhas ficam como estavam
 16. IF alguém insere em `consent_terms` uma finalidade fora de `data_processing` e `image_use`, ou `version` menor que 1, ou uma versão que a finalidade já tem THEN the system SHALL recusar a linha
 17. The system SHALL entregar, depois de `pnpm db:migrate` num banco vazio, a versão 1 das duas finalidades
 
