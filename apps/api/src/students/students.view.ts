@@ -18,7 +18,7 @@ export function viewStudent(role: Role, student: Student): Student {
 }
 
 /** O item da lista cortado pelo perfil: `cpf` e `phone` só para quem os vê. */
-export function viewListItem(role: Role, item: Required<StudentListItem>): StudentListItem {
+export function viewListItem(role: Role, item: Omit<Required<StudentListItem>, 'photoUrl'>): StudentListItem {
   if (!seesContact(role)) return { id: item.id, name: item.name, status: item.status };
   return item;
 }

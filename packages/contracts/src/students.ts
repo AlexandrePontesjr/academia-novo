@@ -222,6 +222,8 @@ export const studentSchema = z.strictObject({
   emergencyContactName: z.string().nullable().optional(),
   emergencyContactPhone: z.string().nullable().optional(),
   healthNotes: z.string().nullable().optional(),
+  /** A URL assinada da foto corrente (`medium`); `null` é "sem foto", e a chave existe para os quatro perfis. */
+  photoUrl: z.string().nullable().optional(),
 });
 export type Student = z.infer<typeof studentSchema>;
 
@@ -232,6 +234,8 @@ export const studentListItemSchema = z.strictObject({
   status: studentStatusSchema,
   cpf: z.string().optional(),
   phone: z.string().optional(),
+  /** A URL assinada da miniatura (`thumb`) da foto corrente, ou `null`. */
+  photoUrl: z.string().nullable().optional(),
 });
 export type StudentListItem = z.infer<typeof studentListItemSchema>;
 

@@ -13,6 +13,9 @@ import {
   auditLogsResponseSchema,
   healthResponseSchema,
   loginResponseSchema,
+  photoCreatedSchema,
+  photoUrlResponseSchema,
+  photoVariantSchema,
   problemSchema,
   sessionResponseSchema,
   studentSchema,
@@ -221,7 +224,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(16);
+  expect(AUDIT_ACTIONS).toHaveLength(18);
   expect([...AUDIT_ACTIONS]).toEqual([
     ...before,
     'student.created',
@@ -230,6 +233,8 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'student.guardian_saved',
     'student.consent_granted',
     'student.consent_revoked',
+    'student.photo_uploaded',
+    'student.photo_removed',
   ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
@@ -341,7 +346,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(16);
+  expect(AUDIT_ACTIONS).toHaveLength(18);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -357,7 +362,58 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
     'student.updated',
     'student.inactivated',
   ]);
-  expect(AUDIT_ACTIONS.slice(13)).toEqual(['student.guardian_saved', 'student.consent_granted', 'student.consent_revoked']);
+  expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(['student.guardian_saved', 'student.consent_granted', 'student.consent_revoked']);
+});
+
+test('audit_actions_end_with_two_photo_actions_in_order', () => {
+  expect(AUDIT_ACTIONS).toHaveLength(18);
+  expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+  ]);
+  expect(AUDIT_ACTIONS.slice(16)).toEqual(['student.photo_uploaded', 'student.photo_removed']);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('photo_schemas_accept_and_reject_and_student_gains_photo_url', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+  const student = { id, name: 'Ana Lima', status: 'active' };
+
+  // `photoUrl` é texto, `null` ou ausente, na ficha e no item da lista
+  for (const photoUrl of ['/api/photo-files/x/medium?exp=1&sig=a', null, undefined]) {
+    const body = photoUrl === undefined ? student : { ...student, photoUrl };
+    expect(studentSchema.safeParse(body).success, `ficha ${String(photoUrl)}`).toBe(true);
+    expect(studentsResponseSchema.safeParse({ items: [body], nextCursor: null }).success, `item ${String(photoUrl)}`).toBe(true);
+  }
+
+  const created = { id, version: 1, createdAt: '2026-10-05T02:30:00.000Z' };
+  expect(photoCreatedSchema.safeParse(created).success).toBe(true);
+  for (const field of ['id', 'version', 'createdAt']) {
+    expect(photoCreatedSchema.safeParse(without(created, field)).success, `POST sem ${field}`).toBe(false);
+  }
+
+  const url = { url: '/api/photo-files/x/thumb?exp=1&sig=a', expiresAt: '2026-10-05T02:35:00.000Z' };
+  expect(photoUrlResponseSchema.safeParse(url).success).toBe(true);
+  for (const field of ['url', 'expiresAt']) {
+    expect(photoUrlResponseSchema.safeParse(without(url, field)).success, `GET sem ${field}`).toBe(false);
+  }
+
+  for (const variant of ['thumb', 'medium', 'large']) expect(photoVariantSchema.safeParse(variant).success, variant).toBe(true);
+  for (const variant of ['small', 'THUMB', '']) expect(photoVariantSchema.safeParse(variant).success, variant).toBe(false);
 });
 
 const without = <T extends Record<string, unknown>>(body: T, key: string) =>
