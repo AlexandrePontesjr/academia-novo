@@ -47,6 +47,23 @@ test('env_example_lists_every_required_key', () => {
   }
 });
 
+test('env_example_documents_photo_variables_and_secret_command', () => {
+  const lines = readFileSync(join(repoRoot, '.env.example'), 'utf8').split(/\r?\n/);
+  const listed = lines.map((line) => /^([A-Z][A-Z0-9_]*)=/.exec(line)?.[1]);
+  for (const key of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'PHOTO_URL_SECRET']) {
+    expect(listed, `.env.example deve listar ${key}`).toContain(key);
+  }
+
+  // o comando que gera o valor está nas linhas de comentário logo acima de PHOTO_URL_SECRET
+  const at = listed.indexOf('PHOTO_URL_SECRET');
+  const comment: string[] = [];
+  for (let index = at - 1; index >= 0 && lines[index]!.startsWith('#'); index -= 1) comment.unshift(lines[index]!);
+  const command = /openssl rand -base64 (\d+)/.exec(comment.join('\n'));
+  expect(command, 'comando que gera o segredo, junto de PHOTO_URL_SECRET').not.toBeNull();
+  // N bytes viram 4 * ceil(N / 3) caracteres em base64: o valor gerado tem 32 ou mais
+  expect(4 * Math.ceil(Number(command![1]) / 3)).toBeGreaterThanOrEqual(32);
+});
+
 test('dotenv_is_git_ignored', () => {
   const result = spawnSync('git', ['check-ignore', '.env'], { cwd: repoRoot, encoding: 'utf8' });
 

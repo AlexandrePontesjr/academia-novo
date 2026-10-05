@@ -27,7 +27,8 @@ import {
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import type { z } from 'zod';
 import { startApi } from './support/app.ts';
-import { refusingDatabaseUrl, startPostgres } from './support/servers.ts';
+import { apiWith, jpegBytes, padJpeg, uploaded, uploadPhoto } from './support/photos.ts';
+import { freePort, type Minio, refusingDatabaseUrl, startMinio, startPostgres } from './support/servers.ts';
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
 import { createAdult, createMinorWithGuardian, insertTerm } from './support/consents.ts';
 import { createStudent, studentBody } from './support/students.ts';
@@ -37,12 +38,14 @@ let postgres: Awaited<ReturnType<typeof startPostgres>>;
 let healthy: Awaited<ReturnType<typeof startApi>>;
 let degraded: Awaited<ReturnType<typeof startApi>>;
 let stack: Stack;
+let minio: Minio;
 
 beforeAll(async () => {
+  minio = await startMinio();
   postgres = await startPostgres();
   healthy = await startApi(postgres.url);
   degraded = await startApi(await refusingDatabaseUrl());
-  stack = await startStack();
+  stack = await startStack([], minio.env);
 }, 180_000);
 
 afterAll(async () => {
@@ -50,6 +53,7 @@ afterAll(async () => {
   await degraded?.close();
   await postgres?.stop();
   await stack?.close();
+  await minio?.stop();
 });
 
 test('responses_match_contract_schemas', async () => {
@@ -562,5 +566,81 @@ test('consent_codes_are_known_409_codes', async () => {
     }
   } finally {
     await own.close();
+  }
+});
+
+test('photo_bodies_match_contract_schemas', async () => {
+  const admin = await stack.session('admin');
+  const sessions = {
+    admin: admin.client,
+    reception: (await stack.session('reception')).client,
+    hr_finance: (await stack.session('hr_finance')).client,
+    instructor: (await stack.session('instructor')).client,
+  };
+  const withPhoto = await createStudent(sessions.reception, studentBody(7301, { name: 'Contrato com Foto' }));
+  const photoless = await createStudent(sessions.reception, studentBody(7302, { name: 'Contrato sem Foto' }));
+  const created = await uploadPhoto(sessions.reception, withPhoto.id, await jpegBytes());
+
+  const cases: Array<[route: string, status: number, schema: z.ZodType, response: Response]> = [
+    ['POST /api/students/:id/photo', 201, photoCreatedSchema, created],
+    ['GET /api/students/:id/photo', 200, photoUrlResponseSchema, await sessions.reception.get(`/api/students/${withPhoto.id}/photo`)],
+    ...(await Promise.all(
+      Object.entries(sessions).flatMap(([role, client]) =>
+        [withPhoto, photoless].map(
+          async (student) =>
+            [
+              `GET /api/students/:id (${role}, ${student === withPhoto ? 'com' : 'sem'} foto)`,
+              200,
+              studentSchema,
+              await client.get(`/api/students/${student.id}`),
+            ] as [string, number, z.ZodType, Response],
+        ),
+      ),
+    )),
+    ['GET /api/students (admin)', 200, studentsResponseSchema, await sessions.admin.get('/api/students?q=Contrato')],
+    ['GET /api/students (instructor)', 200, studentsResponseSchema, await sessions.instructor.get('/api/students?q=Contrato')],
+  ];
+  expect(cases).toHaveLength(12);
+
+  for (const [route, status, schema, response] of cases) {
+    const body: unknown = await response.json();
+    const parsed = schema.safeParse(body);
+
+    expect(response.status, route).toBe(status);
+    expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+  }
+  const list = (await (await sessions.admin.get('/api/students?q=Contrato')).json()) as { items: Array<{ photoUrl: unknown }> };
+  expect(list.items.map((item) => typeof item.photoUrl).sort()).toEqual(['object', 'string']);
+});
+
+test('photo_codes_are_known_problem_codes', async () => {
+  const { client } = await stack.session('reception');
+  const down = await apiWith(stack, { ...minio.env, S3_ENDPOINT: `http://127.0.0.1:${await freePort()}` });
+  try {
+    const first = await createStudent(client, studentBody(7303));
+    const second = await createStudent(client, studentBody(7304));
+    const jpeg = await jpegBytes();
+    const { id: photoId } = await uploaded(await uploadPhoto(client, first.id, jpeg));
+
+    const cases: Array<[code: string, status: number, send: () => Promise<Response>]> = [
+      ['photo_exists', 409, () => uploadPhoto(client, first.id, jpeg)],
+      ['invalid_signature', 403, () => fetch(`${stack.api.url}/api/photo-files/${photoId}/thumb?exp=1&sig=lixo`)],
+      ['payload_too_large', 413, () => uploadPhoto(client, second.id, padJpeg(jpeg, 5_242_881))],
+      ['unsupported_media_type', 415, () => uploadPhoto(client, second.id, Buffer.from('texto'.repeat(30)))],
+      ['storage_unavailable', 503, () => uploadPhoto(down.client, second.id, jpeg)],
+    ];
+
+    for (const [code, status, send] of cases) {
+      const response = await send();
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status, code).toBe(status);
+      expect(body.status, code).toBe(status);
+      expect(body.code, code).toBe(code);
+      expect(response.headers.get('content-type'), code).toMatch(/^application\/problem\+json\b/);
+      expect(problemSchema.safeParse(body).success, code).toBe(true);
+    }
+  } finally {
+    await down.api.close();
   }
 });

@@ -5,7 +5,7 @@ import type { Client } from './support/client.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
 
-const PUBLIC = ['POST /api/auth/login', 'POST /api/auth/two-factor/verify'];
+const PUBLIC = ['POST /api/auth/login', 'POST /api/auth/two-factor/verify', 'GET /api/photo-files/:photoId/:variant'];
 const EXEMPT = [
   'GET /api/auth/session',
   'POST /api/auth/logout',
@@ -66,6 +66,9 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'GET /api/students/:id/consents',
       'POST /api/students/:id/consents',
       'DELETE /api/students/:id/consents/:consentId',
+      'GET /api/students/:id/photo',
+      'POST /api/students/:id/photo',
+      'DELETE /api/students/:id/photo',
       'GET /api/openapi.json',
     ].sort(),
   );

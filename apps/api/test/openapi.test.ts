@@ -6,6 +6,8 @@ import {
   grantConsentRequestSchema,
   guardianRequestSchema,
   loginRequestSchema,
+  photoFileQuerySchema,
+  photoQuerySchema,
   passwordConfirmationRequestSchema,
   resetPasswordRequestSchema,
   studentsQuerySchema,
@@ -135,13 +137,13 @@ test('request_bodies_come_from_contract_schemas', async () => {
 
     expect(documented, `${method} ${path}`).toEqual(JSON.parse(JSON.stringify(z.toJSONSchema(schema))));
   }
-  // nenhuma outra rota declara corpo
+  // nenhuma outra rota declara corpo, salvo o upload de foto, que é `multipart/form-data` e não tem schema Zod
   const withBody = Object.entries(paths).flatMap(([path, operations]) =>
     Object.entries(operations)
       .filter(([, operation]) => operation.requestBody)
       .map(([method]) => `${method} ${path}`),
   );
-  expect(withBody.sort()).toEqual(contracts.map(([method, path]) => `${method} ${path}`).sort());
+  expect(withBody.sort()).toEqual([...contracts.map(([method, path]) => `${method} ${path}`), 'post /api/students/{id}/photo'].sort());
 });
 
 test('consent_paths_and_guardian_body_come_from_contract_schemas', async () => {
@@ -167,4 +169,24 @@ test('consent_paths_and_guardian_body_come_from_contract_schemas', async () => {
     };
     expect(body.properties.guardian, `${method} ${path}`).toEqual(guardian);
   }
+});
+
+test('photo_paths_and_query_parameters_come_from_contract_schema', async () => {
+  const json = (schema: z.ZodType) => JSON.parse(JSON.stringify(z.toJSONSchema(schema))) as { properties: Record<string, unknown> };
+  const { paths } = await document();
+
+  expect(Object.keys(paths['/api/students/{id}/photo'] ?? {}).sort()).toEqual(['delete', 'get', 'post']);
+  expect(Object.keys(paths['/api/photo-files/{photoId}/{variant}'] ?? {})).toEqual(['get']);
+
+  const query = (paths['/api/students/{id}/photo']?.get?.parameters ?? []).filter((parameter) => parameter.in === 'query');
+  expect(query).toHaveLength(1);
+  expect(query[0]!.name).toBe('variant');
+  expect(query[0]!.required).not.toBe(true);
+  expect(query[0]!.schema).toEqual(json(photoQuerySchema).properties.variant);
+
+  const fileQuery = (paths['/api/photo-files/{photoId}/{variant}']?.get?.parameters ?? []).filter((parameter) => parameter.in === 'query');
+  expect(fileQuery.map((parameter) => parameter.name).sort()).toEqual(Object.keys(json(photoFileQuerySchema).properties).sort());
+  expect(fileQuery.map((parameter) => parameter.name).sort()).toEqual(['exp', 'sig']);
+
+  expect(paths['/api/students/{id}/photo']?.post?.requestBody?.content['application/json']).toBeUndefined();
 });
