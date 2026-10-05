@@ -213,6 +213,27 @@ test('valid_signature_for_missing_photo_404', async () => {
   expect((await problem(missing)).code, 'photoId que nunca existiu').toBe('not_found');
 });
 
+test('file_route_503_storage_unavailable_without_storage_data_when_storage_is_down', async () => {
+  const { studentId } = await studentWithPhoto({ name: 'Aluno do Armazenamento Fora' });
+  const { url } = await urlOf(reception, studentId, '?variant=thumb');
+  const deadEndpoint = `http://127.0.0.1:${await freePort()}`;
+  const down = await apiWith(env.stack, { ...env.minio.env, S3_ENDPOINT: deadEndpoint });
+  try {
+    const response = await fetch(`${down.api.url}${url}`);
+    expect(response.status).toBe(503);
+    expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+    expect((await problem(response.clone())).code).toBe('storage_unavailable');
+
+    const { headers, text } = await shown(response);
+    const forbidden = [new URL(deadEndpoint).host, new URL(env.minio.endpoint).host, env.minio.bucket, 'photos/main/', STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY];
+    for (const value of forbidden) expect(text.includes(value), value).toBe(false);
+    expect(headers.filter((header) => header.startsWith('x-amz-'))).toEqual([]);
+    expect(text.includes('RIFF')).toBe(false);
+  } finally {
+    await down.api.close();
+  }
+});
+
 /** Tudo o que uma resposta mostra: cabeçalhos e corpo, como texto. */
 async function shown(response: Response) {
   const headers = [...response.headers].map(([name, value]) => `${name}: ${value}`);
