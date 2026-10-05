@@ -134,7 +134,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(16);
+  expect(AUDIT_ACTIONS).toHaveLength(18);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -159,6 +159,8 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Responsável do aluno salvo',
     'Consentimento registrado',
     'Consentimento revogado',
+    'Foto do aluno enviada',
+    'Foto do aluno removida',
   ]);
 });
 
@@ -179,6 +181,8 @@ const LABELS = [
   'Responsável do aluno salvo',
   'Consentimento registrado',
   'Consentimento revogado',
+  'Foto do aluno enviada',
+  'Foto do aluno removida',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -197,7 +201,7 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(16);
+  expect(options.slice(1)).toHaveLength(18);
   expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
@@ -449,10 +453,10 @@ test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) =>
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(16);
-  expect(options.slice(14)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
+  expect(options.slice(1)).toHaveLength(18);
+  expect(options.slice(14, 17)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
   // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
-  expect(AUDIT_ACTIONS.slice(13)).toEqual(consentActions);
+  expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(consentActions);
 });
 
 test('consent_granted_details_show_purpose_version_and_grantor', async ({ page, api }) => {
