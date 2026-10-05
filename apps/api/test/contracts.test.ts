@@ -43,7 +43,7 @@ let minio: Minio;
 beforeAll(async () => {
   minio = await startMinio();
   postgres = await startPostgres();
-  healthy = await startApi(postgres.url);
+  healthy = await startApi(postgres.url, [], minio.env);
   degraded = await startApi(await refusingDatabaseUrl());
   stack = await startStack([], minio.env);
 }, 180_000);

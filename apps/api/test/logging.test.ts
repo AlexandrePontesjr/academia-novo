@@ -1,18 +1,21 @@
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { startApi } from './support/app.ts';
-import { startPostgres } from './support/servers.ts';
+import { type Minio, startMinio, startPostgres } from './support/servers.ts';
 
 let postgres: Awaited<ReturnType<typeof startPostgres>>;
+let minio: Minio;
 let api: Awaited<ReturnType<typeof startApi>>;
 
 beforeAll(async () => {
   postgres = await startPostgres();
-  api = await startApi(postgres.url);
+  minio = await startMinio();
+  api = await startApi(postgres.url, [], minio.env);
 }, 180_000);
 
 afterAll(async () => {
   await api?.close();
   await postgres?.stop();
+  await minio?.stop();
 });
 
 type LogLine = Record<string, unknown>;

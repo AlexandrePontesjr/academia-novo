@@ -1,14 +1,16 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { BoomController, startApi } from './support/app.ts';
-import { refusingDatabaseUrl, startPostgres } from './support/servers.ts';
+import { type Minio, refusingDatabaseUrl, startMinio, startPostgres } from './support/servers.ts';
 
 let postgres: Awaited<ReturnType<typeof startPostgres>>;
+let minio: Minio;
 let healthy: Awaited<ReturnType<typeof startApi>>;
 let degraded: Awaited<ReturnType<typeof startApi>>;
 
 beforeAll(async () => {
   postgres = await startPostgres();
-  healthy = await startApi(postgres.url, [BoomController]);
+  minio = await startMinio();
+  healthy = await startApi(postgres.url, [BoomController], minio.env);
   degraded = await startApi(await refusingDatabaseUrl(), [BoomController]);
 }, 180_000);
 
@@ -16,6 +18,7 @@ afterAll(async () => {
   await healthy?.close();
   await degraded?.close();
   await postgres?.stop();
+  await minio?.stop();
 });
 
 test('header_on_every_status', async () => {
