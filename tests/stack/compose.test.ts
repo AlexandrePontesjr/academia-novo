@@ -1,7 +1,14 @@
 import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { addBrokenMigration, cleanClone, freePort, readDotenv, removeClone, run } from './support.ts';
+import { Agent, setGlobalDispatcher } from 'undici';
+import sharp from 'sharp';
+import { addBrokenMigration, breakBucketInit, cleanClone, freePort, readDotenv, removeClone, run } from './support.ts';
+
+// `stack.compose` usa `spawnSync`, que trava o event loop: durante um `exec` de alguns segundos o timer de
+// keep-alive do cliente não dispara, o servidor fecha o socket ocioso aos 5 s, e o `fetch` seguinte reaproveitaria
+// um socket morto (`other side closed`). Sem conexão reaproveitada, cada `fetch` abre a sua.
+setGlobalDispatcher(new Agent({ pipelining: 0, keepAliveTimeout: 1 }));
 
 interface ComposeContainer {
   ID: string;
@@ -21,6 +28,7 @@ async function prepareStack(name: string) {
     POSTGRES_PORT: String(await freePort()),
     PORT: String(await freePort()),
     WEB_PORT: String(await freePort()),
+    STORAGE_PORT: String(await freePort()),
   };
   // a origem do web é a URL pela qual o teste o alcança, na porta sorteada
   const webOrigin = `http://127.0.0.1:${ports.WEB_PORT}`;
@@ -302,6 +310,154 @@ describe('stack de pé', () => {
     expect(response.status).toBe(200);
     expect(html).toMatch(/<h1[^>]*>Entrar<\/h1>/);
   });
+
+  /** Entra pela origem do web com o perfil `reception`. */
+  async function receptionCookie(email: string, password: string) {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Recepcao`,
+    );
+    expect(created.status, created.output).toBe(0);
+    // a stack não tem gerador de TOTP, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+    const demoted = stack.compose(
+      `exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "update users set role = 'reception' where email = '${email}'"`,
+    );
+    expect(demoted.status, demoted.output).toBe(0);
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    return login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+  }
+
+  /** Um JPEG de 800×1000 com `size` bytes, preenchido por comentários que carregam todos os valores de byte. */
+  async function jpegOfSize(size: number) {
+    const jpeg = await sharp({ create: { width: 800, height: 1000, channels: 3, background: '#cc3322' } }).jpeg().toBuffer();
+    const comments: Buffer[] = [];
+    let remaining = size - jpeg.length;
+    let counter = 0;
+    while (remaining > 0) {
+      let segment = Math.min(remaining, 65_537);
+      if (remaining - segment > 0 && remaining - segment < 4) segment -= 4;
+      const frame = Buffer.alloc(segment);
+      frame[0] = 0xff;
+      frame[1] = 0xfe;
+      frame.writeUInt16BE(segment - 2, 2);
+      for (let at = 4; at < segment; at += 1) frame[at] = counter++ % 256;
+      comments.push(frame);
+      remaining -= segment;
+    }
+    return Buffer.concat([jpeg.subarray(0, 2), ...comments, jpeg.subarray(2)]);
+  }
+
+  test('storage_bucket_exists_private_and_ports_on_loopback', () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const mc = (command: string) =>
+      stack.compose(
+        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && ${command}"`,
+      );
+
+    const listed = mc(`mc ls local/${env.S3_BUCKET}`);
+    expect(listed.status, listed.output).toBe(0);
+
+    // pedido anônimo, de dentro do container `api`, sem credencial: o objeto e a listagem respondem 403
+    const script = [
+      `const bucket = '${env.S3_BUCKET}';`,
+      `for (const path of [bucket + '/photos/main/x/y/thumb.webp', bucket + '/']) {`,
+      `  console.log('anonymous', path.endsWith('/') ? 'listing' : 'object', (await fetch('http://storage:9000/' + path)).status);`,
+      `}`,
+    ].join(' ');
+    const anonymous = stack.compose(`exec -T api node --input-type=module -e "${script}"`);
+    expect(anonymous.status, anonymous.output).toBe(0);
+    expect(anonymous.output).toContain('anonymous object 403');
+    expect(anonymous.output).toContain('anonymous listing 403');
+
+    const config = stack.compose('config --format json');
+    expect(config.status, config.output).toBe(0);
+    const { services } = JSON.parse(config.output.slice(config.output.indexOf('{'))) as {
+      services: Record<string, { ports?: Array<{ host_ip?: string }> }>;
+    };
+    const ports = services.storage?.ports ?? [];
+    expect(ports.length).toBeGreaterThan(0);
+    for (const port of ports) expect(port.host_ip).toBe('127.0.0.1');
+  });
+
+  test('photo_uploaded_through_web_served_by_signed_url_with_audit_row', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) =>
+      stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+    const cookie = await receptionCookie('recepcao.da.foto@exemplo.com', 'senha-da-stack-foto-1');
+    const headers = {
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': 'teste-foto/1.0',
+      'X-Forwarded-For': '203.0.113.21',
+    };
+    const createStudent = async (name: string, cpf: string) => {
+      const created = await fetch(`${stack.webOrigin}/api/students`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, cpf, birthDate: '2000-01-01', phone: '(11) 91234-5678' }),
+      });
+      expect(created.status).toBe(201);
+      return ((await created.json()) as { id: string }).id;
+    };
+    const upload = (id: string, bytes: Buffer) => {
+      const form = new FormData();
+      form.append('file', new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' }), 'foto.jpg');
+      return fetch(`${stack.webOrigin}/api/students/${id}/photo`, { method: 'POST', headers, body: form });
+    };
+    const id = await createStudent('Aluna da Foto', '111.444.777-35');
+
+    const response = await upload(id, await jpegOfSize(5_242_880));
+    expect(response.status, await response.clone().text()).toBe(201);
+
+    const link = await fetch(`${stack.webOrigin}/api/students/${id}/photo`, { headers });
+    expect(link.status).toBe(200);
+    const { url } = (await link.json()) as { url: string };
+    // a URL assinada abre na origem do web, sem cookie
+    const file = await fetch(`${stack.webOrigin}${url}`);
+    const bytes = Buffer.from(await file.arrayBuffer());
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-type')).toBe('image/webp');
+    expect(file.headers.get('cache-control')).toBe('no-store');
+    expect(bytes.subarray(0, 4).toString('latin1')).toBe('RIFF');
+    expect(bytes.subarray(8, 12).toString('latin1')).toBe('WEBP');
+
+    // as linhas são lidas do banco da stack, não pelas rotas
+    const photo = psql(`select count(*) from photos where student_id = '${id}' and is_current`);
+    expect(photo.output.trim()).toBe('1');
+    const audit = psql(
+      `select ip || '|' || user_agent from audit_logs where action = 'student.photo_uploaded' and entity_id = '${id}'`,
+    );
+    expect(audit.status, audit.output).toBe(0);
+    expect(audit.output.trim().split(/\r?\n/)).toEqual(['203.0.113.21|teste-foto/1.0']);
+
+    const otherId = await createStudent('Aluno Grande', '987.654.321-00');
+    const tooLarge = await upload(otherId, await jpegOfSize(5_242_881));
+    expect(tooLarge.status).toBe(413);
+    expect(tooLarge.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+    expect(((await tooLarge.json()) as { code: string }).code).toBe('payload_too_large');
+  }, 120_000);
+
+  test('health_storage_up_then_down_when_storage_stops', async () => {
+    const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
+    expect(up.status).toBe(200);
+    expect(((await up.json()) as { checks: { storage: string } }).checks.storage).toBe('up');
+
+    const stopped = stack.compose('stop storage');
+    expect(stopped.status, stopped.output).toBe(0);
+
+    const down = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
+    const body = (await down.json()) as { checks: { storage: string; database: string } };
+    expect(down.status).toBe(503);
+    expect(body.checks).toEqual({ database: 'up', storage: 'down' });
+  });
 });
 
 describe('migração quebrada', () => {
@@ -321,6 +477,37 @@ describe('migração quebrada', () => {
     const migrate = containers.find((c) => c.Service === 'migrate');
     expect(migrate?.State).toBe('exited');
     expect(migrate?.ExitCode).not.toBe(0);
+
+    expect(up.status).not.toBe(0);
+    expect(up.status).not.toBeNull();
+
+    const api = containers.find((c) => c.Service === 'api');
+    if (api) {
+      // o container pode ter sido criado, mas nunca iniciado
+      const startedAt = run(`docker inspect --format "{{.State.StartedAt}}" ${api.ID}`, stack.dir);
+      expect(api.State).toBe('created');
+      expect(startedAt.output.trim()).toBe('0001-01-01T00:00:00Z');
+    }
+  });
+});
+
+describe('bucket que não é criado', () => {
+  let stack: Stack;
+  let up: ReturnType<typeof run>;
+
+  beforeAll(async () => {
+    stack = await prepareStack('bucket');
+    breakBucketInit(stack.dir);
+    up = stack.compose('up --build --wait');
+  }, 1_200_000);
+
+  afterAll(() => stack?.destroy(), 300_000);
+
+  test('api_never_starts_when_bucket_init_fails', () => {
+    const containers = stack.containers();
+    const init = containers.find((c) => c.Service === 'storage-init');
+    expect(init?.State).toBe('exited');
+    expect(init?.ExitCode).not.toBe(0);
 
     expect(up.status).not.toBe(0);
     expect(up.status).not.toBeNull();

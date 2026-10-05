@@ -12,7 +12,9 @@
     "@academia/config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "sharp": "^0.35.5",
     "typescript": "catalog:",
+    "undici": "^8.11.2",
     "vitest": "catalog:"
   }
 }
