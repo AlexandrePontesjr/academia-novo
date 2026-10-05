@@ -11,6 +11,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -240,5 +241,27 @@ export const consents = pgTable(
     ),
     uniqueIndex('consents_one_active_idx').on(table.studentId, table.purpose).where(sql`${table.revokedAt} is null`),
     index('consents_student_id_granted_at_idx').on(table.studentId, table.grantedAt),
+  ],
+);
+
+// Fotos do aluno (foto-pipeline, door 1). A chave estrangeira não cascateia: apagar o aluno de vez
+// é da `privacidade`, que remove as fotos antes. No máximo uma foto corrente por aluno, garantida
+// pelo índice parcial; `version` guarda as anteriores para a `foto-captura`. O `id` é o `photoId`
+// da chave do objeto no bucket (door 2). `funcionarios` acrescenta a sua chave anulável.
+export const photos = pgTable(
+  'photos',
+  {
+    id: id(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id),
+    version: integer('version').notNull(),
+    isCurrent: boolean('is_current').notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('photos_version_positive', sql`${table.version} >= 1`),
+    unique('photos_student_id_version_unique').on(table.studentId, table.version),
+    uniqueIndex('photos_one_current_idx').on(table.studentId).where(sql`${table.isCurrent}`),
   ],
 );
