@@ -58,12 +58,12 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 ## Handoff
 
-**Feature**: consentimento - Build concluído em 2026-10-04 (S0 a S8), `pnpm verify` verde; Verifier PASS na rodada 2 scoped (`4022b5f`, 88/88 checks, 7 mutantes mortos no total), `validate_verification.py consentimento` exit 0
-**Where**: 88 checks com prova rodada e verde; código em `apps/api/src/consents`, `apps/api/src/students`, `packages/contracts`, migração `0004_consent` e `apps/web/src/app/students/[id]/consents-block.tsx`. Base da feature: `4f463a3`. Doors 1 a 4 registradas como AD-036 a AD-039. A C30 e a AC 15 foram reescritas por decisão do usuário (`TRUNCATE` simples recusado pela chave estrangeira, `0A000`; `CASCADE`, `UPDATE` e `DELETE` pelo gatilho)
+**Feature**: foto-pipeline - batch 1 (S0 a S6 e C71 a C77) concluído em 2026-10-04, mecanismo handoff; `pnpm verify` verde. Verifier NÃO despachado: roda sobre a feature inteira depois do batch 2
+**Where**: C1 a C57 e C71 a C77 com prova rodada e verde (banco, contratos, `apps/api/src/photos`, migração `0005_photos`, `.env.example`). Boundary e desvios em `features/foto-pipeline/checks.md` (## Handoff)
 **In progress**: nada
-**Next step**: planejar a próxima feature do ROADMAP, `foto-pipeline` (6; depende só de `alunos`). Itens sem dono: texto final do termo de consentimento revisado pelo jurídico e DPO nomeado (go-live, ROADMAP); versão 1 dos termos é rascunho (C85); Open question 1 da `auditoria` (go-live, `operacao`); C87 de `alunos`; U+0000 cru em `students.service.ts:57`
-**Blockers**: nenhum
+**Next step**: batch 2 da `foto-pipeline`: S7 (`/health` com `storage`, C58; `boot.test.ts`, C59; `compose.yaml` com o armazenamento e o bucket privado, C60), S8 (web, C61 a C70) e C78 a C80; depois o Verifier sobre `<base>..HEAD` com os 80 checks. O `compose.yaml` tem de usar `cgr.dev/chainguard/minio` (o `minio/minio` do Docker Hub não é mais publicado)
+**Blockers**: nenhum. Open question 4 (credenciais do bucket e backup) é do go-live
 **Uncommitted**: `CLAUDE.md` (do usuário, nunca commitado)
-**Branch**: main, 60 commits à frente de `41766a8`, sem push
+**Branch**: main, sem push
 
 Pendências da `fundacao`, sem dono ainda: o achado F4 da rodada 4 continua em aberto, sem reprovar check; a linha de `Coverage` "erro em qualquer rota, statuses (2)" de `features/fundacao/checks.md` lista menos status que a `Surface` (`400` e `408` são provados pela C31; `413` não tem check). Com a `auth-rbac`, C22 a C25 da `fundacao` deixam de valer (registrado em `features/auth-rbac/checks.md`)
