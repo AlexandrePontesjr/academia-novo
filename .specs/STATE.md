@@ -58,12 +58,12 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 ## Handoff
 
-**Feature**: foto-pipeline - batch 1 (S0 a S6 e C71 a C77) concluído em 2026-10-04, mecanismo handoff; `pnpm verify` verde. Verifier NÃO despachado: roda sobre a feature inteira depois do batch 2
-**Where**: C1 a C57 e C71 a C77 com prova rodada e verde (banco, contratos, `apps/api/src/photos`, migração `0005_photos`, `.env.example`). Boundary e desvios em `features/foto-pipeline/checks.md` (## Handoff)
-**In progress**: nada
-**Next step**: batch 2 da `foto-pipeline`: S7 (`/health` com `storage`, C58; `boot.test.ts`, C59; `compose.yaml` com o armazenamento e o bucket privado, C60), S8 (web, C61 a C70) e C78 a C80; depois o Verifier sobre `<base>..HEAD` com os 80 checks. O `compose.yaml` tem de usar `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` fixado pelo digest de `MINIO_IMAGE` (o `minio/minio` oficial não é mais publicado)
+**Feature**: foto-pipeline - batch 1 e batch 2 concluídos (C1 a C80), Verifier round 1 FAIL (C80 e o `503` da rota de arquivo), correções feitas em `c9c4bc8` e `3085cb0` (C81 nova)
+**Where**: C1 a C81 com prova rodada e verde no `HEAD`; `pnpm verify` 21 tarefas e `compose.test.ts` 14 de 14. Boundary, desvios e decisões em `features/foto-pipeline/checks.md` (## Handoff)
+**In progress**: Verifier round 2 (escopado, com todas as provas reexecutadas) sobre `f3797aa..HEAD`
+**Next step**: ler `features/foto-pipeline/verification.md`; com PASS e `validate_verification.py foto-pipeline` em 0, fechar a feature e seguir o `ROADMAP.md`. Em aberto, fora da feature: `tests/stack/verify.test.ts` reprova no clone limpo por timeout de 30 s em quatro testes de consentimento que sobem o próprio Postgres (ver checks.md)
 **Blockers**: nenhum. Open question 4 (credenciais do bucket e backup) é do go-live
 **Uncommitted**: `CLAUDE.md` (do usuário, nunca commitado)
-**Branch**: main, sem push
+**Branch**: main, sem push. O `compose.yaml` usa `pgsty/minio` por digest (o usuário não trocou por chainguard)
 
 Pendências da `fundacao`, sem dono ainda: o achado F4 da rodada 4 continua em aberto, sem reprovar check; a linha de `Coverage` "erro em qualquer rota, statuses (2)" de `features/fundacao/checks.md` lista menos status que a `Surface` (`400` e `408` são provados pela C31; `413` não tem check). Com a `auth-rbac`, C22 a C25 da `fundacao` deixam de valer (registrado em `features/auth-rbac/checks.md`)
