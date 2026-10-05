@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable, type OnApplicationShutdown } from '@nestjs/common';
 import type { Env } from '../env.ts';
 
@@ -32,6 +32,14 @@ export class PhotoStorage implements OnApplicationShutdown {
       credentials: { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY },
       requestHandler: { connectionTimeout: CONNECTION_TIMEOUT_MS, requestTimeout: REQUEST_TIMEOUT_MS },
     });
+  }
+
+  /** O bucket responde? `false` sem endpoint, sem bucket ou sem resposta dentro de `timeoutMs`. */
+  async check(timeoutMs: number): Promise<boolean> {
+    return this.client.send(new HeadBucketCommand({ Bucket: this.bucket }), { abortSignal: AbortSignal.timeout(timeoutMs) }).then(
+      () => true,
+      () => false,
+    );
   }
 
   async put(key: string, bytes: Buffer): Promise<void> {

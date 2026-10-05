@@ -219,3 +219,44 @@ test('data_key_rejected_exits_1_naming_var', async () => {
     child.kill();
   }
 }, 60_000);
+
+test('photo_env_rejected_exits_1_naming_var_without_values', async () => {
+  const photoKeys = ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'PHOTO_URL_SECRET'];
+  const cases: Array<{ name: string; variable: string; env: Record<string, string> }> = [
+    ...photoKeys.map((key) => ({ name: `sem ${key}`, variable: key, env: without(validEnv, key) })),
+    { name: 'PHOTO_URL_SECRET de 31 caracteres', variable: 'PHOTO_URL_SECRET', env: { ...validEnv, PHOTO_URL_SECRET: 'x'.repeat(31) } },
+  ];
+
+  for (const { name, variable, env } of cases) {
+    const { status, output } = startApiProcess(env);
+
+    expect(status, name).toBe(1);
+    expect(output, name).toContain(variable);
+    for (const key of photoKeys) {
+      const value = env[key];
+      if (value) expect(output, `${name}: valor de ${key}`).not.toContain(value);
+    }
+  }
+
+  // com 32 caracteres e as outras quatro a API sobe e escuta: o banco recusa conexão, e o /health responde 503
+  const port = await freePort();
+  const child = spawn(process.execPath, ['dist/main.js'], {
+    cwd: apiRoot,
+    env: {
+      PATH: process.env.PATH,
+      SystemRoot: process.env.SystemRoot,
+      ...validEnv,
+      PHOTO_URL_SECRET: 'x'.repeat(32),
+      DATABASE_URL: await refusingDatabaseUrl(),
+      PORT: String(port),
+    },
+  });
+  try {
+    await vi.waitFor(
+      async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(503),
+      { timeout: 20_000, interval: 200 },
+    );
+  } finally {
+    child.kill();
+  }
+}, 120_000);

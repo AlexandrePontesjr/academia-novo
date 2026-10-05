@@ -5,6 +5,7 @@ export const healthResponseSchema = z.strictObject({
   status: z.enum(['ok', 'degraded']),
   checks: z.strictObject({
     database: z.enum(['up', 'down']),
+    storage: z.enum(['up', 'down']),
   }),
 });
 
