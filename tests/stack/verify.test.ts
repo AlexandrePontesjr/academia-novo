@@ -29,7 +29,8 @@ beforeAll(() => {
   verify = runVerify();
 }, 1_800_000);
 
-afterAll(() => removeClone(clone));
+// apagar o clone com `node_modules` passa dos 10 s do hookTimeout padrão
+afterAll(() => removeClone(clone), 120_000);
 
 test('verify_exits_zero_on_clean_clone', () => {
   expect(install.status, install.output.slice(-4000)).toBe(0);
