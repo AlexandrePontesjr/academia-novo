@@ -10,6 +10,13 @@ export const envSchema = z.object({
   WEB_ORIGIN: z.url({ protocol: /^https?$/ }),
   /** Chave das colunas cifradas em nível de aplicação: o base64 de 32 bytes (AD-031). */
   DATA_ENCRYPTION_KEY: z.string().refine(isDataKey),
+  /** Armazenamento de objetos compatível com S3, onde ficam as fotos (foto-pipeline, door 3). */
+  S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
+  S3_BUCKET: z.string().min(1),
+  S3_ACCESS_KEY_ID: z.string().min(1),
+  S3_SECRET_ACCESS_KEY: z.string().min(1),
+  /** Chave que assina as URLs de foto (door 4): separada de `AUTH_SECRET`, 32 caracteres ou mais. */
+  PHOTO_URL_SECRET: z.string().min(32),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -11,6 +11,23 @@ export const WEB_ORIGIN = 'http://localhost:3000';
 export const AUTH_SECRET = 'segredo-de-teste-com-32-caracteres!';
 /** O base64 de 32 bytes fixos: só serve a testes. */
 export const DATA_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
+export const PHOTO_URL_SECRET = 'segredo-das-urls-de-foto-com-mais-de-32-caracteres';
+
+/** O ambiente do armazenamento de objetos (door 3): onde ele está e com que credencial a API entra. */
+export interface StorageEnv {
+  S3_ENDPOINT: string;
+  S3_BUCKET: string;
+  S3_ACCESS_KEY_ID: string;
+  S3_SECRET_ACCESS_KEY: string;
+}
+
+/** Um endpoint em que ninguém escuta: serve ao teste que não toca em foto. */
+export const NO_STORAGE: StorageEnv = {
+  S3_ENDPOINT: 'http://127.0.0.1:9',
+  S3_BUCKET: 'bucket-de-teste',
+  S3_ACCESS_KEY_ID: 'chave-de-acesso-de-teste',
+  S3_SECRET_ACCESS_KEY: 'chave-secreta-de-teste',
+};
 
 @Controller()
 export class BoomController {
@@ -26,10 +43,18 @@ interface RouterLayer {
 }
 
 /** Sobe a API num porto livre, com o mesmo AppModule e o mesmo configureApp que o processo real usa. */
-export async function startApi(databaseUrl: string, controllers: Type[] = []) {
+export async function startApi(databaseUrl: string, controllers: Type[] = [], storage: StorageEnv = NO_STORAGE) {
   const moduleRef = await Test.createTestingModule({
     imports: [
-      AppModule.register({ DATABASE_URL: databaseUrl, PORT: 0, AUTH_SECRET, WEB_ORIGIN, DATA_ENCRYPTION_KEY }),
+      AppModule.register({
+        DATABASE_URL: databaseUrl,
+        PORT: 0,
+        AUTH_SECRET,
+        WEB_ORIGIN,
+        DATA_ENCRYPTION_KEY,
+        PHOTO_URL_SECRET,
+        ...storage,
+      }),
     ],
     controllers,
   }).compile();

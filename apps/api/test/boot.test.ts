@@ -16,6 +16,11 @@ const validEnv: Record<string, string> = {
   AUTH_SECRET: `chave-de-teste-${SECRET}-com-mais-de-32`,
   WEB_ORIGIN: 'http://localhost:3000',
   DATA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+  S3_ENDPOINT: 'http://127.0.0.1:9',
+  S3_BUCKET: 'bucket-de-teste',
+  S3_ACCESS_KEY_ID: 'chave-de-acesso-de-teste',
+  S3_SECRET_ACCESS_KEY: 'chave-secreta-de-teste',
+  PHOTO_URL_SECRET: 'segredo-das-urls-de-foto-com-mais-de-32-caracteres',
 };
 
 const requiredKeys = Object.entries(envSchema.shape)
