@@ -58,12 +58,12 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 
 ## Handoff
 
-**Feature**: foto-pipeline - batch 1 e batch 2 concluídos (C1 a C80), Verifier round 1 FAIL (C80 e o `503` da rota de arquivo), correções feitas em `c9c4bc8` e `3085cb0` (C81 nova)
-**Where**: C1 a C81 com prova rodada e verde no `HEAD`; `pnpm verify` 21 tarefas e `compose.test.ts` 14 de 14. Boundary, desvios e decisões em `features/foto-pipeline/checks.md` (## Handoff)
-**In progress**: Verifier round 2 (escopado, com todas as provas reexecutadas) sobre `f3797aa..HEAD`
-**Next step**: ler `features/foto-pipeline/verification.md`; com PASS e `validate_verification.py foto-pipeline` em 0, fechar a feature e seguir o `ROADMAP.md`. Em aberto, fora da feature: `tests/stack/verify.test.ts` reprova no clone limpo por timeout de 30 s em quatro testes de consentimento que sobem o próprio Postgres (ver checks.md)
+**Feature**: foto-pipeline - concluída: C1 a C81, Verifier round 2 PASS (`features/foto-pipeline/verification.md`, `7e84df8`)
+**Where**: a observação do clone limpo está resolvida: `tests/stack/verify.test.ts` passa 4 de 4 com saída 0 no `HEAD` `adbcbd1` (560 s, 2026-10-05). Foram duas causas, nenhuma na foto: os testes que sobem o próprio Postgres estouravam 30 s sob carga (`62fcf58`: quatro workers e 120 s em `apps/api/vitest.config.ts`) e o `afterAll` que apaga o clone estourava os 10 s do hookTimeout padrão (`adbcbd1`: 120 s no hook). Nenhuma asserção mudou
+**In progress**: foto-captura (#7) - `features/foto-captura/plan.md` escrito, aguardando revisão; sem checks e sem código
+**Next step**: revisar o plano da `foto-captura` (as três perguntas em aberto e as doors 2 e 4); aprovado, escrever `checks.md`. Antes dos checks, registrar em `## Decisions` as doors da `foto-pipeline`, que o plano dela previa como AD-040 em diante e não estão na tabela
 **Blockers**: nenhum. Open question 4 (credenciais do bucket e backup) é do go-live
-**Uncommitted**: `CLAUDE.md` (do usuário, nunca commitado)
+**Uncommitted**: `CLAUDE.md` (do usuário, nunca commitado); `features/foto-captura/plan.md` (fica fora do commit até a revisão)
 **Branch**: main, sem push. O `compose.yaml` usa `pgsty/minio` por digest (o usuário não trocou por chainguard)
 
 Pendências da `fundacao`, sem dono ainda: o achado F4 da rodada 4 continua em aberto, sem reprovar check; a linha de `Coverage` "erro em qualquer rota, statuses (2)" de `features/fundacao/checks.md` lista menos status que a `Surface` (`400` e `408` são provados pela C31; `413` não tem check). Com a `auth-rbac`, C22 a C25 da `fundacao` deixam de valer (registrado em `features/auth-rbac/checks.md`)

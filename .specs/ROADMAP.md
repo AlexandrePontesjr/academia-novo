@@ -14,8 +14,8 @@ decisão.
 | 3 | `auditoria` | o Administrador consulta quem fez o quê; toda feature seguinte já nasce auditada | RF-24 a RF-26 | 2 | verificada (PASS, 73/73) |
 | 4 | `alunos` | cadastrar, buscar, editar e inativar alunos | RF-05, RF-07, RF-08 (inativação), RF-31 | 3 | verificada (PASS, 94/94) |
 | 5 | `consentimento` | registrar consentimento versionado e o responsável legal de menores | RF-06, RF-27 | 4 | verificada (PASS, 88/88) |
-| 6 | `foto-pipeline` | enviar um arquivo de foto e vê-lo servido só por URL assinada | RF-13, RF-14, RF-15, RF-17, RF-18 | 4 | não iniciada |
-| 7 | `foto-captura` | capturar pela câmera, recortar em 3:4 e trocar a foto mantendo versões | RF-11, RF-12, RF-16 | 6 | não iniciada |
+| 6 | `foto-pipeline` | enviar um arquivo de foto e vê-lo servido só por URL assinada | RF-13, RF-14, RF-15, RF-17, RF-18 | 4 | verificada (PASS, 81/81) |
+| 7 | `foto-captura` | capturar pela câmera, recortar em 3:4 e trocar a foto mantendo versões | RF-11, RF-12, RF-16 | 6 | plano em revisão |
 | 8 | `funcionarios` | RH cadastra funcionários com foto; ninguém mais os vê, e cada visualização é auditada | RF-09, RF-10 | 3, 6 | não iniciada |
 | 9 | `planos-matriculas` | criar planos e matricular um aluno com início, vencimento e renovação | RF-19, RF-20 | 4 | não iniciada |
 | 10 | `pagamentos` | registrar pagamento manual e ver o que está pendente ou atrasado | RF-21 | 9 | não iniciada |
