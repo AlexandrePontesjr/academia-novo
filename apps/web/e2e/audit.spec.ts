@@ -498,3 +498,24 @@ test('guardian_saved_details_show_changed_phone', async ({ page, api }) => {
     page.locator('tbody tr:nth-child(1) td:nth-child(7)').getByText('Telefone alterado', { exact: true }),
   ).toBeVisible();
 });
+
+test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => {
+  const photoActions = ['student.photo_uploaded', 'student.photo_removed'] as const;
+  serve(
+    api,
+    photoActions.map((action) => logOf({ action, entity: 'student' })),
+  );
+
+  await page.goto('/audit');
+
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual([
+    'Foto do aluno enviada',
+    'Foto do aluno removida',
+  ]);
+  const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
+  expect(options).toEqual(['Todas', ...LABELS]);
+  expect(options.slice(1)).toHaveLength(18);
+  // a posição de cada uma é a 17 e a 18 do vocabulário
+  expect(options.slice(17)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
+  expect(AUDIT_ACTIONS.slice(16)).toEqual(photoActions);
+});
