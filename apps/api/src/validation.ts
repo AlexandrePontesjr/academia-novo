@@ -17,6 +17,7 @@ import { validationProblem } from './problem.filter.ts';
 const INPUT = 'academia:input';
 const QUERY = 'academia:query';
 const OUTPUT = 'academia:output';
+const MULTIPART = 'academia:multipart';
 
 /** O schema de `packages/contracts` que valida o corpo da rota - o mesmo que vai para o OpenAPI. */
 export const Input = (schema: z.ZodType) => SetMetadata(INPUT, schema);
@@ -39,6 +40,11 @@ export const Output = (status: number, schema?: z.ZodType): MethodDecorator => {
     output(target, key, descriptor);
   };
 };
+
+/** A rota recebe um arquivo em `multipart/form-data`: não há schema Zod de corpo, e o OpenAPI o descreve assim. */
+export const Multipart = () => SetMetadata(MULTIPART, true);
+
+export const isMultipart = (handler: object) => Reflect.getMetadata(MULTIPART, handler) === true;
 
 export const inputOf = (handler: object) =>
   Reflect.getMetadata(INPUT, handler) as z.ZodType | undefined;

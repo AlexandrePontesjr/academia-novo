@@ -12,13 +12,15 @@ export const seesContact = (role: Role) => role !== 'instructor';
  * `name` e `status`.
  */
 export function viewStudent(role: Role, student: Student): Student {
-  if (role === 'instructor') return { id: student.id, name: student.name, status: student.status };
+  if (role === 'instructor') {
+    return { id: student.id, name: student.name, status: student.status, photoUrl: student.photoUrl };
+  }
   if (seesHealthNotes(role)) return student;
   return Object.fromEntries(Object.entries(student).filter(([field]) => field !== 'healthNotes')) as Student;
 }
 
 /** O item da lista cortado pelo perfil: `cpf` e `phone` só para quem os vê. */
-export function viewListItem(role: Role, item: Omit<Required<StudentListItem>, 'photoUrl'>): StudentListItem {
-  if (!seesContact(role)) return { id: item.id, name: item.name, status: item.status };
+export function viewListItem(role: Role, item: Required<StudentListItem>): StudentListItem {
+  if (!seesContact(role)) return { id: item.id, name: item.name, status: item.status, photoUrl: item.photoUrl };
   return item;
 }

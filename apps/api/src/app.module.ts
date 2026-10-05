@@ -14,6 +14,10 @@ import { ColumnCipher } from './crypto.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
 import { OpenApiController } from './openapi.controller.ts';
+import { PhotoSigner } from './photos/photo-signer.ts';
+import { PhotoStorage } from './photos/photo-storage.ts';
+import { PhotosController } from './photos/photos.controller.ts';
+import { PhotosService } from './photos/photos.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StudentsController } from './students/students.controller.ts';
 import { StudentsService } from './students/students.service.ts';
@@ -41,6 +45,7 @@ export class AppModule implements OnApplicationShutdown {
         StudentsController,
         ConsentsController,
         ConsentTermsController,
+        PhotosController,
         OpenApiController,
       ],
       providers: [
@@ -65,6 +70,14 @@ export class AppModule implements OnApplicationShutdown {
           useFactory: (database: Database) =>
             new StudentsService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY)),
           inject: [DATABASE],
+        },
+        { provide: PhotoStorage, useFactory: () => new PhotoStorage(env) },
+        { provide: PhotoSigner, useFactory: () => new PhotoSigner(env.PHOTO_URL_SECRET) },
+        {
+          provide: PhotosService,
+          useFactory: (database: Database, storage: PhotoStorage, signer: PhotoSigner) =>
+            new PhotosService(database.db, storage, signer),
+          inject: [DATABASE, PhotoStorage, PhotoSigner],
         },
         {
           provide: ConsentsService,

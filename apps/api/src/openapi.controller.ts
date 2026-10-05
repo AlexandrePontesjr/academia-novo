@@ -3,7 +3,7 @@ import { DiscoveryService } from '@nestjs/core';
 import { z } from 'zod';
 import { Authenticated } from './access.ts';
 import { isApiRoute, listRoutes, type Route } from './routes.ts';
-import { inputOf, outputOf, queryOf } from './validation.ts';
+import { inputOf, isMultipart, outputOf, queryOf } from './validation.ts';
 
 const json = (schema: z.ZodType) => ({
   content: { 'application/json': { schema: z.toJSONSchema(schema) } },
@@ -32,6 +32,16 @@ function operation(route: Route) {
   return {
     ...(parameters.length > 0 && { parameters }),
     ...(input && { requestBody: { required: true, ...json(input) } }),
+    ...(isMultipart(route.handler) && {
+      requestBody: {
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } },
+          },
+        },
+      },
+    }),
     responses: {
       [output.status ?? 200]: {
         description: 'Sucesso',

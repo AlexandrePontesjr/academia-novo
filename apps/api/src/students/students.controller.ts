@@ -13,6 +13,7 @@ import {
 import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post } from '@nestjs/common';
 import { CurrentUser, Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
+import { PhotosService } from '../photos/photos.service.ts';
 import { ProblemException, validationProblem } from '../problem.filter.ts';
 import { Input, Output, QueryInput, ValidatedQuery } from '../validation.ts';
 import { StudentsService } from './students.service.ts';
@@ -23,7 +24,10 @@ const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
 /** Cadastro de alunos: `admin` e `reception` escrevem; os quatro perfis leem, cada um com os seus campos (door 4). */
 @Controller('api/students')
 export class StudentsController {
-  constructor(@Inject(StudentsService) private readonly students: StudentsService) {}
+  constructor(
+    @Inject(StudentsService) private readonly students: StudentsService,
+    @Inject(PhotosService) private readonly photos: PhotosService,
+  ) {}
 
   @Get()
   @Roles(...ALL)
@@ -31,7 +35,12 @@ export class StudentsController {
   @Output(200, studentsResponseSchema)
   async list(@ValidatedQuery() query: StudentsQuery, @CurrentUser() user: CurrentUser): Promise<StudentsResponse> {
     const { rows, nextCursor } = await this.students.list(query, user.role);
-    return { items: rows.map((row) => viewListItem(user.role, row)), nextCursor };
+    // `null` é "sem foto": a chave existe para os quatro perfis (door 4 de `alunos`, foto-pipeline)
+    const photoUrls = await this.photos.photoUrls(rows.map((row) => row.id), 'thumb');
+    return {
+      items: rows.map((row) => viewListItem(user.role, { ...row, photoUrl: photoUrls.get(row.id) ?? null })),
+      nextCursor,
+    };
   }
 
   @Post()
@@ -50,7 +59,8 @@ export class StudentsController {
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUser): Promise<Student> {
     const student = await this.students.find(id, seesHealthNotes(user.role));
     if (!student) throw new NotFoundException();
-    return viewStudent(user.role, student);
+    const photoUrl = (await this.photos.photoUrls([student.id], 'medium')).get(student.id) ?? null;
+    return viewStudent(user.role, { ...student, photoUrl });
   }
 
   @Patch(':id')

@@ -1,0 +1,81 @@
+import {
+  type PhotoCreated,
+  type PhotoFileQuery,
+  type PhotoQuery,
+  type PhotoUrlResponse,
+  photoCreatedSchema,
+  photoFileQuerySchema,
+  photoQuerySchema,
+  photoUrlResponseSchema,
+} from '@academia/contracts';
+import { Controller, Delete, Get, Header, Inject, NotFoundException, Param, Post, Req, StreamableFile } from '@nestjs/common';
+import type { Request } from 'express';
+import { Public, Roles } from '../access.ts';
+import { Actor, type AuditActor } from '../audit/audit.ts';
+import { ProblemException } from '../problem.filter.ts';
+import { Multipart, Output, QueryInput, ValidatedQuery } from '../validation.ts';
+import { isPhotoVariant } from './photo-keys.ts';
+import { readFilePart } from './photo-upload.ts';
+import { PhotosService } from './photos.service.ts';
+
+const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
+
+/**
+ * A foto do aluno (door 7: o processamento é síncrono, dentro da requisição). `admin` e `reception`
+ * enviam e removem; os quatro perfis pedem a URL, e a entrega do arquivo é aberta porque a
+ * assinatura é a credencial (door 4).
+ */
+@Controller('api')
+export class PhotosController {
+  constructor(@Inject(PhotosService) private readonly photos: PhotosService) {}
+
+  @Post('students/:id/photo')
+  @Roles('admin', 'reception')
+  @Multipart()
+  @Output(201, photoCreatedSchema)
+  async upload(@Param('id') id: string, @Req() req: Request, @Actor() actor: AuditActor): Promise<PhotoCreated> {
+    const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    const file = await readFilePart(req);
+    return this.photos.create(target, file, actor);
+  }
+
+  @Get('students/:id/photo')
+  @Roles(...ALL)
+  @QueryInput(photoQuerySchema)
+  @Output(200, photoUrlResponseSchema)
+  async url(@Param('id') id: string, @ValidatedQuery() query: PhotoQuery): Promise<PhotoUrlResponse> {
+    const target = await this.photos.findStudent(id);
+    const url = target && (await this.photos.urlFor(target.studentId, query.variant ?? 'medium'));
+    if (!url) throw new NotFoundException();
+    return url;
+  }
+
+  @Delete('students/:id/photo')
+  @Roles('admin', 'reception')
+  @Output(204)
+  async remove(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    await this.photos.remove(target, actor);
+  }
+
+  @Get('photo-files/:photoId/:variant')
+  @Public()
+  @Header('Cache-Control', 'no-store')
+  @QueryInput(photoFileQuerySchema)
+  @Output(200)
+  async file(
+    @Param('photoId') photoId: string,
+    @Param('variant') variant: string,
+    @ValidatedQuery() query: PhotoFileQuery,
+  ): Promise<StreamableFile> {
+    // a assinatura é conferida antes de qualquer consulta: foto que nunca existiu também é `403`
+    if (!isPhotoVariant(variant) || !this.photos.isSigned(photoId, variant, query.exp, query.sig)) {
+      throw new ProblemException(403, 'invalid_signature');
+    }
+    const bytes = await this.photos.fileOf(photoId, variant);
+    if (!bytes) throw new NotFoundException();
+    return new StreamableFile(bytes, { type: 'image/webp', length: bytes.length });
+  }
+}
