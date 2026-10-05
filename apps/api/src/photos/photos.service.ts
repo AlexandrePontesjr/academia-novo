@@ -61,9 +61,11 @@ export class PhotosService {
     const photoId = generated!.id;
     const keys = PHOTO_VARIANTS.map((variant) => photoKey(target.studentId, photoId, variant));
 
-    try {
-      await Promise.all(PHOTO_VARIANTS.map((variant, index) => this.storage.put(keys[index]!, variants[variant])));
-    } catch {
+    // todas as gravações terminam antes de qualquer limpeza: uma ainda em voo recriaria o objeto apagado
+    const written = await Promise.allSettled(
+      PHOTO_VARIANTS.map((variant, index) => this.storage.put(keys[index]!, variants[variant])),
+    );
+    if (written.some((result) => result.status === 'rejected')) {
       await this.removeObjects(photoId, keys);
       throw new ProblemException(503, 'storage_unavailable');
     }
