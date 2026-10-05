@@ -35,6 +35,7 @@ test('ficha_twelve_keys_for_admin_and_reception', async () => {
     'emergencyContactName',
     'emergencyContactPhone',
     'healthNotes',
+    'photoUrl',
   ].sort();
 
   for (const role of ['admin', 'reception'] as Role[]) {
@@ -63,6 +64,7 @@ test('ficha_hr_finance_without_health_notes_key', async () => {
       'address',
       'emergencyContactName',
       'emergencyContactPhone',
+      'photoUrl',
     ].sort(),
   );
   expect('healthNotes' in body).toBe(false);
@@ -72,7 +74,7 @@ test('ficha_instructor_three_keys_only', async () => {
   const response = await sessions.instructor.get(`/api/students/${studentId}`);
 
   expect(response.status).toBe(200);
-  expect(await keysOf(response)).toEqual(['id', 'name', 'status']);
+  expect(await keysOf(response)).toEqual(['id', 'name', 'photoUrl', 'status']);
 });
 
 test('ficha_404_for_non_uuid_and_unknown_uuid', async () => {

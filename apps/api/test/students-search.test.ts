@@ -80,7 +80,7 @@ test('list_50_sorted_by_folded_name_then_id', async () => {
     const page = await search(role);
 
     expect(page.items, role).toHaveLength(50);
-    for (const item of page.items) expect(Object.keys(item).sort(), role).toEqual(['cpf', 'id', 'name', 'phone', 'status']);
+    for (const item of page.items) expect(Object.keys(item).sort(), role).toEqual(['cpf', 'id', 'name', 'phone', 'photoUrl', 'status']);
     expect(page.items.map(({ id, name }) => ({ id, name })), role).toEqual(expected);
     expect(page.nextCursor, role).not.toBeNull();
   }
@@ -90,7 +90,7 @@ test('list_instructor_three_keys_per_item', async () => {
   const page = await search('instructor');
 
   expect(page.items.length).toBeGreaterThan(0);
-  for (const item of page.items) expect(Object.keys(item).sort()).toEqual(['id', 'name', 'status']);
+  for (const item of page.items) expect(Object.keys(item).sort()).toEqual(['id', 'name', 'photoUrl', 'status']);
 });
 
 test('name_terms_fold_case_and_accents', async () => {

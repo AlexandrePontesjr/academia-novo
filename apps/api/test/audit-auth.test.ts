@@ -2,18 +2,25 @@ import { AUDIT_ACTIONS, auditActionSchema, type TwoFactorEnableResponse, type Us
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
+import { jpegBytes, uploadPhoto } from './support/photos.ts';
+import { type Minio, startMinio } from './support/servers.ts';
 import { problem, type SeededUser, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
 
 const WRONG = 'senha-errada-000';
 
 let stack: Stack;
+let minio: Minio;
 
 beforeAll(async () => {
-  stack = await startStack();
+  minio = await startMinio();
+  stack = await startStack([], minio.env);
 }, 180_000);
 
-afterAll(() => stack?.close());
+afterAll(async () => {
+  await stack?.close();
+  await minio?.stop();
+});
 
 const login = (email: string, password: string, client: Client = stack.client()) =>
   client.post('/api/auth/login', { email, password });
@@ -303,13 +310,15 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   }); // student.consent_granted
   const { id: consentId } = (await consent.json()) as { id: string };
   await admin.delete(`/api/students/${studentId}/consents/${consentId}`); // student.consent_revoked
+  await uploadPhoto(admin, studentId, await jpegBytes()); // student.photo_uploaded
+  await admin.delete(`/api/students/${studentId}/photo`); // student.photo_removed
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(16);
+  expect(auditActionSchema.options).toHaveLength(18);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
-  expect(rows.length).toBeGreaterThanOrEqual(16);
+  expect(rows.length).toBeGreaterThanOrEqual(18);
   expect(rows.filter((row) => row.entity !== 'user' && row.entity !== 'student')).toEqual([]);
 });

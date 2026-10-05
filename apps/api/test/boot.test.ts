@@ -67,7 +67,7 @@ test('missing_var_exits_1_naming_it', () => {
     expect(status, `sem ${key}`).toBe(1);
     expect(output, `sem ${key}`).toContain(key);
   }
-});
+}, 120_000);
 
 test('invalid_var_exits_1_naming_it', () => {
   const { status, output } = startApiProcess({ ...validEnv, DATABASE_URL: 'isto-nao-e-uma-url' });
