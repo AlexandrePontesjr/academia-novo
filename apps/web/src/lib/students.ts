@@ -29,6 +29,16 @@ export function formatBirthDate(day: string): string {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : day;
 }
 
+/**
+ * As iniciais do círculo sem foto: a primeira letra do primeiro nome e a do último, em maiúsculas;
+ * um nome só dá uma letra. Espaços nas pontas e duplos não contam.
+ */
+export function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letter = (word: string | undefined) => (word ? [...word][0]!.toUpperCase() : '');
+  return words.length > 1 ? letter(words[0]) + letter(words.at(-1)) : letter(words[0]);
+}
+
 /** Quem cadastra, edita e muda a situação (RF-05, RF-08). */
 export const canWriteStudents = (role: Role) => role === 'admin' || role === 'reception';
 

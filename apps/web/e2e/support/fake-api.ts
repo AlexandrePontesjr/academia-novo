@@ -13,8 +13,17 @@ export interface Recorded {
   body: unknown;
 }
 
+/** O que a API falsa lê de um corpo `multipart/form-data`: o suficiente para provar o que a tela enviou. */
+export interface RecordedUpload {
+  contentType: string;
+  /** Uma entrada por parte, na ordem em que chegaram. */
+  parts: Array<{ name: string; filename: string | undefined; size: number }>;
+}
+
 export type Reply =
   | { status: number; body?: unknown; headers?: Record<string, string> }
+  /** bytes, como uma imagem: sai sem passar por JSON */
+  | { status: number; bytes: Buffer; headers: Record<string, string> }
   /** aceita a requisição e nunca responde */
   | 'hang';
 
@@ -53,6 +62,36 @@ export function userOf(id: number, overrides: Partial<User> = {}): User {
   };
 }
 
+/** Lê as partes de um corpo multipart: nome, nome do arquivo e tamanho em bytes. */
+function uploadOf(raw: Buffer, contentType: string): RecordedUpload {
+  const boundary = /boundary=("?)([^";]+)\1/.exec(contentType)?.[2] ?? '';
+  const parts = raw
+    .toString('latin1')
+    .split(`--${boundary}`)
+    .slice(1, -1)
+    .map((chunk) => {
+      const [head = '', ...rest] = chunk.replace(/^\r\n/, '').split('\r\n\r\n');
+      const body = rest.join('\r\n\r\n').replace(/\r\n$/, '');
+      return {
+        name: /name="([^"]*)"/.exec(head)?.[1] ?? '',
+        filename: /filename="([^"]*)"/.exec(head)?.[1],
+        size: Buffer.byteLength(body, 'latin1'),
+      };
+    });
+  return { contentType, parts };
+}
+
+/** Um PNG de 1 × 1 pixel: a "foto" que a API falsa entrega quando a tela pede o arquivo. */
+export const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/VscvDQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+/** Responde ao arquivo de foto de `path` com uma imagem de verdade. */
+export function servePhotoFile(api: FakeApi, path: string) {
+  api.on('GET', path, { status: 200, bytes: PNG_1X1, headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' } });
+}
+
 /**
  * A API que o web enxerga é falsa e controlada pelo teste: o que cada rota responde, a sessão que
  * `GET /api/auth/session` devolve, e o registro de tudo o que chegou.
@@ -88,18 +127,29 @@ export class FakeApi {
       const chunks: Buffer[] = [];
       req.on('data', (chunk: Buffer) => chunks.push(chunk));
       req.on('end', () => {
-        const text = Buffer.concat(chunks).toString('utf8');
+        const raw = Buffer.concat(chunks);
+        const contentType = req.headers['content-type'] ?? '';
+        const text = raw.toString('utf8');
         const [path = '', query = ''] = (req.url ?? '').split('?');
         const recorded: Recorded = {
           method: req.method ?? '',
           path,
           query,
           headers: req.headers,
-          body: text ? JSON.parse(text) : undefined,
+          body: contentType.startsWith('multipart/form-data')
+            ? uploadOf(raw, contentType)
+            : text
+              ? JSON.parse(text)
+              : undefined,
         };
         this.requests.push(recorded);
         const reply = this.reply(recorded);
         if (reply === 'hang') return;
+        if ('bytes' in reply) {
+          res.writeHead(reply.status, reply.headers);
+          res.end(reply.bytes);
+          return;
+        }
         res.writeHead(reply.status, { 'Content-Type': 'application/json', ...reply.headers });
         res.end(reply.body === undefined ? undefined : JSON.stringify(reply.body));
       });

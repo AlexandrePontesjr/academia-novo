@@ -15,6 +15,7 @@ import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../..
 import { StudentsLoadError } from '../students-load-error.tsx';
 import { ConsentsBlock } from './consents-block.tsx';
 import { ConsentsLoadError } from './consents-load-error.tsx';
+import { PhotoBlock } from './photo-block.tsx';
 import { StatusActions } from './status-actions.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               </div>
             )}
           </div>
+          <PhotoBlock studentId={student.id} name={student.name} photoUrl={student.photoUrl} canWrite={canWrite} />
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted-foreground">Situação</dt>

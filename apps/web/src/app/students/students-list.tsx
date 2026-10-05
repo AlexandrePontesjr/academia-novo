@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { type FormEvent, useId, useState } from 'react';
 import { callApi } from '../../lib/api.ts';
 import { formatCpf, formatPhone, STATUS_LABELS } from '../../lib/students.ts';
+import { StudentPhoto } from './student-photo.tsx';
 
 interface Applied {
   q: string;
@@ -116,13 +117,16 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
               {page.items.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>
-                    <Link
-                      href={`/students/${student.id}`}
-                      prefetch={false}
-                      className="text-primary underline underline-offset-4"
-                    >
-                      {student.name}
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <StudentPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
+                      <Link
+                        href={`/students/${student.id}`}
+                        prefetch={false}
+                        className="text-primary underline underline-offset-4"
+                      >
+                        {student.name}
+                      </Link>
+                    </div>
                   </TableCell>
                   {withContact && <TableCell>{formatCpf(student.cpf ?? '')}</TableCell>}
                   {withContact && <TableCell>{formatPhone(student.phone ?? '')}</TableCell>}
