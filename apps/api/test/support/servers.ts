@@ -63,10 +63,12 @@ export async function startHangingDatabase() {
 }
 
 /**
- * O MinIO do Docker Hub (`minio/minio`) deixou de ser publicado; a imagem da Chainguard é o mesmo
- * MinIO. O compose (S7) usa a mesma imagem.
+ * A imagem oficial `minio/minio` (Docker Hub e quay.io) deixou de ser publicada. Fork da comunidade
+ * mantido por pgsty (AGPLv3), fixado por tag e digest; o compose (S7) usa a mesma imagem.
  */
-export const MINIO_IMAGE = 'cgr.dev/chainguard/minio:latest';
+export const MINIO_IMAGE =
+ 'pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372';
+
 export const STORAGE_BUCKET = 'photos-test';
 export const STORAGE_ACCESS_KEY = 'ak-minio-teste-7f3a';
 export const STORAGE_SECRET_KEY = 'sk-minio-teste-9c1e5d02';

@@ -61,7 +61,7 @@ propostas ainda não confirmadas estão em `ROADMAP.md` (Decisões em aberto).
 **Feature**: foto-pipeline - batch 1 (S0 a S6 e C71 a C77) concluído em 2026-10-04, mecanismo handoff; `pnpm verify` verde. Verifier NÃO despachado: roda sobre a feature inteira depois do batch 2
 **Where**: C1 a C57 e C71 a C77 com prova rodada e verde (banco, contratos, `apps/api/src/photos`, migração `0005_photos`, `.env.example`). Boundary e desvios em `features/foto-pipeline/checks.md` (## Handoff)
 **In progress**: nada
-**Next step**: batch 2 da `foto-pipeline`: S7 (`/health` com `storage`, C58; `boot.test.ts`, C59; `compose.yaml` com o armazenamento e o bucket privado, C60), S8 (web, C61 a C70) e C78 a C80; depois o Verifier sobre `<base>..HEAD` com os 80 checks. O `compose.yaml` tem de usar `cgr.dev/chainguard/minio` (o `minio/minio` do Docker Hub não é mais publicado)
+**Next step**: batch 2 da `foto-pipeline`: S7 (`/health` com `storage`, C58; `boot.test.ts`, C59; `compose.yaml` com o armazenamento e o bucket privado, C60), S8 (web, C61 a C70) e C78 a C80; depois o Verifier sobre `<base>..HEAD` com os 80 checks. O `compose.yaml` tem de usar `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` fixado pelo digest de `MINIO_IMAGE` (o `minio/minio` oficial não é mais publicado)
 **Blockers**: nenhum. Open question 4 (credenciais do bucket e backup) é do go-live
 **Uncommitted**: `CLAUDE.md` (do usuário, nunca commitado)
 **Branch**: main, sem push
