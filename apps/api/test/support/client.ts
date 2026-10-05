@@ -16,16 +16,19 @@ export function createClient(baseUrl: string) {
 
   async function request(method: string, path: string, options: RequestOptions = {}) {
     const { body, origin = WEB_ORIGIN, headers = {} } = options;
+    // bytes e fluxos seguem como vieram, com o `Content-Type` de quem os mandou (multipart, imagem)
+    const raw = body instanceof Uint8Array || body instanceof ReadableStream;
     const response = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
         ...(origin !== null && { Origin: origin }),
-        ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        ...(body !== undefined && !raw && { 'Content-Type': 'application/json' }),
         ...(jar.size > 0 && { Cookie: cookie() }),
         ...headers,
       },
-      body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-    });
+      body: body === undefined ? undefined : raw || typeof body === 'string' ? (body as string | Uint8Array | ReadableStream) : JSON.stringify(body),
+      ...(body instanceof ReadableStream && { duplex: 'half' }),
+    } as RequestInit);
     for (const setCookie of response.headers.getSetCookie()) {
       const [pair = ''] = setCookie.split(';');
       const name = pair.slice(0, pair.indexOf('='));

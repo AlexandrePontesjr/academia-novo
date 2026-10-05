@@ -4,7 +4,7 @@ import type { Type } from '@nestjs/common';
 import pg from 'pg';
 import { expect } from 'vitest';
 import { UsersService } from '../../src/users/users.service.ts';
-import { startApi } from './app.ts';
+import { type StorageEnv, startApi } from './app.ts';
 import { type Client, createClient } from './client.ts';
 import { startPostgres } from './servers.ts';
 import { totpCode } from './totp.ts';
@@ -25,9 +25,9 @@ export interface SeededUser {
 }
 
 /** Postgres real migrado, a API montada sobre ele e o que os testes usam para preparar usuários. */
-export async function startStack(controllers: Type[] = []) {
+export async function startStack(controllers: Type[] = [], storage?: StorageEnv) {
   const postgres = await startPostgres();
-  const api = await startApi(postgres.url, controllers);
+  const api = await startApi(postgres.url, controllers, storage);
   const pool = new pg.Pool({ connectionString: postgres.url });
   const database = createDatabase(postgres.url);
   const users = new UsersService(database.db);
