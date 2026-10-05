@@ -2,8 +2,8 @@ import { expect, test } from 'vitest';
 import { healthResponseSchema, problemSchema } from '../src/index.ts';
 
 test('health schema accepts the two documented bodies', () => {
-  expect(healthResponseSchema.safeParse({ status: 'ok', checks: { database: 'up' } }).success).toBe(true);
-  expect(healthResponseSchema.safeParse({ status: 'degraded', checks: { database: 'down' } }).success).toBe(true);
+  expect(healthResponseSchema.safeParse({ status: 'ok', checks: { database: 'up', storage: 'up' } }).success).toBe(true);
+  expect(healthResponseSchema.safeParse({ status: 'degraded', checks: { database: 'down', storage: 'down' } }).success).toBe(true);
 });
 
 test('health schema rejects an unknown status and a missing check', () => {
