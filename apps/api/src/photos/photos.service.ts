@@ -1,7 +1,7 @@
 import { PHOTO_VARIANTS, type PhotoCreated, type PhotoUrlResponse, type PhotoVariant } from '@academia/contracts';
-import { and, type Database, eq, inArray, schema, sql } from '@academia/database';
+import { and, type Database, eq, inArray, lte, schema, sql } from '@academia/database';
 import { Injectable } from '@nestjs/common';
-import { audit, type AuditActor } from '../audit/audit.ts';
+import { audit, type AuditActor, NO_ACTOR } from '../audit/audit.ts';
 import { isUniqueViolation } from '../db-errors.ts';
 import { ProblemException } from '../problem.filter.ts';
 import { detectFormat, makeVariants } from './photo-image.ts';
@@ -150,6 +150,45 @@ export class PhotosService {
         PHOTO_VARIANTS.map((variant) => photoKey(target.studentId, id, variant)),
       );
     }
+  }
+
+  /**
+   * Apaga as versões guardadas cujo prazo venceu (foto-captura, door 4): os três objetos e, só com
+   * os três fora, a linha e a auditoria sem autor numa transação. Uma versão cujo objeto não sai
+   * fica como estava, para a execução seguinte; quem perde a corrida com outra execução não acha a
+   * linha e não grava auditoria.
+   */
+  async purgeExpired(): Promise<{ purged: number; failed: number }> {
+    const expired = await this.db
+      .select({ id: photos.id, studentId: photos.studentId })
+      .from(photos)
+      .where(and(eq(photos.isCurrent, false), lte(photos.expiresAt, sql`now()`)));
+    const outcome = { purged: 0, failed: 0 };
+    for (const version of expired) {
+      const removed = await Promise.allSettled(
+        PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(version.studentId, version.id, variant))),
+      );
+      if (removed.some((result) => result.status === 'rejected')) {
+        outcome.failed += 1;
+        continue;
+      }
+      const purged = await this.db.transaction(async (tx) => {
+        const rows = await tx
+          .delete(photos)
+          .where(and(eq(photos.id, version.id), eq(photos.isCurrent, false)))
+          .returning({ id: photos.id });
+        if (rows.length === 0) return false;
+        await audit.record(tx, {
+          actor: NO_ACTOR,
+          action: 'student.photo_version_purged',
+          entity: 'student',
+          entityId: version.studentId,
+        });
+        return true;
+      });
+      if (purged) outcome.purged += 1;
+    }
+    return outcome;
   }
 
   /** O `photoId` da foto corrente do aluno, ou `undefined`. */

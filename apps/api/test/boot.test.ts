@@ -1,11 +1,13 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
 import { build } from 'esbuild';
+import pg from 'pg';
 import { beforeAll, expect, test, vi } from 'vitest';
 import { buildOptions } from '../build-options.mjs';
 import { envSchema } from '../src/env.ts';
 import { invalidChunk, rawExchange } from './support/raw.ts';
-import { freePort, refusingDatabaseUrl } from './support/servers.ts';
+import { freePort, refusingDatabaseUrl, startMinio, startPostgres } from './support/servers.ts';
 
 const apiRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -258,5 +260,120 @@ test('photo_env_rejected_exits_1_naming_var_without_values', async () => {
     );
   } finally {
     child.kill();
+  }
+}, 120_000);
+
+/** O processo real da API, com a saída acumulada. */
+function spawnApi(env: Record<string, string>) {
+  const child = spawn(process.execPath, ['dist/main.js'], {
+    cwd: apiRoot,
+    env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...env },
+  });
+  let output = '';
+  child.stdout.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
+  child.stderr.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
+  return { child, output: () => output };
+}
+
+test('real_process_purges_expired_version_on_startup', async () => {
+  const postgres = await startPostgres();
+  const minio = await startMinio();
+  const pool = new pg.Pool({ connectionString: postgres.url });
+  const keysOf = async () =>
+    ((await minio.client.send(new ListObjectsV2Command({ Bucket: minio.bucket }))).Contents ?? []).map((object) => object.Key!).sort();
+  let child: ReturnType<typeof spawn> | undefined;
+  try {
+    // um aluno com uma versão vencida e a corrente, e os três objetos de cada uma no bucket
+    const { rows: students } = await pool.query<{ id: string }>(
+      `insert into students (name, cpf, birth_date, phone) values ('Aluna de Teste', '52998224725', '2000-01-01', '11912345678') returning id`,
+    );
+    const studentId = students[0]!.id;
+    const { rows: photos } = await pool.query<{ id: string; is_current: boolean }>(
+      `insert into photos (student_id, version, is_current, expires_at)
+       values ($1, 1, false, now() - interval '1 second'), ($1, 2, true, null) returning id, is_current`,
+      [studentId],
+    );
+    const expired = photos.find((photo) => !photo.is_current)!.id;
+    const current = photos.find((photo) => photo.is_current)!.id;
+    const keys = (photoId: string) => ['large', 'medium', 'thumb'].map((variant) => `photos/main/${studentId}/${photoId}/${variant}.webp`);
+    for (const key of [...keys(expired), ...keys(current)]) {
+      await minio.client.send(new PutObjectCommand({ Bucket: minio.bucket, Key: key, Body: Buffer.from('webp de teste') }));
+    }
+    expect(await keysOf()).toEqual([...keys(expired), ...keys(current)].sort());
+
+    // o teste não envia requisição nenhuma ao processo
+    child = spawnApi({ ...validEnv, ...minio.env, DATABASE_URL: postgres.url, PORT: String(await freePort()) }).child;
+
+    await vi.waitFor(
+      async () => {
+        expect((await pool.query('select id from photos order by version')).rows).toEqual([{ id: current }]);
+        expect(await keysOf()).toEqual(keys(current));
+      },
+      { timeout: 30_000, interval: 200 },
+    );
+    const { rows: audit } = await pool.query<{ user_id: string | null; entity_id: string }>(
+      `select user_id, entity_id from audit_logs where action = 'student.photo_version_purged'`,
+    );
+    expect(audit).toEqual([{ user_id: null, entity_id: studentId }]);
+  } finally {
+    child?.kill();
+    await pool.end();
+    await minio.stop();
+    await postgres.stop();
+  }
+}, 240_000);
+
+test('real_process_survives_purge_failure_with_database_down', async () => {
+  const port = await freePort();
+  const { child, output } = spawnApi({ ...validEnv, DATABASE_URL: await refusingDatabaseUrl(), PORT: String(port) });
+  const failures = () =>
+    output()
+      .split('\n')
+      .filter((line) => line.startsWith('{') && line.includes('photo purge failed'))
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+  try {
+    await vi.waitFor(() => expect(failures().length).toBeGreaterThanOrEqual(1), { timeout: 20_000, interval: 200 });
+    expect(failures()[0]).toMatchObject({ level: 'error', msg: 'photo purge failed' });
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    expect(child.exitCode).toBeNull();
+    expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(503);
+  } finally {
+    child.kill();
+  }
+}, 60_000);
+
+test('retention_days_rejected_exits_1_naming_var_without_values', async () => {
+  const KEY = 'PHOTO_VERSION_RETENTION_DAYS';
+  for (const value of ['0', '366', '1.5', 'abc']) {
+    const { status, output } = startApiProcess({ ...validEnv, [KEY]: value });
+
+    expect(status, value).toBe(1);
+    expect(output, value).toContain(KEY);
+  }
+
+  for (const value of ['36600077', 'valor-secreto-da-retencao']) {
+    const env = { ...validEnv, [KEY]: value };
+
+    const { status, output } = startApiProcess(env);
+
+    expect(status, value).toBe(1);
+    expect(output, value).toContain(KEY);
+    for (const [key, other] of Object.entries(env)) expect(output, `${value}: valor de ${key}`).not.toContain(other);
+  }
+
+  // nas duas bordas a API sobe e responde: o banco recusa conexão, e o /health diz 503
+  for (const value of ['1', '365']) {
+    const port = await freePort();
+    const { child } = spawnApi({ ...validEnv, [KEY]: value, DATABASE_URL: await refusingDatabaseUrl(), PORT: String(port) });
+    try {
+      await vi.waitFor(
+        async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status, value).toBe(503),
+        { timeout: 20_000, interval: 200 },
+      );
+    } finally {
+      child.kill();
+    }
   }
 }, 120_000);

@@ -14,6 +14,7 @@ import { ColumnCipher } from './crypto.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
 import { OpenApiController } from './openapi.controller.ts';
+import { PhotoPurge } from './photos/photo-purge.ts';
 import { PhotoSigner } from './photos/photo-signer.ts';
 import { PhotoStorage } from './photos/photo-storage.ts';
 import { PhotosController } from './photos/photos.controller.ts';
@@ -79,6 +80,7 @@ export class AppModule implements OnApplicationShutdown {
             new PhotosService(database.db, storage, signer, env.PHOTO_VERSION_RETENTION_DAYS),
           inject: [DATABASE, PhotoStorage, PhotoSigner],
         },
+        PhotoPurge,
         {
           provide: ConsentsService,
           useFactory: (database: Database) => new ConsentsService(database.db),

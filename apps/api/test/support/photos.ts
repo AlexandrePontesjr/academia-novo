@@ -306,6 +306,10 @@ export interface FlakyStorage {
   failWriteOf: Variant | null;
   /** Responde `500` a toda remoção de objeto. */
   failDeletes: boolean;
+  /** Responde `500` só à remoção do objeto dessa variante, ou de nenhuma (`null`). */
+  failDeleteOf: Variant | null;
+  /** Fora do ar: toda conexão é derrubada sem resposta. */
+  down: boolean;
   stop(): Promise<void>;
 }
 
@@ -315,13 +319,25 @@ export interface FlakyStorage {
  */
 export async function flakyStorage(target: string): Promise<FlakyStorage> {
   const upstream = new URL(target);
-  const state: Pick<FlakyStorage, 'failWriteOf' | 'failDeletes'> = { failWriteOf: null, failDeletes: false };
+  const state: Pick<FlakyStorage, 'failWriteOf' | 'failDeletes' | 'failDeleteOf' | 'down'> = {
+    failWriteOf: null,
+    failDeletes: false,
+    failDeleteOf: null,
+    down: false,
+  };
   const fails = (request: IncomingMessage) => {
     const path = (request.url ?? '').split('?')[0]!;
-    if (request.method === 'DELETE') return state.failDeletes && path.endsWith('.webp');
+    if (request.method === 'DELETE') {
+      if (state.failDeleteOf !== null && path.endsWith(`/${state.failDeleteOf}.webp`)) return true;
+      return state.failDeletes && path.endsWith('.webp');
+    }
     return request.method === 'PUT' && state.failWriteOf !== null && path.endsWith(`/${state.failWriteOf}.webp`);
   };
   const server: Server = createServer((request, response) => {
+    if (state.down) {
+      request.socket.destroy();
+      return;
+    }
     if (fails(request)) {
       request.resume();
       response.writeHead(500, { 'Content-Type': 'application/xml' }).end('<Error><Code>InternalError</Code></Error>');
@@ -350,8 +366,8 @@ export async function flakyStorage(target: string): Promise<FlakyStorage> {
 }
 
 /** Uma segunda API sobre o Postgres da pilha, com o armazenamento que o teste escolhe, e uma sessão `reception` nela. */
-export async function apiWith(stack: Stack, storage: StorageEnv) {
-  const api = await startApi(stack.postgres.url, [], storage);
+export async function apiWith(stack: Stack, storage: StorageEnv, extraEnv: Record<string, string> = {}) {
+  const api = await startApi(stack.postgres.url, [], storage, extraEnv);
   const user = await stack.seed({ role: 'reception' });
   const client = await stack.signIn(user, createClient(api.url));
   return { api, client };
