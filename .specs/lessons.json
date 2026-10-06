@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 24,
+  "next_id": 25,
   "lessons": [
     {
       "id": "L-001",
@@ -418,6 +418,24 @@
       ],
       "created": "2026-10-06T01:40:35Z",
       "last_seen": "2026-10-06T01:40:35Z"
+    },
+    {
+      "id": "L-024",
+      "key": "spec_precision_gap::sample a crop oracle within a few pixels of a colour boundary on every side of the expected region so the shift it tolerates is small and stated",
+      "text": "Sample a crop oracle within a few pixels of a colour boundary on every side of the expected region, so the shift it tolerates is small and stated",
+      "signal": "spec_precision_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "foto-captura"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C38 - apps/web/e2e/photo-editor.spec.ts:172 (fault 4, round 2) (web)"
+      ],
+      "created": "2026-10-06T02:55:34Z",
+      "last_seen": "2026-10-06T02:55:34Z"
     }
   ]
 }

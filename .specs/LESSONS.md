@@ -152,6 +152,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: Test policy row 1 - apps/api/test/photos-purge.test.ts:124 (api)
 - last seen: 2026-10-06T01:40:35Z
 
+### L-024 - Sample a crop oracle within a few pixels of a colour boundary on every side of the expected region, so the shift it tolerates is small and stated
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: foto-captura
+- evidence: C38 - apps/web/e2e/photo-editor.spec.ts:172 (fault 4, round 2) (web)
+- last seen: 2026-10-06T02:55:34Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
