@@ -8,7 +8,7 @@ import {
   photoQuerySchema,
   photoUrlResponseSchema,
 } from '@academia/contracts';
-import { Controller, Delete, Get, Header, Inject, NotFoundException, Param, Post, Req, StreamableFile } from '@nestjs/common';
+import { Controller, Delete, Get, Header, Inject, NotFoundException, Param, Post, Put, Req, StreamableFile } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public, Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
@@ -22,7 +22,7 @@ const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
 
 /**
  * A foto do aluno (door 7: o processamento é síncrono, dentro da requisição). `admin` e `reception`
- * enviam e removem; os quatro perfis pedem a URL, e a entrega do arquivo é aberta porque a
+ * enviam, trocam e removem; os quatro perfis pedem a URL, e a entrega do arquivo é aberta porque a
  * assinatura é a credencial (door 4).
  */
 @Controller('api')
@@ -38,6 +38,18 @@ export class PhotosController {
     if (!target) throw new NotFoundException();
     const file = await readFilePart(req);
     return this.photos.create(target, file, actor);
+  }
+
+  /** A troca (foto-captura, door 2): mesmo corpo e mesma resposta do `POST`. */
+  @Put('students/:id/photo')
+  @Roles('admin', 'reception')
+  @Multipart()
+  @Output(201, photoCreatedSchema)
+  async replace(@Param('id') id: string, @Req() req: Request, @Actor() actor: AuditActor): Promise<PhotoCreated> {
+    const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    const file = await readFilePart(req);
+    return this.photos.replace(target, file, actor);
   }
 
   @Get('students/:id/photo')

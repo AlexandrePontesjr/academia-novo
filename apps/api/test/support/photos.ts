@@ -143,6 +143,22 @@ export function uploadPhoto(client: Client, studentId: string, bytes: Buffer, op
   return postParts(client, studentId, [{ name: 'file', bytes, filename, type }], rest);
 }
 
+/** `PUT /api/students/:id/photo` com as partes dadas. */
+export function putParts(client: Client, studentId: string, parts: Part[], options: Pick<SendOptions, 'origin' | 'headers'> = {}) {
+  const { body, contentType } = multipart(parts);
+  return client.request('PUT', `/api/students/${studentId}/photo`, {
+    origin: options.origin,
+    body,
+    headers: { 'Content-Type': contentType, ...options.headers },
+  });
+}
+
+/** `PUT /api/students/:id/photo` com a parte `file` dada: a troca. */
+export function replacePhoto(client: Client, studentId: string, bytes: Buffer, options: SendOptions = {}) {
+  const { filename = 'foto.jpg', type = 'image/jpeg', ...rest } = options;
+  return putParts(client, studentId, [{ name: 'file', bytes, filename, type }], rest);
+}
+
 /** O mesmo envio, em partes e sem `Content-Length`. */
 export function uploadPhotoChunked(client: Client, studentId: string, bytes: Buffer, options: SendOptions = {}) {
   const { filename = 'foto.jpg', type = 'image/jpeg', ...rest } = options;
@@ -202,6 +218,32 @@ export async function photoRowsText(stack: Stack, studentId: string) {
   );
   return rows.map((entry) => entry.row);
 }
+
+/** O `now()` do banco, como texto com microssegundos: o relógio dos prazos é o dele, nunca o da máquina. */
+export const databaseNow = async (stack: Stack) => (await stack.query<{ now: string }>('select now()::text as now'))[0]!.now;
+
+export interface VersionRow {
+  id: string;
+  version: number;
+  is_current: boolean;
+  /** `expires_at` como o banco o escreve, ou `null`. */
+  expires_at: string | null;
+  /** `expires_at` está entre `from + days` e `to + days` (os dois do relógio do banco). */
+  in_window: boolean | null;
+}
+
+/** As versões do aluno, por `version`, e se o prazo de cada uma cai `days` dias depois do intervalo dado. */
+export const versionRows = (stack: Stack, studentId: string, from = 'epoch', to = 'epoch', days = 30) =>
+  stack.query<VersionRow>(
+    `select id, version, is_current, expires_at::text as expires_at,
+            expires_at between $2::timestamptz + make_interval(days => $4) and $3::timestamptz + make_interval(days => $4) as in_window
+       from photos where student_id = $1 order by version`,
+    [studentId, from, to, days],
+  );
+
+/** As três chaves de uma foto, na ordem em que `bucketKeys` as devolve. */
+export const keysOf = (studentId: string, photoId: string) =>
+  ['thumb', 'medium', 'large'].map((variant) => `photos/main/${studentId}/${photoId}/${variant}.webp`).sort();
 
 export const photoCount = async (stack: Stack) =>
   Number((await stack.query<{ n: string }>('select count(*) as n from photos'))[0]!.n);

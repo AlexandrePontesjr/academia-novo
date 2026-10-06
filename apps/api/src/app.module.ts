@@ -76,7 +76,7 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: PhotosService,
           useFactory: (database: Database, storage: PhotoStorage, signer: PhotoSigner) =>
-            new PhotosService(database.db, storage, signer),
+            new PhotosService(database.db, storage, signer, env.PHOTO_VERSION_RETENTION_DAYS),
           inject: [DATABASE, PhotoStorage, PhotoSigner],
         },
         {

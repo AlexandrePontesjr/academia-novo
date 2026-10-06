@@ -18,9 +18,11 @@ export interface PhotoTarget {
   studentId: string;
 }
 
+type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+
 /**
- * Envio, remoção e leitura da foto do aluno: as variantes vão ao bucket, a linha e a trilha de
- * auditoria entram juntas na mesma transação, e a URL é assinada pela aplicação (door 4).
+ * Envio, troca, remoção e leitura da foto do aluno: as variantes vão ao bucket, a linha e a trilha
+ * de auditoria entram juntas na mesma transação, e a URL é assinada pela aplicação (door 4).
  */
 @Injectable()
 export class PhotosService {
@@ -28,6 +30,8 @@ export class PhotosService {
     private readonly db: Database['db'],
     private readonly storage: PhotoStorage,
     private readonly signer: PhotoSigner,
+    /** Dias que a foto trocada fica guardada (foto-captura, door 5). */
+    private readonly retentionDays: number,
   ) {}
 
   /** O `id` do aluno como o banco o guarda (minúsculo), ou `undefined` se `id` não é de aluno nenhum. */
@@ -37,7 +41,7 @@ export class PhotosService {
     return row && { studentId: row.id };
   }
 
-  /** `409` se o aluno já tem foto corrente: trocar é remover e enviar (door 1). */
+  /** `409` se o aluno já tem foto corrente: o `POST` não troca, quem troca é o `PUT`. */
   async assertNoCurrent(studentId: string) {
     const [current] = await this.db
       .select({ id: photos.id })
@@ -46,14 +50,30 @@ export class PhotosService {
     if (current) throw new ProblemException(409, 'photo_exists');
   }
 
+  /** O envio da primeira foto: com foto corrente, `409`. */
+  create(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
+    return this.store(target, file, actor, false);
+  }
+
+  /** A troca (foto-captura, door 2): guarda a corrente com prazo e põe a nova; sem corrente, cria a primeira. */
+  replace(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
+    return this.store(target, file, actor, true);
+  }
+
+  /** Trava a linha do aluno: envio, troca e remoção do mesmo aluno entram um de cada vez. */
+  private async lockStudent(tx: Tx, studentId: string) {
+    await tx.execute(sql`select 1 from ${students} where ${students.id} = ${studentId} for update`);
+  }
+
   /**
    * Grava as três variantes, depois a linha e a auditoria numa transação. O que não entrou no banco
-   * não fica no bucket: o índice parcial único decide a corrida entre dois envios, e o perdedor
-   * remove os objetos que gravou.
+   * não fica no bucket: a trava do aluno decide a corrida entre dois envios, e quem perde remove os
+   * objetos que gravou. Com `replacing`, a foto corrente deixa de sê-lo e ganha o prazo do relógio do
+   * banco (door 1) em vez de recusar o envio.
    */
-  async create(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
+  private async store(target: PhotoTarget, file: Buffer, actor: AuditActor, replacing: boolean): Promise<PhotoCreated> {
     if (!detectFormat(file)) throw new ProblemException(415, 'unsupported_media_type');
-    await this.assertNoCurrent(target.studentId);
+    if (!replacing) await this.assertNoCurrent(target.studentId);
     const variants = await makeVariants(file);
 
     // o `photoId` é gerado pelo banco e entra na chave antes de a linha existir
@@ -72,6 +92,14 @@ export class PhotosService {
 
     try {
       return await this.db.transaction(async (tx) => {
+        await this.lockStudent(tx, target.studentId);
+        const previous = replacing
+          ? await tx
+              .update(photos)
+              .set({ isCurrent: false, expiresAt: sql`now() + make_interval(days => ${this.retentionDays}::int)` })
+              .where(and(eq(photos.studentId, target.studentId), eq(photos.isCurrent, true)))
+              .returning({ id: photos.id })
+          : [];
         const [last] = await tx
           .select({ version: sql<number>`coalesce(max(${photos.version}), 0)` })
           .from(photos)
@@ -82,7 +110,7 @@ export class PhotosService {
           .returning();
         await audit.record(tx, {
           actor,
-          action: 'student.photo_uploaded',
+          action: previous.length > 0 ? 'student.photo_replaced' : 'student.photo_uploaded',
           entity: 'student',
           entityId: target.studentId,
         });
@@ -90,18 +118,21 @@ export class PhotosService {
       });
     } catch (error) {
       await this.removeObjects(photoId, keys);
+      // só o `POST` chega aqui com corrente: outro envio entrou entre a checagem e a trava
       if (isUniqueViolation(error)) throw new ProblemException(409, 'photo_exists');
       throw error;
     }
   }
 
   /**
-   * Remove a linha do aluno, com a auditoria na mesma transação, e só depois os objetos: com a
-   * linha fora, a foto já não é entregue, e um objeto que não sai é registrado pelo `photoId`
-   * (AC 40). Sem foto, não há o que fazer nem o que registrar (AC 38).
+   * Remove toda linha do aluno, a corrente e as versões guardadas, com a auditoria na mesma
+   * transação, e só depois os objetos: com a linha fora, a foto já não é entregue, e um objeto que
+   * não sai é registrado pelo `photoId` (AC 40). Sem foto, não há o que fazer nem o que registrar
+   * (AC 38).
    */
   async remove(target: PhotoTarget, actor: AuditActor): Promise<void> {
     const removed = await this.db.transaction(async (tx) => {
+      await this.lockStudent(tx, target.studentId);
       const rows = await tx.delete(photos).where(eq(photos.studentId, target.studentId)).returning({ id: photos.id });
       if (rows.length > 0) {
         await audit.record(tx, {
