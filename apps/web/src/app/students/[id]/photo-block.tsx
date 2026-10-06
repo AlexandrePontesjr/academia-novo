@@ -15,14 +15,18 @@ import { type DragEvent, useEffect, useRef, useState } from 'react';
 import { callApi, UNAVAILABLE } from '../../../lib/api.ts';
 import { fits, loadImage } from '../../../lib/photo-crop.ts';
 import { StudentPhoto } from '../student-photo.tsx';
+import { PhotoCamera } from './photo-camera.tsx';
 import { PhotoEditor, TOO_SMALL, UNREADABLE } from './photo-editor.tsx';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
 
+/** O que o diálogo de captura e recorte mostra: a imagem ao vivo, ou o ajuste de uma imagem. */
+type Flow = { step: 'camera' } | { step: 'edit'; image: HTMLImageElement; fromCamera: boolean };
+
 /**
  * A foto da ficha: a imagem ou as iniciais para os quatro perfis, e, para quem escreve, o arquivo
- * escolhido ou largado (sem foto) e "Trocar foto" e a remoção com confirmação (com foto). Nenhum
- * arquivo sai do navegador sem passar pelo ajuste do `PhotoEditor`.
+ * escolhido ou largado (sem foto), "Trocar foto" e a remoção com confirmação (com foto) e "Usar
+ * câmera" nos dois casos. Nenhuma imagem sai do navegador sem passar pelo ajuste do `PhotoEditor`.
  */
 export function PhotoBlock({
   studentId,
@@ -37,7 +41,8 @@ export function PhotoBlock({
 }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState<HTMLImageElement>();
+  const [flow, setFlow] = useState<Flow>();
+  const editing = flow?.step === 'edit' ? flow.image : undefined;
   const [sending, setSending] = useState(false);
   const [alert, setAlert] = useState<string>();
   const [asking, setAsking] = useState(false);
@@ -45,18 +50,25 @@ export function PhotoBlock({
 
   useEffect(() => () => void (editing && URL.revokeObjectURL(editing.src)), [editing]);
 
-  /** Abre o ajuste com o arquivo, ou diz por que ele não serve. */
-  async function open(file: Blob | undefined) {
+  /** Abre o ajuste com o arquivo ou com o quadro capturado, ou diz por que ele não serve. */
+  async function open(file: Blob | undefined, fromCamera = false) {
     if (!file) return;
     setAlert(undefined);
     const image = await loadImage(file);
-    if (!image) return setAlert(UNREADABLE);
-    if (!fits(image, 0) && !fits(image, 90)) {
-      URL.revokeObjectURL(image.src);
-      return setAlert(TOO_SMALL);
+    const refusal = !image ? UNREADABLE : !fits(image, 0) && !fits(image, 90) ? TOO_SMALL : undefined;
+    if (!image || refusal) {
+      if (image) URL.revokeObjectURL(image.src);
+      setFlow(undefined);
+      return setAlert(refusal);
     }
-    setEditing(image);
+    setFlow({ step: 'edit', image, fromCamera });
   }
+
+  const cameraButton = (
+    <Button type="button" variant="outline" onClick={() => (setAlert(undefined), setFlow({ step: 'camera' }))}>
+      Usar câmera
+    </Button>
+  );
 
   function drop(event: DragEvent) {
     event.preventDefault();
@@ -85,9 +97,12 @@ export function PhotoBlock({
           className="grid max-w-sm justify-items-start gap-2 rounded-md border border-dashed p-4"
         >
           <p className="text-sm text-muted-foreground">Arraste uma foto aqui ou escolha um arquivo</p>
-          <Button type="button" variant="outline" onClick={() => input.current?.click()}>
-            Enviar foto
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => input.current?.click()}>
+              Enviar foto
+            </Button>
+            {cameraButton}
+          </div>
         </div>
       )}
       {canWrite && photoUrl && (
@@ -95,6 +110,7 @@ export function PhotoBlock({
           <Button variant="outline" onClick={() => input.current?.click()}>
             Trocar foto
           </Button>
+          {cameraButton}
           <Button variant="outline" onClick={() => setAsking(true)}>
             Remover foto
           </Button>
@@ -116,19 +132,21 @@ export function PhotoBlock({
       )}
       {alert && !asking && <Alert variant="destructive">{alert}</Alert>}
 
-      <Dialog open={editing !== undefined} onOpenChange={(open) => !open && !sending && setEditing(undefined)}>
+      <Dialog open={flow !== undefined} onOpenChange={(open) => !open && !sending && setFlow(undefined)}>
         <DialogContent aria-describedby={undefined} onInteractOutside={(event) => event.preventDefault()}>
-          {editing && (
+          {flow?.step === 'camera' && <PhotoCamera onCapture={(frame) => open(frame, true)} />}
+          {flow?.step === 'edit' && (
             <PhotoEditor
-              image={editing}
+              image={flow.image}
               method={photoUrl ? 'PUT' : 'POST'}
               url={`/api/students/${studentId}/photo`}
               sending={sending}
               onSending={setSending}
               onSaved={() => {
-                setEditing(undefined);
+                setFlow(undefined);
                 router.refresh();
               }}
+              onRetake={flow.fromCamera ? () => setFlow({ step: 'camera' }) : undefined}
             />
           )}
         </DialogContent>

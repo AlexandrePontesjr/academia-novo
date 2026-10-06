@@ -12,6 +12,9 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: `http://127.0.0.1:${WEB_PORT}`,
+    // a câmera das provas de tela é a falsa do Chromium, com a permissão já concedida (foto-captura)
+    permissions: ['camera'],
+    launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
