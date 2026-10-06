@@ -445,6 +445,109 @@ describe('stack de pé', () => {
     expect(((await tooLarge.json()) as { code: string }).code).toBe('payload_too_large');
   }, 120_000);
 
+  test('photo_replaced_through_web_then_expired_version_purged_on_api_restart', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    // a stack sobe sem a variável de retenção: vale o padrão de 30 dias
+    expect(env.PHOTO_VERSION_RETENTION_DAYS).toBeUndefined();
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** As chaves do bucket da stack sob o prefixo do aluno, relativas a ele. */
+    const keysOf = (studentId: string) => {
+      const listed = stack.compose(
+        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/photos/main/${studentId}/"`,
+      );
+      expect(listed.status, listed.output).toBe(0);
+      return listed.output
+        .split(/\r?\n/)
+        .flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? [])
+        .sort();
+    };
+    const waitFor = async (what: string, done: () => boolean | Promise<boolean>) => {
+      const deadline = Date.now() + 60_000;
+      while (!(await done())) {
+        expect(Date.now(), `${what} em até 60 s`).toBeLessThan(deadline);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    };
+
+    const cookie = await receptionCookie('recepcao.da.troca@exemplo.com', 'senha-da-stack-troca-1');
+    const headers = {
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': 'teste-troca/1.0',
+      'X-Forwarded-For': '203.0.113.33',
+    };
+    const created = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Aluna da Troca', cpf: '390.533.447-05', birthDate: '2000-01-01', phone: '(11) 91234-5678' }),
+    });
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const send = async (method: 'POST' | 'PUT', background: string) => {
+      const jpeg = await sharp({ create: { width: 800, height: 1000, channels: 3, background } }).jpeg().toBuffer();
+      const form = new FormData();
+      form.append('file', new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }), 'foto.jpg');
+      return fetch(`${stack.webOrigin}/api/students/${id}/photo`, { method, headers, body: form });
+    };
+
+    // os dois na origem do container `web`
+    const first = await send('POST', '#cc3322');
+    expect(first.status, await first.clone().text()).toBe(201);
+    const previousId = ((await first.json()) as { id: string }).id;
+    const replaced = await send('PUT', '#2233cc');
+    expect(replaced.status, await replaced.clone().text()).toBe(201);
+    const current = (await replaced.json()) as { id: string; version: number };
+    expect(current.version).toBe(2);
+
+    // as linhas são lidas do banco da stack, não pelas rotas
+    expect(
+      psql(
+        `select is_current, expires_at between now() + interval '29 days 23 hours' and now() + interval '30 days 1 hour' from photos where id = '${previousId}'`,
+      ),
+    ).toBe('f|t');
+    expect(psql(`select id from photos where student_id = '${id}' and is_current`)).toBe(current.id);
+    expect(
+      psql(`select ip || '|' || user_agent from audit_logs where action = 'student.photo_replaced' and entity_id = '${id}'`).split(/\r?\n/),
+    ).toEqual(['203.0.113.33|teste-troca/1.0']);
+    const variants = ['large.webp', 'medium.webp', 'thumb.webp'];
+    expect(keysOf(id)).toEqual([...variants.map((name) => `${current.id}/${name}`), ...variants.map((name) => `${previousId}/${name}`)].sort());
+
+    // o prazo da versão guardada vai para o passado, e a API reinicia: o expurgo roda na subida
+    psql(`update photos set expires_at = now() - interval '1 second' where id = '${previousId}'`);
+    const restarted = stack.compose('restart api');
+    expect(restarted.status, restarted.output).toBe(0);
+
+    await waitFor('a linha da versão vencida sair de photos', () => psql(`select count(*) from photos where id = '${previousId}'`) === '0');
+    await waitFor('as chaves da versão vencida saírem do bucket', () => keysOf(id).every((key) => !key.startsWith(previousId)));
+    expect(keysOf(id)).toEqual(variants.map((name) => `${current.id}/${name}`));
+    expect(psql(`select count(*) from photos where student_id = '${id}' and is_current and id = '${current.id}'`)).toBe('1');
+
+    // a foto corrente continua sendo entregue pela URL assinada
+    await waitFor('a API voltar a responder', () =>
+      fetch(`${stack.webOrigin}/api/students/${id}/photo`, { headers }).then(
+        (response) => response.status === 200,
+        () => false,
+      ),
+    );
+    const link = await fetch(`${stack.webOrigin}/api/students/${id}/photo`, { headers });
+    expect(link.status).toBe(200);
+    const { url } = (await link.json()) as { url: string };
+    expect(url).toContain(current.id);
+    const file = await fetch(`${stack.webOrigin}${url}`);
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-type')).toBe('image/webp');
+
+    expect(
+      psql(
+        `select count(*) filter (where user_id is null) || '|' || count(*) from audit_logs where action = 'student.photo_version_purged' and entity_id = '${id}'`,
+      ),
+    ).toBe('1|1');
+  }, 300_000);
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
