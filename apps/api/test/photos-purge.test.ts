@@ -95,6 +95,7 @@ test('purge_removes_expired_rows_and_their_objects', async () => {
   expect(expired).toHaveLength(3);
   for (const [studentId, id] of expired) expect(await keysUnder(studentId, id)).toHaveLength(3);
   const keysBefore = await bucketKeys(env.minio);
+  const auditBefore = await auditCount(env.stack);
 
   await env.stack.api.purge();
 
@@ -103,6 +104,10 @@ test('purge_removes_expired_rows_and_their_objects', async () => {
     expect(await keysUnder(studentId, id), id).toEqual([]);
   }
   expect(await bucketKeys(env.minio)).toHaveLength(keysBefore.length - 9);
+  // uma linha de auditoria por versão removida
+  expect(await auditCount(env.stack)).toBe(auditBefore + 3);
+  expect(await purgedRowsOf(one.studentId)).toHaveLength(1);
+  expect(await purgedRowsOf(two.studentId)).toHaveLength(2);
 });
 
 test('purge_keeps_unexpired_version_and_every_current_photo', async () => {
@@ -120,6 +125,7 @@ test('purge_keeps_unexpired_version_and_every_current_photo', async () => {
     kept.map(async ([, studentId, id]) => ({ row: await rowText(id), hashes: await hashesOf(keysOf(studentId, id)) })),
   );
   for (const state of before) expect(state.row).toBeDefined();
+  const auditBefore = await auditCount(env.stack);
 
   await env.stack.api.purge();
 
@@ -130,6 +136,11 @@ test('purge_keeps_unexpired_version_and_every_current_photo', async () => {
     expect(await keysUnder(studentId, id), name).toEqual(keysOf(studentId, id));
     expect(await hashesOf(keysOf(studentId, id)), name).toEqual(before[index]!.hashes);
   }
+  // a única linha de auditoria nova é a da versão vencida que saiu: quem ficou não gravou nenhuma
+  expect(await auditCount(env.stack)).toBe(auditBefore + 1);
+  expect(await purgedRowsOf(purgedStudent.studentId)).toHaveLength(1);
+  expect(await purgedRowsOf(unexpired.studentId)).toEqual([]);
+  expect(await purgedRowsOf(old)).toEqual([]);
 });
 
 test('startup_purges_expired_version_without_any_request', async () => {
@@ -214,6 +225,8 @@ test('object_removal_failure_keeps_row_and_next_run_removes_it', async () => {
       expect(await auditCount(env.stack), name).toBe(auditBefore);
       if (name === 'só large falha') {
         expect(await keysUnder(studentId, expiredId), name).toEqual([`photos/main/${studentId}/${expiredId}/large.webp`]);
+      } else {
+        expect(await keysUnder(studentId, expiredId), name).toEqual(keysOf(studentId, expiredId));
       }
 
       // com o armazenamento de volta, a execução seguinte termina o serviço
