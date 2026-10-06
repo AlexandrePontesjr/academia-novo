@@ -2,7 +2,7 @@ import { AUDIT_ACTIONS, auditActionSchema, type TwoFactorEnableResponse, type Us
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
-import { jpegBytes, uploadPhoto } from './support/photos.ts';
+import { jpegBytes, replacePhoto, uploadPhoto } from './support/photos.ts';
 import { type Minio, startMinio } from './support/servers.ts';
 import { problem, type SeededUser, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
@@ -311,14 +311,17 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { id: consentId } = (await consent.json()) as { id: string };
   await admin.delete(`/api/students/${studentId}/consents/${consentId}`); // student.consent_revoked
   await uploadPhoto(admin, studentId, await jpegBytes()); // student.photo_uploaded
+  await replacePhoto(admin, studentId, await jpegBytes()); // student.photo_replaced
+  await stack.query(`update photos set expires_at = now() - interval '1 second' where student_id = $1 and not is_current`, [studentId]);
+  await stack.api.purge(); // student.photo_version_purged
   await admin.delete(`/api/students/${studentId}/photo`); // student.photo_removed
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(18);
+  expect(auditActionSchema.options).toHaveLength(20);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
-  expect(rows.length).toBeGreaterThanOrEqual(18);
+  expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter((row) => row.entity !== 'user' && row.entity !== 'student')).toEqual([]);
 });
