@@ -523,3 +523,41 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
   expect(options.slice(17, 19)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
   expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(photoActions);
 });
+
+
+test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, api }) => {
+  const studentId = '018f0000-0000-7000-8000-0000000005ab';
+  serve(api, [
+    logOf({ action: 'student.photo_replaced', entity: 'student', entityId: studentId }),
+    // o expurgo não tem autor: sem usuário, sem IP e sem navegador
+    logOf({ action: 'student.photo_version_purged', entity: 'student', entityId: studentId, user: null, ip: null, userAgent: null }),
+  ]);
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual([
+    'Foto do aluno trocada',
+    'Versão anterior da foto excluída',
+  ]);
+  const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
+  expect(options.slice(1)).toHaveLength(20);
+  expect(options.slice(1, 19)).toEqual(LABELS.slice(0, 18));
+  // a posição de cada uma é a 19 e a 20 do vocabulário
+  expect(options.slice(19)).toEqual(['Foto do aluno trocada', 'Versão anterior da foto excluída']);
+  expect(AUDIT_ACTIONS.slice(18)).toEqual(['student.photo_replaced', 'student.photo_version_purged']);
+
+  expect(await page.getByRole('columnheader').allTextContents()).toEqual([
+    'Data e hora',
+    'Usuário',
+    'Ação',
+    'Alvo',
+    'IP',
+    'Navegador',
+    'Detalhes',
+  ]);
+  const purged = page.locator('tbody tr:nth-child(2)');
+  await expect(purged.locator('td:nth-child(2)'), 'Usuário').toHaveText('—');
+  await expect(purged.locator('td:nth-child(5)'), 'IP').toHaveText('—');
+  await expect(purged.locator('td:nth-child(6)'), 'Navegador').toHaveText('—');
+});
