@@ -1,66 +1,23 @@
-import type { Role, Student, StudentListItem } from '@academia/contracts';
+import type { Role, StudentListItem } from '@academia/contracts';
 import type { Page } from '@playwright/test';
+import { expect, problem, servePhotoFile, sessionOf, test } from './support/fake-api.ts';
 import {
-  expect,
-  type FakeApi,
-  problem,
-  type RecordedUpload,
-  servePhotoFile,
-  sessionOf,
-  test,
-} from './support/fake-api.ts';
+  ajustar,
+  ID,
+  PHOTO_ID,
+  PHOTO_PATH,
+  PHOTO_URL,
+  pngFile,
+  serveFicha,
+  serveMutableFicha,
+  studentOf,
+  WRITERS,
+} from './support/photo.ts';
 
-const ID = '018f0000-0000-7000-8000-000000000301';
-const PHOTO_ID = '018f0000-0000-7000-8000-000000000999';
-const PHOTO_PATH = `/api/photo-files/${PHOTO_ID}/medium`;
-const PHOTO_URL = `${PHOTO_PATH}?exp=2000000000&sig=assinatura`;
 const THUMB_PATH = `/api/photo-files/${PHOTO_ID}/thumb`;
 const THUMB_URL = `${THUMB_PATH}?exp=2000000000&sig=assinatura`;
 
 const ROLES: Role[] = ['admin', 'reception', 'hr_finance', 'instructor'];
-const WRITERS: Role[] = ['admin', 'reception'];
-
-function studentOf(overrides: Partial<Student> = {}): Student {
-  return {
-    id: ID,
-    name: 'Marina Duarte',
-    status: 'active',
-    cpf: '52998224725',
-    birthDate: '2000-01-01',
-    sex: 'female',
-    email: 'marina@exemplo.com',
-    phone: '11912345678',
-    address: 'Rua das Acácias, 120',
-    emergencyContactName: 'Maria da Penha',
-    emergencyContactPhone: '1134567890',
-    healthNotes: 'Hipertensão controlada',
-    photoUrl: null,
-    ...overrides,
-  };
-}
-
-/** O que a API devolve na ficha de cada perfil: `photoUrl` vai para os quatro (AD-033). */
-function fichaFor(role: Role, student: Student): Partial<Student> {
-  if (role === 'instructor') return { id: student.id, name: student.name, status: student.status, photoUrl: student.photoUrl };
-  if (role === 'hr_finance') return Object.fromEntries(Object.entries(student).filter(([key]) => key !== 'healthNotes'));
-  return student;
-}
-
-function serveFicha(api: FakeApi, role: Role, student: Student) {
-  api.session = sessionOf(role);
-  api.on('GET', `/api/students/${student.id}`, { status: 200, body: fichaFor(role, student) });
-}
-
-/** A ficha lê o `photoUrl` do estado, que o envio e a remoção mudam como a API mudaria. */
-function serveMutableFicha(api: FakeApi, role: Role, state: { photoUrl: string | null }) {
-  api.session = sessionOf(role);
-  api.on('GET', `/api/students/${ID}`, () => ({ status: 200, body: fichaFor(role, studentOf({ photoUrl: state.photoUrl })) }));
-}
-
-const uploadsOf = (api: FakeApi) =>
-  api.requests.filter((request) => request.method === 'POST' && request.path === `/api/students/${ID}/photo`);
-
-const JPEG = { name: 'foto-da-marina.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(2048, 7) };
 
 /** As iniciais que o círculo mostra: ficam num pseudo-elemento, para não entrar no texto da célula. */
 const initialsShown = (page: Page) =>
@@ -115,85 +72,6 @@ test('broken_image_falls_back_to_initials_on_ficha_and_list', async ({ page, api
   await expect(cell.locator('img')).toHaveCount(0);
 });
 
-test('upload_area_button_accept_and_both_ways_send_multipart_file_part', async ({ page, api }) => {
-  for (const role of WRITERS) {
-    api.requests.length = 0;
-    serveFicha(api, role, studentOf({ photoUrl: null }));
-    api.on('POST', `/api/students/${ID}/photo`, { status: 500 });
-
-    await page.goto(`/students/${ID}`);
-
-    await expect(page.getByText('Arraste uma foto aqui ou escolha um arquivo'), role).toBeVisible();
-    const button = page.getByRole('button', { name: 'Enviar foto' });
-    await expect(button, role).toBeVisible();
-    const accept = await page.locator('input[type=file]').getAttribute('accept');
-    expect(accept!.split(',').map((type) => type.trim()).sort(), role).toEqual(['image/jpeg', 'image/png', 'image/webp']);
-
-    // escolher o arquivo pelo botão
-    const chooser = page.waitForEvent('filechooser');
-    await button.click();
-    await (await chooser).setFiles(JPEG);
-    await expect.poll(() => uploadsOf(api).length, role).toBe(1);
-
-    // largar o arquivo na área
-    await page.evaluate(
-      ({ name, type, size }) => {
-        const transfer = new DataTransfer();
-        transfer.items.add(new File([new Uint8Array(size)], name, { type }));
-        const area = document.querySelector('[data-photo-dropzone]')!;
-        area.dispatchEvent(new DragEvent('dragover', { dataTransfer: transfer, bubbles: true, cancelable: true }));
-        area.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
-      },
-      { name: 'largada.png', type: 'image/png', size: 4096 },
-    );
-    await expect.poll(() => uploadsOf(api).length, role).toBe(2);
-
-    const [chosen, dropped] = uploadsOf(api).map((request) => request.body as RecordedUpload);
-    for (const upload of [chosen!, dropped!]) {
-      expect(upload.contentType, role).toMatch(/^multipart\/form-data; boundary=/);
-      expect(upload.parts, role).toHaveLength(1);
-      expect(upload.parts[0]!.name, role).toBe('file');
-    }
-    expect(chosen!.parts[0]).toMatchObject({ filename: JPEG.name, size: 2048 });
-    expect(dropped!.parts[0]).toMatchObject({ filename: 'largada.png', size: 4096 });
-  }
-});
-
-test('upload_button_disabled_with_enviando_while_waiting', async ({ page, api }) => {
-  serveFicha(api, 'reception', studentOf({ photoUrl: null }));
-  api.on('POST', `/api/students/${ID}/photo`, 'hang');
-
-  await page.goto(`/students/${ID}`);
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Enviar foto' }).click();
-  await (await chooser).setFiles(JPEG);
-
-  const busy = page.getByRole('button', { name: 'Enviando…' });
-  await expect(busy).toBeVisible();
-  await expect(busy).toBeDisabled();
-});
-
-test('successful_upload_shows_the_new_photo', async ({ page, api }) => {
-  const state = { photoUrl: null as string | null };
-  serveMutableFicha(api, 'reception', state);
-  servePhotoFile(api, PHOTO_PATH);
-  api.on('POST', `/api/students/${ID}/photo`, () => {
-    state.photoUrl = PHOTO_URL;
-    return { status: 201, body: { id: PHOTO_ID, version: 1, createdAt: '2026-10-05T02:30:00.000Z' } };
-  });
-
-  await page.goto(`/students/${ID}`);
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Enviar foto' }).click();
-  await (await chooser).setFiles(JPEG);
-
-  const photo = page.getByRole('img', { name: 'Foto de Marina Duarte' });
-  await expect(photo).toBeVisible();
-  await expect(photo).toHaveAttribute('src', PHOTO_URL);
-  await expect(page.getByText('Arraste uma foto aqui ou escolha um arquivo')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Enviar foto' })).toHaveCount(0);
-});
-
 test('six_upload_errors_show_their_messages_and_keep_the_form', async ({ page, api }) => {
   serveFicha(api, 'reception', studentOf({ photoUrl: null }));
   const GENERIC = 'Não foi possível enviar a foto. Tente novamente.';
@@ -214,9 +92,12 @@ test('six_upload_errors_show_their_messages_and_keep_the_form', async ({ page, a
   for (const [status, reply, message] of cases) {
     api.on('POST', `/api/students/${ID}/photo`, reply);
 
-    await page.locator('input[type=file]').setInputFiles(JPEG);
+    // todo arquivo passa pelo ajuste (foto-captura): o envio sai de "Salvar foto", e a mensagem fica no diálogo
+    await page.locator('input[type=file]').setInputFiles(pngFile(900, 1200));
+    await ajustar(page).getByRole('button', { name: 'Salvar foto', exact: true }).click();
 
     await expect(page.getByText(message, { exact: true }), String(status)).toBeVisible();
+    await ajustar(page).getByRole('button', { name: 'Cancelar', exact: true }).click();
     await expect(page.getByText('Arraste uma foto aqui ou escolha um arquivo'), String(status)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Enviar foto' }), String(status)).toBeEnabled();
   }

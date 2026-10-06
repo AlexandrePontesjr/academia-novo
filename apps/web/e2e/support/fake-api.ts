@@ -17,7 +17,7 @@ export interface Recorded {
 export interface RecordedUpload {
   contentType: string;
   /** Uma entrada por parte, na ordem em que chegaram. */
-  parts: Array<{ name: string; filename: string | undefined; size: number }>;
+  parts: Array<{ name: string; filename: string | undefined; size: number; bytes: Buffer }>;
 }
 
 export type Reply =
@@ -62,7 +62,7 @@ export function userOf(id: number, overrides: Partial<User> = {}): User {
   };
 }
 
-/** Lê as partes de um corpo multipart: nome, nome do arquivo e tamanho em bytes. */
+/** Lê as partes de um corpo multipart: nome, nome do arquivo, tamanho e os bytes de cada uma. */
 function uploadOf(raw: Buffer, contentType: string): RecordedUpload {
   const boundary = /boundary=("?)([^";]+)\1/.exec(contentType)?.[2] ?? '';
   const parts = raw
@@ -76,6 +76,7 @@ function uploadOf(raw: Buffer, contentType: string): RecordedUpload {
         name: /name="([^"]*)"/.exec(head)?.[1] ?? '',
         filename: /filename="([^"]*)"/.exec(head)?.[1],
         size: Buffer.byteLength(body, 'latin1'),
+        bytes: Buffer.from(body, 'latin1'),
       };
     });
   return { contentType, parts };
