@@ -57,6 +57,7 @@ export const uploadOf = (request: Recorded) => request.body as RecordedUpload;
 export type Rgb = [red: number, green: number, blue: number];
 const RED: Rgb = [225, 20, 20];
 const BLUE: Rgb = [20, 20, 225];
+const GREEN: Rgb = [20, 225, 20];
 const GREY: Rgb = [128, 128, 128];
 
 /** Uma imagem nascida de pixels dentro do teste. */
@@ -81,15 +82,26 @@ export const pngFile = (width: number, height: number, name = `imagem-${width}x$
   buffer: pngOf(width, height),
 });
 
-/** 800×800 de metade esquerda vermelha e direita azul. */
-export const redLeftBlueRight = () => ({
-  name: 'vermelho-azul.png',
+/** Metade esquerda vermelha e direita azul, do tamanho dado. */
+export const redLeftBlueRight = (width: number, height: number) => ({
+  name: `vermelho-azul-${width}x${height}.png`,
   mimeType: 'image/png',
-  buffer: pngOf(800, 800, (x) => (x < 400 ? RED : BLUE)),
+  buffer: pngOf(width, height, (x) => (x < width / 2 ? RED : BLUE)),
+});
+
+/**
+ * 800×800 com moldura verde de 100 pixels e miolo de 600×600 de metade esquerda vermelha e direita
+ * azul: a cor muda dentro e fora da região 3:4 central (x de 100 a 700), em qualquer giro.
+ */
+export const framedRedBlue = () => ({
+  name: 'moldura-vermelho-azul.png',
+  mimeType: 'image/png',
+  buffer: pngOf(800, 800, (x, y) => (x < 100 || x >= 700 || y < 100 || y >= 700 ? GREEN : x < 400 ? RED : BLUE)),
 });
 
 export const isRed = ([red, green, blue]: Rgb) => red >= 200 && green <= 60 && blue <= 60;
 export const isBlue = ([red, green, blue]: Rgb) => blue >= 200 && red <= 60 && green <= 60;
+export const isGreen = ([red, green, blue]: Rgb) => green >= 200 && red <= 60 && blue <= 60;
 
 export interface Decoded {
   width: number;
@@ -100,27 +112,35 @@ export interface Decoded {
   /** Linha `floor(altura × 0,25)` e `floor(altura × 0,75)`, na coluna do meio. */
   atHeight25: Rgb;
   atHeight75: Rgb;
+  /** Um pixel por ponto pedido: coluna `floor(largura × fx)`, linha `floor(altura × fy)`. */
+  points: Rgb[];
 }
 
+export type Point = readonly [fx: number, fy: number];
+
 /** Decodifica, no navegador do teste e sem passar pelo editor, a imagem que a API falsa recebeu. */
-export function decode(page: Page, bytes: Buffer): Promise<Decoded> {
-  return page.evaluate(async (base64) => {
-    const raw = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([raw]));
-    const { width, height } = bitmap;
-    const context = new OffscreenCanvas(width, height).getContext('2d')!;
-    context.drawImage(bitmap, 0, 0);
-    const at = (x: number, y: number) => Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3)) as [number, number, number];
-    const [midX, midY] = [Math.floor(width / 2), Math.floor(height / 2)];
-    return {
-      width,
-      height,
-      atWidth25: at(Math.floor(width * 0.25), midY),
-      atWidth75: at(Math.floor(width * 0.75), midY),
-      atHeight25: at(midX, Math.floor(height * 0.25)),
-      atHeight75: at(midX, Math.floor(height * 0.75)),
-    };
-  }, bytes.toString('base64'));
+export function decode(page: Page, bytes: Buffer, points: readonly Point[] = []): Promise<Decoded> {
+  return page.evaluate(
+    async ({ base64, points }) => {
+      const raw = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([raw]));
+      const { width, height } = bitmap;
+      const context = new OffscreenCanvas(width, height).getContext('2d')!;
+      context.drawImage(bitmap, 0, 0);
+      const at = (x: number, y: number) => Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3)) as [number, number, number];
+      const [midX, midY] = [Math.floor(width / 2), Math.floor(height / 2)];
+      return {
+        width,
+        height,
+        atWidth25: at(Math.floor(width * 0.25), midY),
+        atWidth75: at(Math.floor(width * 0.75), midY),
+        atHeight25: at(midX, Math.floor(height * 0.25)),
+        atHeight75: at(midX, Math.floor(height * 0.75)),
+        points: points.map(([fx, fy]) => at(Math.floor(width * fx), Math.floor(height * fy))),
+      };
+    },
+    { base64: bytes.toString('base64'), points: points.map(([fx, fy]) => [fx, fy] as [number, number]) },
+  );
 }
 
 /** O quadro de recorte: o elemento que delimita a região que será salva. O único ponto que o nomeia. */

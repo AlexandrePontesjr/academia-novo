@@ -1,3 +1,4 @@
+import type { Role } from '@academia/contracts';
 import type { Page } from '@playwright/test';
 import { expect, type FakeApi, problem, servePhotoFile, test } from './support/fake-api.ts';
 import {
@@ -6,15 +7,18 @@ import {
   CROP_FRAME,
   decode,
   dropOn,
+  framedRedBlue,
   frameRatio,
   ID,
   isBlue,
+  isGreen,
   isRed,
   PHOTO_ID,
   PHOTO_PATH,
   PHOTO_URL,
   photoRequests,
   pngFile,
+  type Point,
   redLeftBlueRight,
   serveFicha,
   serveMutableFicha,
@@ -41,22 +45,23 @@ async function expectFrame3by4(page: Page, message: string) {
 }
 
 /** A ficha de um aluno sem foto, com a API aceitando o envio, e o arquivo já escolhido. */
-async function openWithFile(page: Page, api: FakeApi, file: TestFile) {
+async function openWithFile(page: Page, api: FakeApi, file: TestFile, role: Role = 'reception', way: 'escolher' | 'largar' = 'escolher') {
   api.requests.length = 0;
-  serveFicha(api, 'reception', studentOf({ photoUrl: null }));
+  serveFicha(api, role, studentOf({ photoUrl: null }));
   api.on('POST', PHOTO_ROUTE, CREATED);
   await page.goto(`/students/${ID}`);
-  await choose(page, 'Enviar foto', file);
+  if (way === 'escolher') await choose(page, 'Enviar foto', file);
+  else await dropOn(page, AREA, file);
   await expect(ajustar(page)).toBeVisible();
 }
 
 /** Aciona "Salvar foto" e devolve o JPEG que a API recebeu, decodificado pelo teste. */
-async function saveAndDecode(page: Page, api: FakeApi) {
+async function saveAndDecode(page: Page, api: FakeApi, points: readonly Point[] = []) {
   const before = photoRequests(api).length;
   await saveButton(page).click();
   await expect.poll(() => photoRequests(api).length).toBe(before + 1);
   const upload = uploadOf(photoRequests(api)[before]!);
-  return { upload, image: await decode(page, upload.parts[0]!.bytes) };
+  return { upload, image: await decode(page, upload.parts[0]!.bytes, points) };
 }
 
 test('choosing_or_dropping_opens_ajustar_foto_with_3_4_frame_and_sends_nothing', async ({ page, api }) => {
@@ -113,40 +118,89 @@ test('zoom_1_to_3_and_two_rotate_buttons_keep_the_frame_3_4', async ({ page, api
 });
 
 test('untouched_save_sends_one_600x800_jpeg_file_part_red_left_blue_right', async ({ page, api }) => {
-  await openWithFile(page, api, redLeftBlueRight());
+  // a moldura lateral fica fora da região; a de cima e a de baixo ficam dentro
+  const EDGES: Point[] = [
+    [0.05, 0.5],
+    [0.95, 0.5],
+    [0.25, 0.05],
+    [0.75, 0.95],
+  ];
 
-  const { upload, image } = await saveAndDecode(page, api);
+  for (const role of WRITERS) {
+    for (const way of ['escolher', 'largar'] as const) {
+      const name = `${role}, ${way}`;
+      await openWithFile(page, api, framedRedBlue(), role, way);
 
-  expect(upload.contentType).toMatch(/^multipart\/form-data; boundary=/);
-  expect(upload.parts).toHaveLength(1);
-  expect(upload.parts[0]!.name).toBe('file');
-  expect(upload.parts[0]!.filename).toBe('foto.jpg');
-  expect([...upload.parts[0]!.bytes.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
-  expect([image.width, image.height]).toEqual([600, 800]);
+      const { upload, image } = await saveAndDecode(page, api, EDGES);
+
+      expect(upload.contentType, name).toMatch(/^multipart\/form-data; boundary=/);
+      expect(upload.parts, name).toHaveLength(1);
+      expect(upload.parts[0]!.name, name).toBe('file');
+      expect(upload.parts[0]!.filename, name).toBe('foto.jpg');
+      expect([...upload.parts[0]!.bytes.subarray(0, 3)], name).toEqual([0xff, 0xd8, 0xff]);
+      expect([image.width, image.height], name).toEqual([600, 800]);
+      expect(isRed(image.atWidth25), `${name}: 25% da largura: ${image.atWidth25}`).toBe(true);
+      expect(isBlue(image.atWidth75), `${name}: 75% da largura: ${image.atWidth75}`).toBe(true);
+      const [left, right, top, bottom] = image.points;
+      expect(isRed(left!), `${name}: 5% da largura: ${left}`).toBe(true);
+      expect(isBlue(right!), `${name}: 95% da largura: ${right}`).toBe(true);
+      expect(isGreen(top!), `${name}: 5% da altura: ${top}`).toBe(true);
+      expect(isGreen(bottom!), `${name}: 95% da altura: ${bottom}`).toBe(true);
+
+      // exatamente uma requisição de foto, também depois de a tela se acomodar
+      await expect(ajustar(page), name).toHaveCount(0);
+      expect(photoRequests(api), name).toHaveLength(1);
+    }
+  }
+});
+
+test('zoom_2_save_sends_the_central_300x400_without_the_green_frame', async ({ page, api }) => {
+  await openWithFile(page, api, framedRedBlue());
+  await zoomOf(page).fill('2');
+  await expect(zoomOf(page)).toHaveValue('2');
+
+  // a região é a central de 300×400 (x de 250 a 550, y de 200 a 600): nenhuma moldura entra
+  const { image } = await saveAndDecode(page, api, [
+    [0.05, 0.05],
+    [0.95, 0.95],
+  ]);
+
+  expect([image.width, image.height]).toEqual([300, 400]);
   expect(isRed(image.atWidth25), `25% da largura: ${image.atWidth25}`).toBe(true);
   expect(isBlue(image.atWidth75), `75% da largura: ${image.atWidth75}`).toBe(true);
-
-  // exatamente uma requisição de foto, também depois de a tela se acomodar
-  await expect(ajustar(page)).toHaveCount(0);
-  expect(photoRequests(api)).toHaveLength(1);
+  const [topLeft, bottomRight] = image.points;
+  expect(isRed(topLeft!), `canto de cima à esquerda: ${topLeft}`).toBe(true);
+  expect(isBlue(bottomRight!), `canto de baixo à direita: ${bottomRight}`).toBe(true);
 });
 
 test('rotation_right_left_and_twice_moves_the_colours_by_90_degrees', async ({ page, api }) => {
+  // os dois pontos de borda ficam a 5% e a 95% do eixo que o giro deixou sem moldura
+  const ACROSS: Point[] = [
+    [0.05, 0.25],
+    [0.95, 0.75],
+  ];
+  const ALONG: Point[] = [
+    [0.05, 0.5],
+    [0.95, 0.5],
+  ];
   const cases = [
-    { name: 'direita uma vez', clicks: ['Girar à direita'], first: 'atHeight25', second: 'atHeight75', firstIs: isRed, secondIs: isBlue },
-    { name: 'esquerda uma vez', clicks: ['Girar à esquerda'], first: 'atHeight25', second: 'atHeight75', firstIs: isBlue, secondIs: isRed },
-    { name: 'direita duas vezes', clicks: ['Girar à direita', 'Girar à direita'], first: 'atWidth25', second: 'atWidth75', firstIs: isBlue, secondIs: isRed },
+    { name: 'direita uma vez', clicks: ['Girar à direita'], first: 'atHeight25', second: 'atHeight75', firstIs: isRed, secondIs: isBlue, edges: ACROSS },
+    { name: 'esquerda uma vez', clicks: ['Girar à esquerda'], first: 'atHeight25', second: 'atHeight75', firstIs: isBlue, secondIs: isRed, edges: ACROSS },
+    { name: 'direita duas vezes', clicks: ['Girar à direita', 'Girar à direita'], first: 'atWidth25', second: 'atWidth75', firstIs: isBlue, secondIs: isRed, edges: ALONG },
   ] as const;
 
-  for (const { name, clicks, first, second, firstIs, secondIs } of cases) {
-    await openWithFile(page, api, redLeftBlueRight());
+  for (const { name, clicks, first, second, firstIs, secondIs, edges } of cases) {
+    await openWithFile(page, api, framedRedBlue());
     for (const button of clicks) await ajustar(page).getByRole('button', { name: button, exact: true }).click();
 
-    const { image } = await saveAndDecode(page, api);
+    const { image } = await saveAndDecode(page, api, edges);
 
     expect([image.width, image.height], name).toEqual([600, 800]);
     expect(firstIs(image[first]), `${name}: ${first} é ${image[first]}`).toBe(true);
     expect(secondIs(image[second]), `${name}: ${second} é ${image[second]}`).toBe(true);
+    const [nearFirst, nearSecond] = image.points;
+    expect(firstIs(nearFirst!), `${name}: borda junto de ${first} é ${nearFirst}`).toBe(true);
+    expect(secondIs(nearSecond!), `${name}: borda junto de ${second} é ${nearSecond}`).toBe(true);
   }
 });
 
@@ -160,11 +214,13 @@ test('output_capped_at_1200x1600_and_never_enlarged_five_sources', async ({ page
   ];
 
   for (const [[width, height], sent] of cases) {
-    await openWithFile(page, api, pngFile(width, height));
+    await openWithFile(page, api, redLeftBlueRight(width, height));
 
     const { image } = await saveAndDecode(page, api);
 
     expect([image.width, image.height], `${width}×${height}`).toEqual(sent);
+    expect(isRed(image.atWidth25), `${width}×${height}: 25% da largura: ${image.atWidth25}`).toBe(true);
+    expect(isBlue(image.atWidth75), `${width}×${height}: 75% da largura: ${image.atWidth75}`).toBe(true);
   }
 });
 
@@ -177,7 +233,7 @@ test('zoom_stops_where_the_region_is_300x400_four_sources', async ({ page, api }
   ];
 
   for (const [[width, height], sent] of cases) {
-    await openWithFile(page, api, pngFile(width, height));
+    await openWithFile(page, api, redLeftBlueRight(width, height));
     // o máximo que o diálogo permite: a tecla End leva o controle ao fim do curso
     await zoomOf(page).focus();
     await page.keyboard.press('End');
@@ -185,6 +241,8 @@ test('zoom_stops_where_the_region_is_300x400_four_sources', async ({ page, api }
     const { image } = await saveAndDecode(page, api);
 
     expect([image.width, image.height], `${width}×${height}`).toEqual(sent);
+    expect(isRed(image.atWidth25), `${width}×${height}: 25% da largura: ${image.atWidth25}`).toBe(true);
+    expect(isBlue(image.atWidth75), `${width}×${height}: 75% da largura: ${image.atWidth75}`).toBe(true);
   }
 });
 
@@ -305,6 +363,7 @@ test('successful_save_closes_the_dialog_and_shows_the_new_photo', async ({ page,
   await expect(photo).toBeVisible();
   await expect(photo).toHaveAttribute('src', PHOTO_URL);
   await expect(page.getByText(AREA)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Enviar foto' })).toHaveCount(0);
 
   // a troca, por PUT
   const replaced = { photoUrl: PHOTO_URL as string | null };
@@ -407,6 +466,7 @@ test('trocar_foto_beside_remover_foto_opens_chooser_with_three_types', async ({ 
     await expect(page.getByRole('button', { name: 'Trocar foto', exact: true }), role).toBeVisible();
     await expect(page.getByRole('button', { name: 'Remover foto', exact: true }), role).toBeVisible();
     await expect(page.getByText(AREA), role).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Enviar foto' }), role).toHaveCount(0);
 
     expect(await choose(page, 'Trocar foto', pngFile(900, 1200)), role).toEqual(TYPES);
     await expect(ajustar(page), role).toBeVisible();

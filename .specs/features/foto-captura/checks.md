@@ -44,7 +44,12 @@ saída capturada em stdout, stderr e `console`. Regras próprias:
   do teste, com `createImageBitmap`, ou por uma biblioteca de imagem do próprio teste), nunca pelo
   código do editor: o oráculo é o enunciado do check. "Pixel a 25% da largura" é o da coluna
   `floor(largura × 0,25)`, na linha do meio; "a 25% da altura" é o da linha `floor(altura × 0,25)`, na
-  coluna do meio.
+  coluna do meio. "O ponto (fx, fy)" é o pixel da coluna `floor(largura × fx)`, na linha
+  `floor(altura × fy)`, e "verde" é G maior ou igual a 200 com R e B menores ou iguais a 60.
+- "A imagem com moldura" da C38 e da C39 tem 800×800: uma moldura verde de 100 pixels nos quatro lados
+  e um miolo de 600×600 de metade esquerda vermelha e direita azul. A região 3:4 central (x de 100 a
+  700) deixa de fora a moldura dos lados e inclui a de cima e a de baixo, em qualquer giro, e é isso que
+  faz a cor mudar dentro e fora da região esperada (oráculo reescrito depois da rodada 1 do Verifier).
 - "Requisição de foto" é qualquer requisição, de qualquer método, a `/api/students/<id>/photo`
   registrada pela `FakeApi`.
 - "O quadro de recorte" é o elemento que delimita a região que será salva; o seletor fica num único
@@ -180,10 +185,11 @@ Proof: `pnpm --filter "./apps/web" exec playwright test e2e/photo-editor.spec.ts
 **C37** - Com uma imagem de 1800×2400, o diálogo tem o controle de nome acessível "Zoom", com mínimo `1`, máximo `3` e valor inicial `1`, e os botões "Girar à esquerda" e "Girar à direita"; depois de cada acionamento de um e de outro, o quadro de recorte continua em 3:4 (AC 33, door 6)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/photo-editor.spec.ts -g "zoom_1_to_3_and_two_rotate_buttons_keep_the_frame_3_4"`
 
-**C38** - Escolhida uma imagem de 800×800 de metade esquerda vermelha e direita azul e acionado "Salvar foto" sem mexer em nada, a API recebe exatamente uma requisição de foto, `multipart/form-data`, com uma única parte, de nome `file` e nome de arquivo `foto.jpg`, cujos bytes começam por `FF D8 FF` e decodificam num JPEG de 600×800 pixels, vermelho a 25% da largura e azul a 75% (AC 34, Assumptions)
+**C38** - Para `admin` e para `reception`, escolhida e largada na área a imagem com moldura (quatro casos) e acionado "Salvar foto" sem mexer em nada, a API recebe exatamente uma requisição de foto, `multipart/form-data`, com uma única parte, de nome `file` e nome de arquivo `foto.jpg`, cujos bytes começam por `FF D8 FF` e decodificam num JPEG de 600×800 pixels, vermelho a 25% da largura e azul a 75%, vermelho no ponto (0,05; 0,5) e azul no ponto (0,95; 0,5) (a moldura dos lados ficou fora) e verde nos pontos (0,25; 0,05) e (0,75; 0,95) (a de cima e a de baixo ficaram dentro). Com o "Zoom" em `2` sobre a mesma imagem, o JPEG enviado tem 300×400 pixels, vermelho a 25% da largura e azul a 75%, vermelho no ponto (0,05; 0,05) e azul no ponto (0,95; 0,95): a região central de 300×400, sem moldura nenhuma (AC 34, Assumptions)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/photo-editor.spec.ts -g "untouched_save_sends_one_600x800_jpeg_file_part_red_left_blue_right"`
+Proof: `pnpm --filter "./apps/web" exec playwright test e2e/photo-editor.spec.ts -g "zoom_2_save_sends_the_central_300x400_without_the_green_frame"`
 
-**C39** - Com a imagem da C38, "Girar à direita" uma vez e "Salvar foto" enviam um JPEG de 600×800 vermelho a 25% da altura e azul a 75%; "Girar à esquerda" uma vez, um JPEG de 600×800 azul a 25% da altura e vermelho a 75%; e "Girar à direita" duas vezes, um de 600×800 azul a 25% da largura e vermelho a 75% (AC 35, AC 33)
+**C39** - Com a imagem com moldura da C38, "Girar à direita" uma vez e "Salvar foto" enviam um JPEG de 600×800 vermelho a 25% da altura e azul a 75%, vermelho no ponto (0,05; 0,25) e azul no ponto (0,95; 0,75); "Girar à esquerda" uma vez, um JPEG de 600×800 azul a 25% da altura e vermelho a 75%, azul no ponto (0,05; 0,25) e vermelho no ponto (0,95; 0,75); e "Girar à direita" duas vezes, um de 600×800 azul a 25% da largura e vermelho a 75%, azul no ponto (0,05; 0,5) e vermelho no ponto (0,95; 0,5). Em nenhum dos três os pontos de borda são verdes: a moldura dos lados ficou fora da região (AC 35, AC 33)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/photo-editor.spec.ts -g "rotation_right_left_and_twice_moves_the_colours_by_90_degrees"`
 
 **C40** - Salvo sem mexer em nada, o JPEG enviado tem 1200×1600 para uma origem de 3000×4000 e para uma de 1203×1604, 1200×1600 para uma de 1200×1600, 900×1200 para uma de 900×1200 e 300×400 para uma de 300×400 (AC 36)
@@ -323,6 +329,8 @@ que `Relations` acrescenta e os conjuntos enumerados nos critérios, nas `Assump
 | vias que abrem o ajuste (4) | escolher o arquivo C36 · largar o arquivo C36 · "Trocar foto" C49 · captura pela câmera C53 | - |
 | controles do diálogo (3) | "Zoom" de 1 a 3 C37 · "Girar à esquerda" C37, C39 · "Girar à direita" C37, C39 | - |
 | giro da imagem salva (4) | nenhum C38 · direita uma vez C39 · esquerda uma vez C39 · direita duas vezes C39 | - |
+| o que decide os pixels do JPEG enviado (4) | giro C39 · tamanho da região C40, C41 · deslocamento da região C38 (sem zoom e com "Zoom" em `2`), C39 · conteúdo depois da redução para 1200 C40 | - |
+| quem envia o recorte, e por qual via (4) | `admin` escolhendo C38 · `admin` largando C38 · `reception` escolhendo C38 · `reception` largando C38 | - |
 | tamanho do JPEG enviado (5 edges) | 3000×4000 C40 · 1203×1604 C40 · 1200×1600 C40 · 900×1200 C40 · 300×400 C40 | - |
 | limite do zoom por origem (4) | 600×800 C41 · 450×600 C41 · 300×400 C41 · 1800×2400 chega a 3 C41 | - |
 | imagem pequena demais (5 edges) | 299×400 C42 · 300×399 C42 · 399×299 C42 · 200×200 C42 · 300×400 aceita C42 | - |
@@ -339,7 +347,7 @@ que `Relations` acrescenta e os conjuntos enumerados nos critérios, nas `Assump
 | estados do bloco de foto em `Observable` (2) | vazio C36, C50 · sem permissão C58 | - |
 | estados do diálogo em `Observable` (4) | carregando C45, C52 · erro C42, C43, C47, C54, C55 · sem permissão C58 · densidade e ordem C37, C51 | - |
 | textos literais do diálogo e da ficha (18) | "Ajustar foto" C36 · "Zoom" C37 · "Girar à esquerda" C37 · "Girar à direita" C37 · "Salvar foto" C38 · "Enviando…" C45 · "Cancelar" C48 · "Trocar foto" C49 · "Usar câmera" C50 · "Enquadre o rosto e os ombros" C51 · "Capturar" C51 · "Abrindo câmera…" C52 · "Tirar outra" C53 · "Trocar câmera" C56 · "A foto precisa ter pelo menos 300×400 pixels." C42 · "Use um arquivo JPEG, PNG ou WebP." C43 · "Permita o uso da câmera no navegador ou envie um arquivo." C54 · "Nenhuma câmera disponível neste dispositivo. Envie um arquivo." C55 | - |
-| checks da `foto-pipeline` substituídos (2) | C64 de lá por C36, C38 e C44 · C65 de lá por C45 e C46 | - |
+| checks da `foto-pipeline` substituídos (2) | C64 de lá por C36, C38 e C44 (o envio multipart para os dois perfis e para o arquivo largado, na C38) · C65 de lá por C45 e C46 | - |
 | startup config: migração `0006` aplicada (3 assemblies) | banco migrado em `packages/database` C1 · harness de `apps/api` C6 · stack do compose C65 | - |
 | startup config: retenção padrão de 30 dias (3 places) | `loadEnv` C4 · ambiente montado pelo `startApi` C6 · processo real na stack, sem a variável C65 | - |
 | startup config: temporizador do expurgo ligado (3 assemblies) | API montada pelo `startApi` C22 · `dist/main.js` como processo filho C22 · container `api` da stack C65 | - |
@@ -398,6 +406,15 @@ que `Relations` acrescenta e os conjuntos enumerados nos critérios, nas `Assump
   por AC deixa de bastar e as tabelas passam a ser devidas também no `PUT`: é o que o Verifier confere no diff
 - C40 e C41 usam origens em 3:4 exatos e fatores de zoom que dão regiões inteiras, para a dimensão do
   JPEG ser um número só; o arredondamento de uma região de lado fracionário não é afirmado
+- Conserto da rodada 1 do Verifier, sem mudar o claim de check nenhum além da C38 e da C39: as provas da
+  C40 e da C41 passam a usar origens de metade esquerda vermelha e direita azul e afirmam, em cada um dos
+  nove casos, vermelho a 25% da largura e azul a 75% (a linha 2 da `Test policy`; no caso 3000×4000 é o
+  que prova o conteúdo depois da redução para 1200); as provas da C20 e da C21 afirmam a contagem de
+  `audit_logs` depois da execução (mais 3 na C20; mais 1 na C21, a da versão vencida que a mesma execução
+  remove, e nenhuma linha `student.photo_version_purged` dos dois alunos que só têm o que fica), e a da
+  C24 afirma as três chaves que ficam no caso "os três objetos falham" (a linha 1 da `Test policy`); as
+  provas da C46 e da C49 afirmam que não há botão "Enviar foto" na ficha de quem tem foto, depois do `201`
+  e para `admin` e `reception`, que é a asserção que saiu com `successful_upload_shows_the_new_photo`
 - Além do texto das AC, derivado do `Impact`, das `Assumptions`, das doors ou da prática do repositório,
   e que o Build pode discutir antes de fechar: a versão mais antiga não recarimbada na segunda troca (C6);
   a URL anterior entregando até `exp` (C8); os dois `PUT` sobre aluno sem foto (C17); a falha de só um
