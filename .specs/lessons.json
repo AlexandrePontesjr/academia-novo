@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 20,
+  "next_id": 24,
   "lessons": [
     {
       "id": "L-001",
@@ -346,6 +346,78 @@
       ],
       "created": "2026-10-04T06:22:59Z",
       "last_seen": "2026-10-04T06:22:59Z"
+    },
+    {
+      "id": "L-020",
+      "key": "surviving_mutant::prove an image crop on a source whose colour differs between the expected region and any shifted region not on halves that agree at the sampled points",
+      "text": "Prove an image crop on a source whose colour differs between the expected region and any shifted region, not on halves that agree at the sampled points",
+      "signal": "surviving_mutant",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "foto-captura"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/web/src/lib/photo-crop.ts:67 (C38, C39, C41, C53) (web)"
+      ],
+      "created": "2026-10-06T01:40:34Z",
+      "last_seen": "2026-10-06T01:40:34Z"
+    },
+    {
+      "id": "L-021",
+      "key": "surviving_mutant::assert pixel colour not only dimensions on every case that resizes an image",
+      "text": "Assert pixel colour, not only dimensions, on every case that resizes an image",
+      "signal": "surviving_mutant",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "foto-captura"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/web/src/lib/photo-crop.ts:66 (C40) (web)"
+      ],
+      "created": "2026-10-06T01:40:34Z",
+      "last_seen": "2026-10-06T01:40:34Z"
+    },
+    {
+      "id": "L-022",
+      "key": "spec_precision_gap::state a pixel oracle in a check at points whose expected colour changes when the cropped region moves",
+      "text": "State a pixel oracle in a check at points whose expected colour changes when the cropped region moves",
+      "signal": "spec_precision_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "foto-captura"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C38, C39 - apps/web/e2e/photo-editor.spec.ts:126 (web)"
+      ],
+      "created": "2026-10-06T01:40:34Z",
+      "last_seen": "2026-10-06T01:40:34Z"
+    },
+    {
+      "id": "L-023",
+      "key": "ac_gap::assert every observable a test policy row names in the same proof that exercises the case",
+      "text": "Assert every observable a Test policy row names in the same proof that exercises the case",
+      "signal": "ac_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "foto-captura"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "Test policy row 1 - apps/api/test/photos-purge.test.ts:124 (api)"
+      ],
+      "created": "2026-10-06T01:40:35Z",
+      "last_seen": "2026-10-06T01:40:35Z"
     }
   ]
 }

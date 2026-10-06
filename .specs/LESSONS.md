@@ -128,6 +128,30 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)
 - last seen: 2026-10-04T06:22:59Z
 
+### L-020 - Prove an image crop on a source whose colour differs between the expected region and any shifted region, not on halves that agree at the sampled points
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: foto-captura
+- evidence: apps/web/src/lib/photo-crop.ts:67 (C38, C39, C41, C53) (web)
+- last seen: 2026-10-06T01:40:34Z
+
+### L-021 - Assert pixel colour, not only dimensions, on every case that resizes an image
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: foto-captura
+- evidence: apps/web/src/lib/photo-crop.ts:66 (C40) (web)
+- last seen: 2026-10-06T01:40:34Z
+
+### L-022 - State a pixel oracle in a check at points whose expected colour changes when the cropped region moves
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: foto-captura
+- evidence: C38, C39 - apps/web/e2e/photo-editor.spec.ts:126 (web)
+- last seen: 2026-10-06T01:40:34Z
+
+### L-023 - Assert every observable a Test policy row names in the same proof that exercises the case
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: foto-captura
+- evidence: Test policy row 1 - apps/api/test/photos-purge.test.ts:124 (api)
+- last seen: 2026-10-06T01:40:35Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
