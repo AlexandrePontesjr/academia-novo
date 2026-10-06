@@ -228,7 +228,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(18);
+  expect(AUDIT_ACTIONS).toHaveLength(20);
   expect([...AUDIT_ACTIONS]).toEqual([
     ...before,
     'student.created',
@@ -239,6 +239,8 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'student.consent_revoked',
     'student.photo_uploaded',
     'student.photo_removed',
+    'student.photo_replaced',
+    'student.photo_version_purged',
   ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
@@ -350,7 +352,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(18);
+  expect(AUDIT_ACTIONS).toHaveLength(20);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -370,7 +372,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(18);
+  expect(AUDIT_ACTIONS).toHaveLength(20);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -389,7 +391,33 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
     'student.consent_granted',
     'student.consent_revoked',
   ]);
-  expect(AUDIT_ACTIONS.slice(16)).toEqual(['student.photo_uploaded', 'student.photo_removed']);
+  expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(['student.photo_uploaded', 'student.photo_removed']);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('audit_actions_end_with_replace_and_purge_in_order', () => {
+  expect(AUDIT_ACTIONS).toHaveLength(20);
+  expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+    'student.photo_uploaded',
+    'student.photo_removed',
+  ]);
+  expect(AUDIT_ACTIONS.slice(18)).toEqual(['student.photo_replaced', 'student.photo_version_purged']);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 

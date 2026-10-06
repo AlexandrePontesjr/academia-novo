@@ -5,6 +5,7 @@ import type { Express } from 'express';
 import { Public } from '../../src/access.ts';
 import { AppModule } from '../../src/app.module.ts';
 import { configureApp } from '../../src/configure-app.ts';
+import { loadEnv } from '../../src/env.ts';
 
 export const BOOM_MESSAGE = 'segredo-da-excecao-42';
 export const WEB_ORIGIN = 'http://localhost:3000';
@@ -43,19 +44,25 @@ interface RouterLayer {
 }
 
 /** Sobe a API num porto livre, com o mesmo AppModule e o mesmo configureApp que o processo real usa. */
-export async function startApi(databaseUrl: string, controllers: Type[] = [], storage: StorageEnv = NO_STORAGE) {
+export async function startApi(
+  databaseUrl: string,
+  controllers: Type[] = [],
+  storage: StorageEnv = NO_STORAGE,
+  extraEnv: Record<string, string> = {},
+) {
+  // o ambiente passa pelo mesmo `loadEnv` do processo real: o que é opcional recebe o padrão de lá
+  const env = loadEnv({
+    DATABASE_URL: databaseUrl,
+    PORT: '3001',
+    AUTH_SECRET,
+    WEB_ORIGIN,
+    DATA_ENCRYPTION_KEY,
+    PHOTO_URL_SECRET,
+    ...storage,
+    ...extraEnv,
+  });
   const moduleRef = await Test.createTestingModule({
-    imports: [
-      AppModule.register({
-        DATABASE_URL: databaseUrl,
-        PORT: 0,
-        AUTH_SECRET,
-        WEB_ORIGIN,
-        DATA_ENCRYPTION_KEY,
-        PHOTO_URL_SECRET,
-        ...storage,
-      }),
-    ],
+    imports: [AppModule.register({ ...env, PORT: 0 })],
     controllers,
   }).compile();
   const app = moduleRef.createNestApplication({ logger: false });

@@ -17,6 +17,8 @@ export const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().min(1),
   /** Chave que assina as URLs de foto (door 4): separada de `AUTH_SECRET`, 32 caracteres ou mais. */
   PHOTO_URL_SECRET: z.string().min(32),
+  /** Dias que a versão trocada de uma foto fica guardada antes do expurgo (foto-captura, door 5). */
+  PHOTO_VERSION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;

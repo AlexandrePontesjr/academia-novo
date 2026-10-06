@@ -134,7 +134,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(18);
+  expect(AUDIT_ACTIONS).toHaveLength(20);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -161,6 +161,8 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Consentimento revogado',
     'Foto do aluno enviada',
     'Foto do aluno removida',
+    'Foto do aluno trocada',
+    'Versão anterior da foto excluída',
   ]);
 });
 
@@ -183,6 +185,8 @@ const LABELS = [
   'Consentimento revogado',
   'Foto do aluno enviada',
   'Foto do aluno removida',
+  'Foto do aluno trocada',
+  'Versão anterior da foto excluída',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -201,7 +205,7 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(18);
+  expect(options.slice(1)).toHaveLength(20);
   expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
@@ -453,7 +457,7 @@ test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) =>
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(18);
+  expect(options.slice(1)).toHaveLength(20);
   expect(options.slice(14, 17)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
   // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
   expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(consentActions);
@@ -514,8 +518,8 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(18);
+  expect(options.slice(1)).toHaveLength(20);
   // a posição de cada uma é a 17 e a 18 do vocabulário
-  expect(options.slice(17)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
-  expect(AUDIT_ACTIONS.slice(16)).toEqual(photoActions);
+  expect(options.slice(17, 19)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
+  expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(photoActions);
 });
