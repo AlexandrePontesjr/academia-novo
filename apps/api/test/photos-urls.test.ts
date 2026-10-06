@@ -335,7 +335,10 @@ const ficha = (role: Role) => (role === 'reception' ? FICHA_KEYS.admin : FICHA_K
 /** Um aluno com uma versão antiga não corrente e a corrente, inseridas direto: só a corrente é a foto. */
 async function studentWithTwoVersions(overrides: Record<string, unknown> = {}) {
   const studentId = await newStudent(overrides);
-  await env.stack.query('insert into photos (student_id, version, is_current) values ($1, 1, false)', [studentId]);
+  await env.stack.query(
+    `insert into photos (student_id, version, is_current, expires_at) values ($1, 1, false, now() + interval '30 days')`,
+    [studentId],
+  );
   const [current] = await env.stack.query<{ id: string }>(
     'insert into photos (student_id, version, is_current) values ($1, 2, true) returning id',
     [studentId],

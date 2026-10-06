@@ -1,0 +1,2 @@
+ALTER TABLE "photos" ADD COLUMN "expires_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "photos" ADD CONSTRAINT "photos_expiry_matches_current" CHECK ("photos"."is_current" = ("photos"."expires_at" IS NULL));

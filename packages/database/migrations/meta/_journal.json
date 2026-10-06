@@ -43,6 +43,13 @@
       "when": 1791166598322,
       "tag": "0005_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791246763412,
+      "tag": "0006_photo_expiry",
+      "breakpoints": true
     }
   ]
 }

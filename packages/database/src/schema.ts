@@ -258,9 +258,12 @@ export const photos = pgTable(
     version: integer('version').notNull(),
     isCurrent: boolean('is_current').notNull(),
     createdAt: instant('created_at').notNull().defaultNow(),
+    /** Prazo da versão guardada: nulo se e somente se a foto é a corrente (foto-captura, door 1). */
+    expiresAt: instant('expires_at'),
   },
   (table) => [
     check('photos_version_positive', sql`${table.version} >= 1`),
+    check('photos_expiry_matches_current', sql`${table.isCurrent} = (${table.expiresAt} IS NULL)`),
     unique('photos_student_id_version_unique').on(table.studentId, table.version),
     uniqueIndex('photos_one_current_idx').on(table.studentId).where(sql`${table.isCurrent}`),
   ],
