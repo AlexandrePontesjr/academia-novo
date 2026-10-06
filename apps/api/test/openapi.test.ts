@@ -137,13 +137,15 @@ test('request_bodies_come_from_contract_schemas', async () => {
 
     expect(documented, `${method} ${path}`).toEqual(JSON.parse(JSON.stringify(z.toJSONSchema(schema))));
   }
-  // nenhuma outra rota declara corpo, salvo o upload de foto, que é `multipart/form-data` e não tem schema Zod
+  // nenhuma outra rota declara corpo, salvo o envio e a troca de foto, que são `multipart/form-data` e não têm schema Zod
   const withBody = Object.entries(paths).flatMap(([path, operations]) =>
     Object.entries(operations)
       .filter(([, operation]) => operation.requestBody)
       .map(([method]) => `${method} ${path}`),
   );
-  expect(withBody.sort()).toEqual([...contracts.map(([method, path]) => `${method} ${path}`), 'post /api/students/{id}/photo'].sort());
+  expect(withBody.sort()).toEqual(
+    [...contracts.map(([method, path]) => `${method} ${path}`), 'post /api/students/{id}/photo', 'put /api/students/{id}/photo'].sort(),
+  );
 });
 
 test('consent_paths_and_guardian_body_come_from_contract_schemas', async () => {
@@ -175,7 +177,7 @@ test('photo_paths_and_query_parameters_come_from_contract_schema', async () => {
   const json = (schema: z.ZodType) => JSON.parse(JSON.stringify(z.toJSONSchema(schema))) as { properties: Record<string, unknown> };
   const { paths } = await document();
 
-  expect(Object.keys(paths['/api/students/{id}/photo'] ?? {}).sort()).toEqual(['delete', 'get', 'post']);
+  expect(Object.keys(paths['/api/students/{id}/photo'] ?? {}).sort()).toEqual(['delete', 'get', 'post', 'put']);
   expect(Object.keys(paths['/api/photo-files/{photoId}/{variant}'] ?? {})).toEqual(['get']);
 
   const query = (paths['/api/students/{id}/photo']?.get?.parameters ?? []).filter((parameter) => parameter.in === 'query');
@@ -189,4 +191,25 @@ test('photo_paths_and_query_parameters_come_from_contract_schema', async () => {
   expect(fileQuery.map((parameter) => parameter.name).sort()).toEqual(['exp', 'sig']);
 
   expect(paths['/api/students/{id}/photo']?.post?.requestBody?.content['application/json']).toBeUndefined();
+});
+
+test('photo_put_is_multipart_with_the_post_response_schema', async () => {
+  const { paths } = await document();
+  const photo = paths['/api/students/{id}/photo'] ?? {};
+
+  expect(Object.keys(photo).sort()).toEqual(['delete', 'get', 'post', 'put']);
+  const body = photo.put?.requestBody?.content ?? {};
+  expect(Object.keys(body)).toEqual(['multipart/form-data']);
+  expect(body['application/json']).toBeUndefined();
+  expect(body['multipart/form-data']?.schema).toMatchObject({
+    type: 'object',
+    required: ['file'],
+    properties: { file: { type: 'string', format: 'binary' } },
+  });
+
+  const responses = (operation: unknown) => (operation as { responses: Record<string, { content?: Record<string, { schema: unknown }> }> }).responses;
+  const created = responses(photo.put)['201']?.content?.['application/json']?.schema;
+  expect(Object.keys(responses(photo.put))).toEqual(['201']);
+  expect(created).toBeDefined();
+  expect(created).toEqual(responses(photo.post)['201']?.content?.['application/json']?.schema);
 });

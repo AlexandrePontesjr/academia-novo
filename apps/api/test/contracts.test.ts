@@ -27,7 +27,7 @@ import {
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import type { z } from 'zod';
 import { startApi } from './support/app.ts';
-import { apiWith, jpegBytes, padJpeg, uploaded, uploadPhoto } from './support/photos.ts';
+import { apiWith, jpegBytes, padJpeg, replacePhoto, solid, uploaded, uploadPhoto } from './support/photos.ts';
 import { freePort, type Minio, refusingDatabaseUrl, startMinio, startPostgres } from './support/servers.ts';
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
 import { createAdult, createMinorWithGuardian, insertTerm } from './support/consents.ts';
@@ -667,6 +667,47 @@ test('photo_codes_are_known_problem_codes', async () => {
       expect(body.code, code).toBe(code);
       expect(response.headers.get('content-type'), code).toMatch(/^application\/problem\+json\b/);
       expect(problemSchema.safeParse(body).success, code).toBe(true);
+    }
+  } finally {
+    await down.api.close();
+  }
+});
+
+test('photo_put_bodies_match_contract_schemas', async () => {
+  const { client } = await stack.session('reception');
+  const down = await apiWith(stack, { ...minio.env, S3_ENDPOINT: `http://127.0.0.1:${await freePort()}` });
+  try {
+    const withPhoto = await createStudent(client, studentBody(7401));
+    const photoless = await createStudent(client, studentBody(7402));
+    const jpeg = await jpegBytes();
+    await uploaded(await uploadPhoto(client, withPhoto.id, jpeg));
+
+    const created: Array<[name: string, response: Response]> = [
+      ['com foto anterior', await replacePhoto(client, withPhoto.id, jpeg)],
+      ['sem foto anterior', await replacePhoto(client, photoless.id, jpeg)],
+    ];
+    for (const [name, response] of created) {
+      const parsed = photoCreatedSchema.safeParse(await response.json());
+
+      expect(response.status, name).toBe(201);
+      expect(parsed.success, `${name}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+    }
+
+    const refused: Array<[status: number, send: () => Promise<Response>]> = [
+      [413, () => replacePhoto(client, withPhoto.id, padJpeg(jpeg, 5_242_881))],
+      [415, () => replacePhoto(client, withPhoto.id, Buffer.from('texto'.repeat(30)))],
+      [422, async () => replacePhoto(client, withPhoto.id, await solid(299, 400).jpeg().toBuffer())],
+      [503, () => replacePhoto(down.client, withPhoto.id, jpeg)],
+    ];
+    for (const [status, send] of refused) {
+      const response = await send();
+      const body = (await response.json()) as Record<string, unknown>;
+      const parsed = problemSchema.safeParse(body);
+
+      expect(response.status, String(status)).toBe(status);
+      expect(body.status, String(status)).toBe(status);
+      expect(response.headers.get('content-type'), String(status)).toMatch(/^application\/problem\+json\b/);
+      expect(parsed.success, `${status}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
     }
   } finally {
     await down.api.close();
