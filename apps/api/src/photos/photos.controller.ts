@@ -23,7 +23,7 @@ const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
 /**
  * A foto do aluno (door 7: o processamento é síncrono, dentro da requisição). `admin` e `reception`
  * enviam, trocam e removem; os quatro perfis pedem a URL, e a entrega do arquivo é aberta porque a
- * assinatura é a credencial (door 4).
+ * assinatura é a credencial (door 4). A do funcionário usa o mesmo pipeline nas rotas `staff/:id/photo`.
  */
 @Controller('api')
 export class PhotosController {
@@ -68,6 +68,38 @@ export class PhotosController {
   @Output(204)
   async remove(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
     const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    await this.photos.remove(target, actor);
+  }
+
+  /** A foto do funcionário (funcionarios, door 2): o mesmo pipeline, com `admin` e `hr_finance` (RF-10). */
+  @Post('staff/:id/photo')
+  @Roles('admin', 'hr_finance')
+  @Multipart()
+  @Output(201, photoCreatedSchema)
+  async uploadStaff(@Param('id') id: string, @Req() req: Request, @Actor() actor: AuditActor): Promise<PhotoCreated> {
+    const target = await this.photos.findStaff(id);
+    if (!target) throw new NotFoundException();
+    const file = await readFilePart(req);
+    return this.photos.create(target, file, actor);
+  }
+
+  @Put('staff/:id/photo')
+  @Roles('admin', 'hr_finance')
+  @Multipart()
+  @Output(201, photoCreatedSchema)
+  async replaceStaff(@Param('id') id: string, @Req() req: Request, @Actor() actor: AuditActor): Promise<PhotoCreated> {
+    const target = await this.photos.findStaff(id);
+    if (!target) throw new NotFoundException();
+    const file = await readFilePart(req);
+    return this.photos.replace(target, file, actor);
+  }
+
+  @Delete('staff/:id/photo')
+  @Roles('admin', 'hr_finance')
+  @Output(204)
+  async removeStaff(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    const target = await this.photos.findStaff(id);
     if (!target) throw new NotFoundException();
     await this.photos.remove(target, actor);
   }

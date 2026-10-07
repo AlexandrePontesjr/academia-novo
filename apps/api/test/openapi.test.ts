@@ -150,7 +150,13 @@ test('request_bodies_come_from_contract_schemas', async () => {
       .map(([method]) => `${method} ${path}`),
   );
   expect(withBody.sort()).toEqual(
-    [...contracts.map(([method, path]) => `${method} ${path}`), 'post /api/students/{id}/photo', 'put /api/students/{id}/photo'].sort(),
+    [
+      ...contracts.map(([method, path]) => `${method} ${path}`),
+      'post /api/students/{id}/photo',
+      'put /api/students/{id}/photo',
+      'post /api/staff/{id}/photo',
+      'put /api/staff/{id}/photo',
+    ].sort(),
   );
 });
 

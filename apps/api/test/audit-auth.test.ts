@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import { jpegBytes, replacePhoto, uploadPhoto } from './support/photos.ts';
+import { postStaffPhoto, putStaffPhoto } from './support/staff.ts';
 import { type Minio, startMinio } from './support/servers.ts';
 import { problem, type SeededUser, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
@@ -329,6 +330,11 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const linkedUser = await stack.seed({ role: 'reception' });
   await admin.put(`/api/staff/${staffId}/user`, { userId: linkedUser.id }); // staff.user_linked
   await admin.delete(`/api/staff/${staffId}/user`); // staff.user_unlinked
+  await postStaffPhoto(admin, staffId, await jpegBytes()); // staff.photo_uploaded
+  await putStaffPhoto(admin, staffId, await jpegBytes()); // staff.photo_replaced
+  await stack.query(`update photos set expires_at = now() - interval '1 second' where staff_id = $1 and not is_current`, [staffId]);
+  await stack.api.purge(); // staff.photo_version_purged
+  await admin.delete(`/api/staff/${staffId}/photo`); // staff.photo_removed
   await admin.delete(`/api/staff/${staffId}`); // staff.inactivated
 
   const rows = await auditRows(stack);
@@ -336,14 +342,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
 
   expect(auditActionSchema.options).toHaveLength(31);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  // as ações de funcionário saem desta lista no commit da rota que passa a gravá-las (funcionarios, S1 a S7);
-  // a lista só encolhe, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
-  const STAFF_ACTIONS_NOT_ROUTED_YET: string[] = [
-    'staff.photo_uploaded',
-    'staff.photo_removed',
-    'staff.photo_replaced',
-    'staff.photo_version_purged',
-  ];
+  // as ações de funcionário saíram desta lista no commit da rota que passou a gravá-las (funcionarios, S1 a S7);
+  // a lista só encolhia, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
+  const STAFF_ACTIONS_NOT_ROUTED_YET: string[] = [];
   expect(written.filter((action) => STAFF_ACTIONS_NOT_ROUTED_YET.includes(action))).toEqual([]);
   expect(written).toEqual(auditActionSchema.options.filter((action) => !STAFF_ACTIONS_NOT_ROUTED_YET.includes(action)).sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);

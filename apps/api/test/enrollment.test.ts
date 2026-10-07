@@ -77,6 +77,9 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'DELETE /api/staff/:id',
       'PUT /api/staff/:id/user',
       'DELETE /api/staff/:id/user',
+      'POST /api/staff/:id/photo',
+      'PUT /api/staff/:id/photo',
+      'DELETE /api/staff/:id/photo',
       'GET /api/openapi.json',
     ].sort(),
   );

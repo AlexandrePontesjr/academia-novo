@@ -2,7 +2,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import type { Staff } from '@academia/contracts';
 import { expect } from 'vitest';
 import type { Client } from './client.ts';
-import { webpBytes } from './photos.ts';
+import { bucketKeys, multipart, type Part, webpBytes } from './photos.ts';
 import type { Minio } from './servers.ts';
 import type { Stack } from './stack.ts';
 import { cpfOf } from './students.ts';
@@ -110,11 +110,7 @@ export const STAFF_ROUTES: StaffRoute[] = [
  * mesmo commit (S3 as duas de leitura, S4 o `PATCH` e o `DELETE`, S5 as duas de vínculo, S7 as três de foto), e as provas das dez rotas passam a
  * afirmar o resultado de verdade nela. Enquanto uma rota está aqui, a prova exige o `404` dela.
  */
-export const UNBUILT_STAFF_ROUTES: string[] = [
-  'POST /api/staff/:id/photo',
-  'PUT /api/staff/:id/photo',
-  'DELETE /api/staff/:id/photo',
-];
+export const UNBUILT_STAFF_ROUTES: string[] = [];
 
 export const routeKey = (route: StaffRoute) => `${route.method} ${route.path}`;
 export const isBuilt = (route: StaffRoute) => !UNBUILT_STAFF_ROUTES.includes(routeKey(route));
@@ -164,4 +160,44 @@ export async function seedStaffPhoto(
     );
   }
   return { photoId, keys };
+}
+
+export const staffPhotoPath = (staffId: string) => `/api/staff/${staffId}/photo`;
+
+/** Envia a parte `file` a `POST` ou `PUT /api/staff/:id/photo`. */
+export function sendStaffPhoto(
+  client: Client,
+  method: 'POST' | 'PUT',
+  staffId: string,
+  bytes: Buffer,
+  { filename = 'foto.jpg', type = 'image/jpeg', origin, headers }: { filename?: string; type?: string; origin?: string | null; headers?: Record<string, string> } = {},
+) {
+  return sendStaffParts(client, method, staffId, [{ name: 'file', bytes, filename, type }], { origin, headers });
+}
+
+/** O mesmo, com as partes que o teste escolher. */
+export function sendStaffParts(
+  client: Client,
+  method: 'POST' | 'PUT',
+  staffId: string,
+  parts: Part[],
+  { origin, headers }: { origin?: string | null; headers?: Record<string, string> } = {},
+) {
+  const { body, contentType } = multipart(parts);
+  return client.request(method, staffPhotoPath(staffId), { origin, body, headers: { 'Content-Type': contentType, ...headers } });
+}
+
+export const postStaffPhoto = (client: Client, staffId: string, bytes: Buffer, options?: Parameters<typeof sendStaffPhoto>[4]) =>
+  sendStaffPhoto(client, 'POST', staffId, bytes, options);
+
+export const putStaffPhoto = (client: Client, staffId: string, bytes: Buffer, options?: Parameters<typeof sendStaffPhoto>[4]) =>
+  sendStaffPhoto(client, 'PUT', staffId, bytes, options);
+
+/** As chaves do bucket sob `photos/main/<staffId>/`. */
+export const staffKeys = (minio: Pick<Minio, 'client' | 'bucket'>, staffId: string) => bucketKeys(minio, staffPhotoPrefix(staffId));
+
+/** As linhas de foto do funcionário como texto, para a comparação "linha idêntica". */
+export async function staffPhotoRowsText(stack: Stack, staffId: string) {
+  const rows = await stack.query<{ row: string }>('select to_jsonb(p)::text as row from photos p where staff_id = $1 order by version', [staffId]);
+  return rows.map((entry) => entry.row);
 }

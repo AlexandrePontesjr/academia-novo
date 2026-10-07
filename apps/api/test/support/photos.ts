@@ -232,13 +232,23 @@ export interface VersionRow {
   in_window: boolean | null;
 }
 
-/** As versões do aluno, por `version`, e se o prazo de cada uma cai `days` dias depois do intervalo dado. */
-export const versionRows = (stack: Stack, studentId: string, from = 'epoch', to = 'epoch', days = 30) =>
+/**
+ * As versões do dono (aluno por padrão), por `version`, e se o prazo de cada uma cai `days` dias depois do
+ * intervalo dado.
+ */
+export const versionRows = (
+  stack: Stack,
+  ownerId: string,
+  from = 'epoch',
+  to = 'epoch',
+  days = 30,
+  column: 'student_id' | 'staff_id' = 'student_id',
+) =>
   stack.query<VersionRow>(
     `select id, version, is_current, expires_at::text as expires_at,
             expires_at between $2::timestamptz + make_interval(days => $4) and $3::timestamptz + make_interval(days => $4) as in_window
-       from photos where student_id = $1 order by version`,
-    [studentId, from, to, days],
+       from photos where ${column} = $1 order by version`,
+    [ownerId, from, to, days],
   );
 
 /** As três chaves de uma foto, na ordem em que `bucketKeys` as devolve. */
@@ -368,10 +378,15 @@ export async function flakyStorage(target: string): Promise<FlakyStorage> {
   });
 }
 
-/** Uma segunda API sobre o Postgres da pilha, com o armazenamento que o teste escolhe, e uma sessão `reception` nela. */
-export async function apiWith(stack: Stack, storage: StorageEnv, extraEnv: Record<string, string> = {}) {
+/** Uma segunda API sobre o Postgres da pilha, com o armazenamento que o teste escolhe, e uma sessão (`reception`, ou o `role` dado) nela. */
+export async function apiWith(
+  stack: Stack,
+  storage: StorageEnv,
+  extraEnv: Record<string, string> = {},
+  role: 'reception' | 'hr_finance' = 'reception',
+) {
   const api = await startApi(stack.postgres.url, [], storage, extraEnv);
-  const user = await stack.seed({ role: 'reception' });
+  const user = await stack.seed({ role });
   const client = await stack.signIn(user, createClient(api.url));
   return { api, client };
 }
