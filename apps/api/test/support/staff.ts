@@ -104,10 +104,14 @@ export const STAFF_ROUTES: StaffRoute[] = [
 
 /**
  * As rotas que ainda não existem. A lista só encolhe: cada fatia que cria uma rota a tira daqui no
- * mesmo commit (S5 as duas de vínculo, S7 as três de foto), e as provas das dez rotas passam a
+ * mesmo commit (S3 as duas de leitura, S4 o `PATCH` e o `DELETE`, S5 as duas de vínculo, S7 as três de foto), e as provas das dez rotas passam a
  * afirmar o resultado de verdade nela. Enquanto uma rota está aqui, a prova exige o `404` dela.
  */
 export const UNBUILT_STAFF_ROUTES: string[] = [
+  'GET /api/staff',
+  'GET /api/staff/:id',
+  'PATCH /api/staff/:id',
+  'DELETE /api/staff/:id',
   'PUT /api/staff/:id/user',
   'DELETE /api/staff/:id/user',
   'POST /api/staff/:id/photo',

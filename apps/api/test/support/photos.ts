@@ -277,8 +277,11 @@ export async function snapshotOf(stack: Stack, minio: Pick<Minio, 'client' | 'bu
   const [photos] = await stack.query<{ rows: string }>(
     `select coalesce(string_agg(to_jsonb(p)::text, '|' order by p.id), '') as rows from photos p`,
   );
+  const [staff] = await stack.query<{ rows: string }>(
+    `select coalesce(string_agg(to_jsonb(s)::text, '|' order by s.id), '') as rows from staff s`,
+  );
   const [audit] = await stack.query<{ n: string }>('select count(*) as n from audit_logs');
-  return { photos: photos!.rows, audit: Number(audit!.n), keys: await bucketKeys(minio) };
+  return { photos: photos!.rows, staff: staff!.rows, audit: Number(audit!.n), keys: await bucketKeys(minio) };
 }
 
 /** Postgres, API e MinIO reais, montados juntos: o ambiente de um arquivo de teste de foto. */
