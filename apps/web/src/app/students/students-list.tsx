@@ -4,9 +4,9 @@ import type { Role, StudentsResponse, StudentStatus } from '@academia/contracts'
 import { Alert, Button, Input, Label, Select, Table, TableCell, TableHead, TableRow } from '@academia/ui';
 import Link from 'next/link';
 import { type FormEvent, useId, useState } from 'react';
+import { PersonPhoto } from '../../components/photo/person-photo.tsx';
 import { callApi } from '../../lib/api.ts';
 import { formatCpf, formatPhone, STATUS_LABELS } from '../../lib/students.ts';
-import { StudentPhoto } from './student-photo.tsx';
 
 interface Applied {
   q: string;
@@ -118,7 +118,7 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
                 <TableRow key={student.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <StudentPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
+                      <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
                       <Link
                         href={`/students/${student.id}`}
                         prefetch={false}

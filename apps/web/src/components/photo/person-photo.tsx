@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { initialsOf } from '../../lib/students.ts';
 
 /**
- * A foto do aluno, ou o círculo com as iniciais quando ele não tem foto ou a imagem não carrega
- * (a URL vale 5 minutos e expira com a página aberta). As iniciais ficam num pseudo-elemento, que
- * não entra no texto da célula nem da ficha; o rótulo acessível é "Sem foto".
+ * A foto de um aluno ou de um funcionário, ou o círculo com as iniciais quando a pessoa não tem
+ * foto ou a imagem não carrega (a URL vale 5 minutos e expira com a página aberta). As iniciais
+ * ficam num pseudo-elemento, que não entra no texto da célula nem da ficha; o rótulo acessível é
+ * "Sem foto".
  */
-export function StudentPhoto({
+export function PersonPhoto({
   name,
   photoUrl,
   shape,

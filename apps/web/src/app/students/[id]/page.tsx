@@ -9,13 +9,13 @@ import {
 import { Button } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
+import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
 import { ConsentsBlock } from './consents-block.tsx';
 import { ConsentsLoadError } from './consents-load-error.tsx';
-import { PhotoBlock } from './photo-block.tsx';
 import { StatusActions } from './status-actions.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -70,7 +70,13 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               </div>
             )}
           </div>
-          <PhotoBlock studentId={student.id} name={student.name} photoUrl={student.photoUrl} canWrite={canWrite} />
+          <PhotoBlock
+            url={`/api/students/${student.id}/photo`}
+            conflict="Este aluno já tem foto."
+            name={student.name}
+            photoUrl={student.photoUrl}
+            canWrite={canWrite}
+          />
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted-foreground">Situação</dt>

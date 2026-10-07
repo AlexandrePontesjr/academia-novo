@@ -4,7 +4,7 @@ import { problemSchema } from '@academia/contracts';
 import { Alert, Button, DialogClose, DialogFooter, DialogTitle } from '@academia/ui';
 import { useState } from 'react';
 import Cropper from 'react-easy-crop';
-import { ASPECT, drawRegion, fits, maxZoomOf, type Region } from '../../../lib/photo-crop.ts';
+import { ASPECT, drawRegion, fits, maxZoomOf, type Region } from '../../lib/photo-crop.ts';
 
 /** Envio e processamento no servidor: o prazo é maior que o das chamadas comuns. */
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -12,11 +12,11 @@ const GENERIC = 'Não foi possível enviar a foto. Tente novamente.';
 export const TOO_SMALL = 'A foto precisa ter pelo menos 300×400 pixels.';
 export const UNREADABLE = 'Use um arquivo JPEG, PNG ou WebP.';
 
-/** O que a tela diz de cada resposta de erro do envio (AC 56 da foto-pipeline). */
-async function messageOf(response: Response): Promise<string> {
+/** O que a tela diz de cada resposta de erro do envio (AC 56 da foto-pipeline); o `409` é de cada dono. */
+async function messageOf(response: Response, conflict: string): Promise<string> {
   if (response.status === 413) return 'A foto deve ter no máximo 5 MB.';
   if (response.status === 415) return UNREADABLE;
-  if (response.status === 409) return 'Este aluno já tem foto.';
+  if (response.status === 409) return conflict;
   if (response.status === 422) {
     const problem = problemSchema.safeParse(await response.json().catch(() => undefined));
     const file = problem.success ? problem.data.errors?.find((error) => error.path === 'file') : undefined;
@@ -34,15 +34,18 @@ export function PhotoEditor({
   image,
   method,
   url,
+  conflict,
   sending,
   onSending,
   onSaved,
   onRetake,
 }: {
   image: HTMLImageElement;
-  /** `POST` para o aluno sem foto, `PUT` para trocar a que ele tem (door 2). */
+  /** `POST` para quem não tem foto, `PUT` para trocar a que tem (door 2). */
   method: 'POST' | 'PUT';
   url: string;
+  /** O que a tela diz quando a API responde `409`: a pessoa já tem foto. */
+  conflict: string;
   sending: boolean;
   onSending: (sending: boolean) => void;
   onSaved: () => void;
@@ -76,7 +79,7 @@ export function PhotoEditor({
         onSaved();
         return;
       }
-      setError(await messageOf(response));
+      setError(await messageOf(response, conflict));
     } catch {
       setError(GENERIC);
     } finally {

@@ -12,9 +12,9 @@ import {
 } from '@academia/ui';
 import { useRouter } from 'next/navigation';
 import { type DragEvent, useEffect, useRef, useState } from 'react';
-import { callApi, UNAVAILABLE } from '../../../lib/api.ts';
-import { fits, loadImage } from '../../../lib/photo-crop.ts';
-import { StudentPhoto } from '../student-photo.tsx';
+import { callApi, UNAVAILABLE } from '../../lib/api.ts';
+import { fits, loadImage } from '../../lib/photo-crop.ts';
+import { PersonPhoto } from './person-photo.tsx';
 import { PhotoCamera } from './photo-camera.tsx';
 import { PhotoEditor, TOO_SMALL, UNREADABLE } from './photo-editor.tsx';
 
@@ -24,17 +24,22 @@ const ACCEPT = 'image/jpeg,image/png,image/webp';
 type Flow = { step: 'camera' } | { step: 'edit'; image: HTMLImageElement; fromCamera: boolean };
 
 /**
- * A foto da ficha: a imagem ou as iniciais para os quatro perfis, e, para quem escreve, o arquivo
- * escolhido ou largado (sem foto), "Trocar foto" e a remoção com confirmação (com foto) e "Usar
- * câmera" nos dois casos. Nenhuma imagem sai do navegador sem passar pelo ajuste do `PhotoEditor`.
+ * A foto da ficha de um aluno ou de um funcionário: a imagem ou as iniciais, e, para quem escreve,
+ * o arquivo escolhido ou largado (sem foto), "Trocar foto" e a remoção com confirmação (com foto) e
+ * "Usar câmera" nos dois casos. Nenhuma imagem sai do navegador sem passar pelo ajuste do
+ * `PhotoEditor`.
  */
 export function PhotoBlock({
-  studentId,
+  url,
+  conflict,
   name,
   photoUrl,
   canWrite,
 }: {
-  studentId: string;
+  /** A rota de foto do dono: `/api/students/<id>/photo` ou `/api/staff/<id>/photo`. */
+  url: string;
+  /** O que a tela diz quando o envio responde `409`: a pessoa já tem foto. */
+  conflict: string;
   name: string;
   photoUrl: string | null | undefined;
   canWrite: boolean;
@@ -78,7 +83,7 @@ export function PhotoBlock({
   async function remove() {
     setRemoving(true);
     setAlert(undefined);
-    const result = await callApi('DELETE', `/api/students/${studentId}/photo`);
+    const result = await callApi('DELETE', url);
     setRemoving(false);
     if (result.kind === 'ok') {
       setAsking(false);
@@ -88,7 +93,7 @@ export function PhotoBlock({
 
   return (
     <div className="grid gap-3">
-      <StudentPhoto name={name} photoUrl={photoUrl} shape="ficha" />
+      <PersonPhoto name={name} photoUrl={photoUrl} shape="ficha" />
       {canWrite && !photoUrl && (
         <div
           data-photo-dropzone
@@ -139,7 +144,8 @@ export function PhotoBlock({
             <PhotoEditor
               image={flow.image}
               method={photoUrl ? 'PUT' : 'POST'}
-              url={`/api/students/${studentId}/photo`}
+              url={url}
+              conflict={conflict}
               sending={sending}
               onSending={setSending}
               onSaved={() => {
