@@ -284,3 +284,64 @@ test('patch_and_delete_404_for_non_uuid_and_unknown_uuid', async () => {
 
   expect(await staffCount(env.stack)).toBe(total);
 });
+
+test('patch_every_value_the_create_refuses_is_refused_with_field_path_and_row_unchanged', async () => {
+  const { client } = await env.stack.session('hr_finance');
+  const created = await createStaff(client, fullStaffBody(next()));
+  const email = (lastLabel: number) => `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(lastLabel)}.com`;
+  expect(email(57)).toHaveLength(254);
+  expect(email(58)).toHaveLength(255);
+  const accented = (length: number) => `é${'a'.repeat(length - 1)}`;
+  const refused: Array<[field: string, label: string, value: unknown]> = [
+    ['cpf', 'curto', '529.982.24'],
+    ['cpf', 'longo', '529.982.247-250'],
+    ['cpf', 'dígitos iguais', '111.111.111-11'],
+    ['cpf', 'dígito verificador errado', '529.982.247-26'],
+    ['hiredAt', 'dia que não existe', '2026-02-30'],
+    ['hiredAt', 'mês 13', '2026-13-01'],
+    ['hiredAt', 'ano de dois dígitos', '26-01-01'],
+    ['hiredAt', 'barras', '01/02/2020'],
+    ['hiredAt', 'futuro', '2099-01-01'],
+    ['name', 'vazio', ''],
+    ['name', 'só espaços', '   '],
+    ['position', 'vazio', ''],
+    ['position', 'só espaços', '   '],
+    ['name', '121', accented(121)],
+    ['position', '81', accented(81)],
+    ['department', '81', accented(81)],
+    ['email', 'sem arroba', 'sem-arroba'],
+    ['email', '255', email(58)],
+    ['phone', '9 dígitos', '119123456'],
+    ['phone', '9 dígitos com máscara', '(11) 9123-456'],
+    ['phone', '12 dígitos', '119123456789'],
+    ['phone', '12 dígitos com máscara', '(11) 91234-56789'],
+    ['name', 'U+0000', 'Fun\u0000cionária'],
+    ['position', 'U+0000', 'Recep\u0000cionista'],
+    ['department', 'U+0000', 'Atend\u0000imento'],
+    ['email', 'U+0000', 'a\u0000b@exemplo.com'],
+  ];
+  const accepted: Array<[field: string, label: string, value: unknown]> = [
+    ['name', '120', accented(120)],
+    ['position', '80', accented(80)],
+    ['department', '80', accented(80)],
+    ['email', '254', email(57)],
+    ['phone', '10 dígitos', '1112345678'],
+    ['phone', '11 dígitos', '11912345678'],
+    ['hiredAt', '1900-01-01', '1900-01-01'],
+  ];
+
+  for (const [field, label, value] of refused) {
+    const before = await staffRowText(env.stack, created.id);
+
+    const response = await client.patch(`/api/staff/${created.id}`, { [field]: value });
+
+    expect(response.status, `${field} ${label}`).toBe(422);
+    expect(await fieldErrorPaths(response), `${field} ${label}`).toContain(field);
+    expect(await staffRowText(env.stack, created.id), `${field} ${label}`).toBe(before);
+  }
+  for (const [field, label, value] of accepted) {
+    const response = await client.patch(`/api/staff/${created.id}`, { [field]: value });
+
+    expect(response.status, `${field} ${label}`).toBe(200);
+  }
+});

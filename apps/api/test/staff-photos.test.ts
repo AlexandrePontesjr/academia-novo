@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { PhotoSigner } from '../src/photos/photo-signer.ts';
 import { PHOTO_URL_SECRET } from './support/app.ts';
-import { auditCount, withAuditInsertFailing, written } from './support/audit.ts';
+import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import {
   apiWith,
@@ -403,6 +403,29 @@ test('photo_actions_write_one_row_each_with_null_diff', async () => {
       expect(outcome.rows[0], label).toMatchObject({ action, user_id: user.id, entity: 'staff', entity_id: entityId, diff: null });
       expect(outcome.rows.filter((row) => row.action.startsWith('student.')), label).toEqual([]);
     }
+  }
+});
+
+test('ip_and_user_agent_on_the_three_staff_photo_actions', async () => {
+  const userAgent = 'u'.repeat(513);
+  const headers = { 'X-Forwarded-For': '198.51.100.1, 203.0.113.7', 'User-Agent': userAgent };
+  const staffId = await newStaff();
+  const requests: Array<[action: string, entityId: string, send: () => Promise<Response>]> = [
+    ['staff.photo_uploaded', staffId, async () => postStaffPhoto(hr, staffId, await jpegBytes(), { headers })],
+    ['staff.photo_replaced', staffId, async () => putStaffPhoto(hr, staffId, await jpegBytes(), { headers })],
+    ['staff.photo_removed', staffId, async () => hr.request('DELETE', staffPhotoPath(staffId), { headers })],
+  ];
+
+  for (const [action, entityId, send] of requests) {
+    const before = (await auditRows(env.stack)).length;
+    const status = (await send()).status;
+    const rows = (await auditRows(env.stack)).slice(before).filter((row) => row.action === action && row.entity_id === entityId);
+
+    expect([201, 204], action).toContain(status);
+    expect(rows, action).toHaveLength(1);
+    expect(rows[0]!.ip, action).toBe('203.0.113.7');
+    expect(rows[0]!.user_agent, action).toBe(userAgent.slice(0, 512));
+    expect(rows[0]!.user_agent, action).toHaveLength(512);
   }
 });
 

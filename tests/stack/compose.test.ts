@@ -672,6 +672,22 @@ describe('stack de pé', () => {
       psql(`select ip || '|' || user_agent from audit_logs where action = 'staff.viewed' and entity_id = '${id}' and user_id = '${hr.id}'`).split(/\r?\n/),
     ).toEqual(['203.0.113.41|teste-rh/1.0', '203.0.113.41|teste-rh/1.0']);
 
+    // recarregar a ficha depois de salvar também é uma visualização, e a seguinte não é deduplicada
+    const saved = await fetch(`${stack.webOrigin}/api/staff/${id}`, {
+      method: 'PATCH',
+      headers: { ...hrHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ position: 'Coordenadora Recarregada' }),
+    });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const afterSave = count('staff.viewed');
+    expect(afterSave).toBe(views + 2);
+    const reloaded = await open(`/staff/${id}`, hr.cookie);
+    expect(reloaded.status).toBe(200);
+    expect(await reloaded.text()).toContain('Coordenadora Recarregada');
+    expect(count('staff.viewed')).toBe(afterSave + 1);
+    expect((await open(`/staff/${id}`, hr.cookie)).status).toBe(200);
+    expect(count('staff.viewed')).toBe(afterSave + 2);
+
     // a recepção não passa da mensagem de permissão e não deixa linha
     const [rows, listsBefore, viewsBefore] = [
       Number(psql(`select count(*) from audit_logs where entity = 'staff'`)),

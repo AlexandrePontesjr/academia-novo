@@ -105,15 +105,7 @@ export const STAFF_ROUTES: StaffRoute[] = [
   { method: 'DELETE', path: '/api/staff/:id/photo' },
 ];
 
-/**
- * As rotas que ainda não existem. A lista só encolhe: cada fatia que cria uma rota a tira daqui no
- * mesmo commit (S3 as duas de leitura, S4 o `PATCH` e o `DELETE`, S5 as duas de vínculo, S7 as três de foto), e as provas das dez rotas passam a
- * afirmar o resultado de verdade nela. Enquanto uma rota está aqui, a prova exige o `404` dela.
- */
-export const UNBUILT_STAFF_ROUTES: string[] = [];
-
 export const routeKey = (route: StaffRoute) => `${route.method} ${route.path}`;
-export const isBuilt = (route: StaffRoute) => !UNBUILT_STAFF_ROUTES.includes(routeKey(route));
 export const pathFor = (route: StaffRoute, id: string) => route.path.replace(':id', id);
 
 /** Um corpo de requisição qualquer para a rota: só a guarda é provada, então o conteúdo não importa. */

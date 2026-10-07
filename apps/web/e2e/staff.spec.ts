@@ -590,3 +590,84 @@ test('save_button_disabled_while_waiting_on_both_forms', async ({ page, api }) =
   await expect(save(page)).toBeDisabled();
   await expect.poll(() => staffWrites(api).length).toBe(2);
 });
+
+test('ficha_render_asks_for_the_ficha_once_and_for_nothing_else_in_staff', async ({ page, api }) => {
+  for (const role of STAFF_ROLES) {
+    api.requests.length = 0;
+    serveStaffAs(api, role, state({ staff: [staffOf()] }));
+
+    await page.goto(`/staff/${STAFF_ID}`);
+    await expect(page.getByRole('heading', { name: staffOf().name }), role).toBeVisible();
+    await page.waitForTimeout(1000);
+
+    const staff = staffRequests(api).map((request) => `${request.method} ${request.path}`);
+    expect(staff, role).toEqual([`GET ${ROUTE}`]);
+  }
+});
+
+test('edit_render_asks_for_the_ficha_once_and_for_nothing_else_in_staff', async ({ page, api }) => {
+  for (const role of STAFF_ROLES) {
+    api.requests.length = 0;
+    serveStaffAs(api, role, state({ staff: [staffOf()] }));
+
+    await page.goto(`/staff/${STAFF_ID}/edit`);
+    await expect(page.getByLabel('Nome completo', { exact: true }), role).toHaveValue(staffOf().name);
+    await page.waitForTimeout(1000);
+
+    const staff = staffRequests(api).map((request) => `${request.method} ${request.path}`);
+    expect(staff, role).toEqual([`GET ${ROUTE}`]);
+  }
+});
+
+test('denied_profiles_ask_for_no_staff_data_on_any_of_the_four_pages', async ({ page, api }) => {
+  for (const role of DENIED_ROLES) {
+    api.requests.length = 0;
+    serveStaffAs(api, role, state({ staff: [staffOf()] }));
+
+    for (const path of FOUR_URLS) {
+      await page.goto(path);
+      await expect(page.getByText(NO_PERMISSION, { exact: true }), `${role} ${path}`).toBeVisible();
+    }
+    await page.waitForTimeout(1000);
+
+    const reads = staffRequests(api).filter((request) => request.method === 'GET' && request.path !== '/api/staff/new');
+    expect(reads.map((request) => `${request.method} ${request.path}`), role).toEqual([]);
+  }
+});
+
+test('hired_at_follows_the_sao_paulo_day_not_the_browser_clock_on_both_forms', async ({ browser, api, baseURL }) => {
+  const created = staffOf({ id: '018f0000-0000-7000-8000-000000000499' });
+  serveStaffAs(api, 'hr_finance', state({ staff: [created, staffOf()] }));
+  api.on('POST', '/api/staff', { status: 201, body: created });
+  api.on('PATCH', ROUTE, { status: 200, body: staffOf() });
+  // 02:30 UTC de 5/10 são 23:30 de 4/10 em São Paulo; o navegador está em UTC
+  const context = await browser.newContext({ baseURL, timezoneId: 'UTC' });
+  try {
+    const page = await context.newPage();
+    await page.clock.setFixedTime(new Date('2026-10-04T23:30:00-03:00'));
+
+    for (const path of ['/staff/new', `/staff/${STAFF_ID}/edit`]) {
+      await page.goto(path);
+      if (path === '/staff/new') {
+        await page.getByLabel('Nome completo', { exact: true }).fill('Funcionária Do Dia');
+        await page.getByLabel('CPF', { exact: true }).fill('529.982.247-25');
+        await page.getByLabel('Cargo', { exact: true }).fill('Fisioterapeuta Esportiva');
+        await page.getByLabel('Telefone', { exact: true }).fill('(11) 91234-5678');
+      }
+      const hiredAt = page.getByLabel('Data de admissão', { exact: true });
+      const before = staffWrites(api).length;
+
+      await hiredAt.fill('2026-10-05');
+      await save(page).click();
+      await expect(hiredAt, `${path} amanhã em São Paulo`).toHaveAccessibleDescription(/.+/);
+      expect(staffWrites(api), `${path} amanhã em São Paulo`).toHaveLength(before);
+
+      await hiredAt.fill('2026-10-04');
+      await save(page).click();
+      await expect(page, `${path} hoje em São Paulo`).toHaveURL(/\/staff\/(?!new$)[^/]+$/);
+      expect(staffWrites(api), `${path} hoje em São Paulo`).toHaveLength(before + 1);
+    }
+  } finally {
+    await context.close();
+  }
+});

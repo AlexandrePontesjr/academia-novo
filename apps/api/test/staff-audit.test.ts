@@ -82,6 +82,7 @@ test('patch_writes_one_staff_updated_row_with_field_names_only', async () => {
     entity_id: created.id,
     diff: { fields: ['position', 'phone'], values: {} },
   });
+  expect(both.rows[0]!.diff).toEqual({ fields: ['position', 'phone'], values: {} });
 
   const others: Array<[field: string, value: string]> = [
     ['name', 'Outro Nome Completo'],
@@ -102,6 +103,7 @@ test('patch_writes_one_staff_updated_row_with_field_names_only', async () => {
       entity_id: created.id,
       diff: { fields: [field], values: {} },
     });
+    expect(rows[0]!.diff, field).toEqual({ fields: [field], values: {} });
   }
 });
 
@@ -117,6 +119,7 @@ test('reactivation_diff_records_status_from_inactive_to_active', async () => {
     action: 'staff.updated',
     diff: { fields: ['status'], values: { status: { from: 'inactive', to: 'active' } } },
   });
+  expect(rows[0]!.diff).toEqual({ fields: ['status'], values: { status: { from: 'inactive', to: 'active' } } });
 });
 
 test('patch_without_change_nine_cases_writes_no_row', async () => {
@@ -160,6 +163,7 @@ test('inactivate_writes_one_staff_inactivated_row', async () => {
     entity_id: created.id,
     diff: { fields: ['status'], values: { status: { from: 'active', to: 'inactive' } } },
   });
+  expect(rows[0]!.diff).toEqual({ fields: ['status'], values: { status: { from: 'active', to: 'inactive' } } });
 });
 
 test('link_writes_one_user_linked_row_and_same_user_none', async () => {
@@ -178,6 +182,7 @@ test('link_writes_one_user_linked_row_and_same_user_none', async () => {
     entity_id: id,
     diff: { fields: ['userId'], values: { userId: { from: null, to: userA.id } } },
   });
+  expect(first.rows[0]!.diff).toEqual({ fields: ['userId'], values: { userId: { from: null, to: userA.id } } });
 
   const swapped = await written(stack, () => admin.put(`/api/staff/${id}/user`, { userId: userB.id }));
 
@@ -187,6 +192,7 @@ test('link_writes_one_user_linked_row_and_same_user_none', async () => {
     action: 'staff.user_linked',
     diff: { fields: ['userId'], values: { userId: { from: userA.id, to: userB.id } } },
   });
+  expect(swapped.rows[0]!.diff).toEqual({ fields: ['userId'], values: { userId: { from: userA.id, to: userB.id } } });
 
   const same = await written(stack, () => admin.put(`/api/staff/${id}/user`, { userId: userB.id }));
 
@@ -212,6 +218,7 @@ test('unlink_writes_one_user_unlinked_row_and_none_without_link', async () => {
     entity_id: linked,
     diff: { fields: ['userId'], values: { userId: { from: user.id, to: null } } },
   });
+  expect(unlinked.rows[0]!.diff).toEqual({ fields: ['userId'], values: { userId: { from: user.id, to: null } } });
 
   const nothing = await written(stack, () => admin.delete(`/api/staff/${free}/user`));
 
