@@ -1,6 +1,8 @@
 import {
   type CreateStaffRequest,
   createStaffRequestSchema,
+  type LinkStaffUserRequest,
+  linkStaffUserRequestSchema,
   type UpdateStaffRequest,
   updateStaffRequestSchema,
   type Staff,
@@ -8,11 +10,11 @@ import {
   type StaffListResponse,
   staffSchema,
 } from '@academia/contracts';
-import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post, Put } from '@nestjs/common';
 import { Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import { PhotosService } from '../photos/photos.service.ts';
-import { ProblemException } from '../problem.filter.ts';
+import { ProblemException, validationProblem } from '../problem.filter.ts';
 import { Input, Output } from '../validation.ts';
 import { StaffService } from './staff.service.ts';
 
@@ -70,5 +72,23 @@ export class StaffController {
   @Output(204)
   async inactivate(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
     if (!(await this.staff.inactivate(id, actor))) throw new NotFoundException();
+  }
+
+  @Put(':id/user')
+  @Roles('admin')
+  @Input(linkStaffUserRequestSchema)
+  @Output(204)
+  async link(@Param('id') id: string, @Body() body: LinkStaffUserRequest, @Actor() actor: AuditActor): Promise<void> {
+    const outcome = await this.staff.link(id, body.userId, actor);
+    if (outcome === 'not_found') throw new NotFoundException();
+    if (outcome === 'user_unknown') throw validationProblem([{ path: 'userId', message: 'Escolha um usuário válido.' }]);
+    if (outcome === 'user_already_linked') throw new ProblemException(409, 'user_already_linked');
+  }
+
+  @Delete(':id/user')
+  @Roles('admin')
+  @Output(204)
+  async unlink(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    if (!(await this.staff.unlink(id, actor))) throw new NotFoundException();
   }
 }

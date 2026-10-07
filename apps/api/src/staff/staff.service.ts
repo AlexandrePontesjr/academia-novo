@@ -39,6 +39,9 @@ type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 
 export type StaffChange = { outcome: 'ok'; staff: StaffRecord } | { outcome: 'not_found' } | { outcome: 'cpf_taken' };
 
+/** O desfecho de vincular um usuário: `user_unknown` é o `userId` que não é de usuário nenhum. */
+export type LinkOutcome = 'ok' | 'not_found' | 'user_unknown' | 'user_already_linked';
+
 /** Leitura e escrita de `staff`, e a linha de auditoria de cada uma, na mesma transação. */
 export class StaffService {
   constructor(private readonly db: Database['db']) {}
@@ -128,6 +131,57 @@ export class StaffService {
         entity: 'staff',
         entityId: id,
         diff: diffOf({ status: row.status }, { status: 'inactive' }, ['status'], REGISTRABLE),
+      });
+      return true;
+    });
+  }
+
+  /**
+   * Liga o funcionário ao usuário (door 1), trocando o vínculo que houver. O índice único de `user_id`
+   * decide a corrida entre dois funcionários que querem o mesmo usuário; o mesmo usuário já ligado a
+   * este funcionário não muda nada nem grava linha.
+   */
+  async link(id: string, userId: string, actor: AuditActor): Promise<LinkOutcome> {
+    if (!UUID.test(id)) return 'not_found';
+    try {
+      return await this.db.transaction(async (tx): Promise<LinkOutcome> => {
+        const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+        if (!row) return 'not_found';
+        const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId));
+        if (!user) return 'user_unknown';
+        if (row.userId === user.id) return 'ok';
+
+        await tx.update(staff).set({ userId: user.id, updatedAt: new Date() }).where(eq(staff.id, id));
+        await audit.record(tx, {
+          actor,
+          action: 'staff.user_linked',
+          entity: 'staff',
+          entityId: id,
+          diff: diffOf({ userId: row.userId }, { userId: user.id }, ['userId'], ['userId']),
+        });
+        return 'ok';
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'user_already_linked';
+      throw error;
+    }
+  }
+
+  /** Desfaz o vínculo; o usuário não é tocado. `false` se o funcionário não existe; sem vínculo, nada muda. */
+  async unlink(id: string, actor: AuditActor): Promise<boolean> {
+    if (!UUID.test(id)) return false;
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+      if (!row) return false;
+      if (row.userId === null) return true;
+
+      await tx.update(staff).set({ userId: null, updatedAt: new Date() }).where(eq(staff.id, id));
+      await audit.record(tx, {
+        actor,
+        action: 'staff.user_unlinked',
+        entity: 'staff',
+        entityId: id,
+        diff: diffOf({ userId: row.userId }, { userId: null }, ['userId'], ['userId']),
       });
       return true;
     });

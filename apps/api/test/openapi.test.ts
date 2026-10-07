@@ -6,6 +6,7 @@ import {
   createUserRequestSchema,
   grantConsentRequestSchema,
   guardianRequestSchema,
+  linkStaffUserRequestSchema,
   loginRequestSchema,
   photoFileQuerySchema,
   photoQuerySchema,
@@ -131,8 +132,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['post', '/api/students/{id}/consents', grantConsentRequestSchema],
     ['post', '/api/staff', createStaffRequestSchema],
     ['patch', '/api/staff/{id}', updateStaffRequestSchema],
+    ['put', '/api/staff/{id}/user', linkStaffUserRequestSchema],
   ];
-  expect(contracts).toHaveLength(14);
+  expect(contracts).toHaveLength(15);
 
   const { paths } = await document();
 
