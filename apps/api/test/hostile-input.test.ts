@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { jpegBytes } from './support/photos.ts';
 import { type Stack, startStack } from './support/stack.ts';
+import { createStaff, sendStaffPhoto, staffBody, staffPhotoPath } from './support/staff.ts';
 
 let stack: Stack;
 
@@ -47,6 +49,33 @@ test('hostile_input_never_answers_5xx', async () => {
   for (const body of ['[]', 'null', '7', '"texto"', '{"email":{"a":1},"password":[1]}', '{"email":null}']) {
     await note(`login body ${body}`, await stack.client().request('POST', '/api/auth/login', { body, headers: { 'Content-Type': 'application/json' } }));
     await note(`users body ${body}`, await admin.request('POST', '/api/users', { body, headers: { 'Content-Type': 'application/json' } }));
+  }
+
+  // as rotas de funcionário: texto hostil em cada campo de `POST` e `PATCH`, em `userId` do `PUT`, em todo `:id` e em todo corpo
+  const staff = await createStaff(admin, staffBody(9001));
+  const staffUser = await stack.seed();
+  for (const value of weird) {
+    const tag = JSON.stringify(value.slice(0, 8));
+    for (const field of ['name', 'position', 'department', 'email', 'phone']) {
+      await note(`staff create ${field} ${tag}`, await admin.post('/api/staff', staffBody(9002, { [field]: value })));
+      await note(`staff patch ${field} ${tag}`, await admin.patch(`/api/staff/${staff.id}`, { [field]: value }));
+    }
+    await note(`staff link userId ${tag}`, await admin.put(`/api/staff/${staff.id}/user`, { userId: value }));
+  }
+  const photo = await jpegBytes();
+  for (const segment of ['%E0%A4%A', '%00', 'a%2Fb', '..%2F..', 'x'.repeat(5000)]) {
+    const tag = segment.slice(0, 12);
+    await note(`staff get ${tag}`, await admin.get(`/api/staff/${segment}`));
+    await note(`staff patch ${tag}`, await admin.patch(`/api/staff/${segment}`, { position: 'X' }));
+    await note(`staff delete ${tag}`, await admin.delete(`/api/staff/${segment}`));
+    await note(`staff link ${tag}`, await admin.put(`/api/staff/${segment}/user`, { userId: staffUser.id }));
+    await note(`staff unlink ${tag}`, await admin.delete(`/api/staff/${segment}/user`));
+    await note(`staff photo post ${tag}`, await sendStaffPhoto(admin, 'POST', segment, photo));
+    await note(`staff photo put ${tag}`, await sendStaffPhoto(admin, 'PUT', segment, photo));
+    await note(`staff photo delete ${tag}`, await admin.delete(staffPhotoPath(segment)));
+  }
+  for (const body of ['[]', 'null', '7', '"texto"', '{"name":{"a":1}}']) {
+    await note(`staff body ${body}`, await admin.request('POST', '/api/staff', { body, headers: { 'Content-Type': 'application/json' } }));
   }
 
   expect(results.length).toBeGreaterThan(100);

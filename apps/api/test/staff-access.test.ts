@@ -1,7 +1,7 @@
 import type { Role } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createClient } from './support/client.ts';
-import { type PhotoStack, snapshotOf, startPhotoStack } from './support/photos.ts';
+import { jpegBytes, type PhotoStack, snapshotOf, startPhotoStack } from './support/photos.ts';
 import {
   STAFF_DATA_KEYS,
   STAFF_ROUTES,
@@ -10,6 +10,7 @@ import {
   isBuilt,
   pathFor,
   routeKey,
+  sendStaffPhoto,
   staffRowText,
 } from './support/staff.ts';
 import { problem } from './support/stack.ts';
@@ -91,4 +92,32 @@ test('hr_finance_403_on_user_link_routes_and_link_unchanged', async () => {
 
   expect(await staffRowText(env.stack, free!)).toBe(freeBefore);
   expect(await staffRowText(env.stack, linked!)).toBe(linkedBefore);
+});
+
+test('foreign_origin_403_csrf_on_eight_staff_write_routes', async () => {
+  const { client } = await env.stack.session('admin');
+  const writes = STAFF_ROUTES.filter((route) => route.method !== 'GET');
+  expect(writes).toHaveLength(8);
+  const photo = await jpegBytes();
+  const attempts: Array<[label: string, options: { origin?: string | null; headers?: Record<string, string> }]> = [
+    ['Origin de outro site', { origin: 'http://evil.example' }],
+    ['sem Origin e Sec-Fetch-Site cross-site', { origin: null, headers: { 'Sec-Fetch-Site': 'cross-site' } }],
+  ];
+
+  for (const route of writes) {
+    for (const [label, options] of attempts) {
+      const before = await snapshot();
+
+      // as duas rotas de envio e troca de foto levam `multipart/form-data`; as outras, o corpo de sempre
+      const response =
+        route.path.endsWith('/photo') && route.method !== 'DELETE'
+          ? await sendStaffPhoto(client, route.method as 'POST' | 'PUT', staffId, photo, options)
+          : await client.request(route.method, pathFor(route, staffId), { body: bodyFor(route), ...options });
+
+      const where = `${routeKey(route)} (${label})`;
+      expect(response.status, where).toBe(403);
+      expect((await problem(response)).code, where).toBe('csrf_rejected');
+      expect(await snapshot(), where).toEqual(before);
+    }
+  }
 });

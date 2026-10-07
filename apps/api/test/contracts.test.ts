@@ -20,6 +20,7 @@ import {
   problemSchema,
   sessionResponseSchema,
   staffListItemSchema,
+  staffListResponseSchema,
   staffSchema,
   studentSchema,
   studentsResponseSchema,
@@ -34,6 +35,7 @@ import { apiWith, jpegBytes, padJpeg, replacePhoto, solid, uploaded, uploadPhoto
 import { freePort, type Minio, refusingDatabaseUrl, startMinio, startPostgres } from './support/servers.ts';
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
 import { createAdult, createMinorWithGuardian, insertTerm } from './support/consents.ts';
+import { createStaff, postStaffPhoto, putStaffPhoto, resetStaff, staffBody } from './support/staff.ts';
 import { createStudent, studentBody } from './support/students.ts';
 import { totpCode } from './support/totp.ts';
 
@@ -844,6 +846,71 @@ test('photo_put_bodies_match_contract_schemas', async () => {
       expect(body.status, String(status)).toBe(status);
       expect(response.headers.get('content-type'), String(status)).toMatch(/^application\/problem\+json\b/);
       expect(parsed.success, `${status}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+    }
+  } finally {
+    await down.api.close();
+  }
+});
+
+test('staff_bodies_match_contract_schemas_and_new_codes_are_known', async () => {
+  await resetStaff(stack);
+  const admin = (await stack.session('admin')).client;
+  const hr = (await stack.session('hr_finance')).client;
+  const reception = (await stack.session('reception')).client;
+  const down = await apiWith(stack, { ...minio.env, S3_ENDPOINT: `http://127.0.0.1:${await freePort()}` }, {}, 'hr_finance');
+  try {
+    const empty = await hr.get('/api/staff');
+    const created = await hr.post('/api/staff', staffBody(7401));
+    const staff = (await created.clone().json()) as { id: string; cpf: string };
+    const other = await createStaff(hr, staffBody(7402));
+    const owner = await stack.seed({ role: 'reception' });
+    const photo = await jpegBytes();
+    const posted = await postStaffPhoto(hr, staff.id, photo);
+    const replaced = await putStaffPhoto(hr, staff.id, photo);
+
+    const ok: Array<[route: string, status: number, schema: z.ZodType, response: Response]> = [
+      ['GET /api/staff (vazia)', 200, staffListResponseSchema, empty],
+      ['POST /api/staff', 201, staffSchema, created],
+      ['GET /api/staff (com itens)', 200, staffListResponseSchema, await hr.get('/api/staff')],
+      ['GET /api/staff/:id', 200, staffSchema, await hr.get(`/api/staff/${staff.id}`)],
+      ['PATCH /api/staff/:id', 200, staffSchema, await hr.patch(`/api/staff/${staff.id}`, { position: 'Coordenadora' })],
+      ['POST /api/staff/:id/photo', 201, photoCreatedSchema, posted],
+      ['PUT /api/staff/:id/photo', 201, photoCreatedSchema, replaced],
+    ];
+    expect(ok).toHaveLength(7);
+    expect(((await ok[0]![3].clone().json()) as { items: unknown[] }).items).toEqual([]);
+    expect(((await ok[2]![3].clone().json()) as { items: unknown[] }).items).toHaveLength(2);
+
+    expect((await admin.put(`/api/staff/${other.id}/user`, { userId: owner.id })).status).toBe(204);
+    const bigPhoto = padJpeg(photo, 5_242_881);
+    const problems: Array<[route: string, status: number, code: string | undefined, response: Response]> = [
+      ['401', 401, 'unauthorized', await stack.client().get('/api/staff')],
+      ['403', 403, 'forbidden', await reception.get('/api/staff')],
+      ['404', 404, 'not_found', await hr.get('/api/staff/abc')],
+      ['409 cpf_taken', 409, 'cpf_taken', await hr.post('/api/staff', staffBody(7403, { cpf: staff.cpf }))],
+      ['409 user_already_linked', 409, 'user_already_linked', await admin.put(`/api/staff/${staff.id}/user`, { userId: owner.id })],
+      ['409 photo_exists', 409, 'photo_exists', await postStaffPhoto(hr, staff.id, photo)],
+      ['413', 413, 'payload_too_large', await postStaffPhoto(hr, other.id, bigPhoto)],
+      ['415', 415, 'unsupported_media_type', await postStaffPhoto(hr, other.id, Buffer.from('só texto'.repeat(30)))],
+      ['422', 422, 'validation_failed', await hr.post('/api/staff', staffBody(7404, { cpf: '529.982.247-24' }))],
+      ['503', 503, 'storage_unavailable', await postStaffPhoto(down.client, other.id, photo)],
+    ];
+    expect(problems).toHaveLength(10);
+
+    for (const [route, status, schema, response] of ok) {
+      const parsed = schema.safeParse(await response.json());
+
+      expect(response.status, route).toBe(status);
+      expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+    }
+    for (const [route, status, code, response] of problems) {
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status, route).toBe(status);
+      expect(body.status, route).toBe(status);
+      expect(body.code, route).toBe(code);
+      expect(response.headers.get('content-type'), route).toMatch(/^application\/problem\+json\b/);
+      expect(problemSchema.safeParse(body).success, route).toBe(true);
     }
   } finally {
     await down.api.close();

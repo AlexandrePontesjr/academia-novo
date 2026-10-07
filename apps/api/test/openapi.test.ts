@@ -225,3 +225,43 @@ test('photo_put_is_multipart_with_the_post_response_schema', async () => {
   expect(created).toBeDefined();
   expect(created).toEqual(responses(photo.post)['201']?.content?.['application/json']?.schema);
 });
+
+test('staff_paths_declared_with_multipart_photo_and_json_bodies', async () => {
+  const json = (schema: z.ZodType) => JSON.parse(JSON.stringify(z.toJSONSchema(schema))) as Record<string, unknown>;
+  const { paths } = await document();
+
+  expect(Object.keys(paths['/api/staff'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/staff/{id}'] ?? {}).sort()).toEqual(['delete', 'get', 'patch']);
+  expect(Object.keys(paths['/api/staff/{id}/user'] ?? {}).sort()).toEqual(['delete', 'put']);
+  expect(Object.keys(paths['/api/staff/{id}/photo'] ?? {}).sort()).toEqual(['delete', 'post', 'put']);
+
+  const bodies: Array<[method: string, path: string, schema: z.ZodType]> = [
+    ['post', '/api/staff', createStaffRequestSchema],
+    ['patch', '/api/staff/{id}', updateStaffRequestSchema],
+    ['put', '/api/staff/{id}/user', linkStaffUserRequestSchema],
+  ];
+  for (const [method, path, schema] of bodies) {
+    const content = paths[path]?.[method]?.requestBody?.content ?? {};
+
+    expect(Object.keys(content), `${method} ${path}`).toEqual(['application/json']);
+    expect(content['application/json']?.schema, `${method} ${path}`).toEqual(json(schema));
+  }
+
+  const responses = (operation: unknown) =>
+    (operation as { responses: Record<string, { content?: Record<string, { schema: unknown }> }> }).responses;
+  const studentCreated = responses(paths['/api/students/{id}/photo']?.post)['201']?.content?.['application/json']?.schema;
+  expect(studentCreated).toBeDefined();
+  for (const method of ['post', 'put']) {
+    const operation = paths['/api/staff/{id}/photo']?.[method];
+    const body = operation?.requestBody?.content ?? {};
+
+    expect(Object.keys(body), method).toEqual(['multipart/form-data']);
+    expect(body['application/json'], method).toBeUndefined();
+    expect(body['multipart/form-data']?.schema, method).toMatchObject({
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    });
+    expect(responses(operation)['201']?.content?.['application/json']?.schema, method).toEqual(studentCreated);
+  }
+});
