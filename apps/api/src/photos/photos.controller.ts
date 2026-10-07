@@ -58,7 +58,7 @@ export class PhotosController {
   @Output(200, photoUrlResponseSchema)
   async url(@Param('id') id: string, @ValidatedQuery() query: PhotoQuery): Promise<PhotoUrlResponse> {
     const target = await this.photos.findStudent(id);
-    const url = target && (await this.photos.urlFor(target.studentId, query.variant ?? 'medium'));
+    const url = target && (await this.photos.urlFor(target.id, query.variant ?? 'medium'));
     if (!url) throw new NotFoundException();
     return url;
   }
