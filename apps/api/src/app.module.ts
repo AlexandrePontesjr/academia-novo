@@ -20,6 +20,8 @@ import { PhotoStorage } from './photos/photo-storage.ts';
 import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
+import { StaffController } from './staff/staff.controller.ts';
+import { StaffService } from './staff/staff.service.ts';
 import { StudentsController } from './students/students.controller.ts';
 import { StudentsService } from './students/students.service.ts';
 import { AUTH, DATABASE, ENV } from './tokens.ts';
@@ -44,6 +46,7 @@ export class AppModule implements OnApplicationShutdown {
         UsersController,
         AuditLogsController,
         StudentsController,
+        StaffController,
         ConsentsController,
         ConsentTermsController,
         PhotosController,
@@ -70,6 +73,11 @@ export class AppModule implements OnApplicationShutdown {
           provide: StudentsService,
           useFactory: (database: Database) =>
             new StudentsService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY)),
+          inject: [DATABASE],
+        },
+        {
+          provide: StaffService,
+          useFactory: (database: Database) => new StaffService(database.db),
           inject: [DATABASE],
         },
         { provide: PhotoStorage, useFactory: () => new PhotoStorage(env) },
