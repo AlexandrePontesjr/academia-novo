@@ -244,17 +244,44 @@ export const consents = pgTable(
   ],
 );
 
-// Fotos do aluno (foto-pipeline, door 1). A chave estrangeira não cascateia: apagar o aluno de vez
-// é da `privacidade`, que remove as fotos antes. No máximo uma foto corrente por aluno, garantida
-// pelo índice parcial; `version` guarda as anteriores para a `foto-captura`. O `id` é o `photoId`
-// da chave do objeto no bucket (door 2). `funcionarios` acrescenta a sua chave anulável.
+export const STAFF_STATUSES = ['active', 'inactive'] as const;
+
+// Funcionários (funcionarios, door 1). Sem coluna de perfil: o "perfil de acesso ao sistema" é o `role`
+// do usuário vinculado, lido na hora (AD-018). O CPF fica em 11 dígitos, único entre todas as situações
+// - quem volta é reativado. `user_id` é o acesso da pessoa: único, anulável e sem `ON DELETE`, então um
+// usuário vinculado não é apagado por SQL sem desvincular antes.
+export const staff = pgTable(
+  'staff',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    cpf: text('cpf').notNull().unique(),
+    position: text('position').notNull(),
+    department: text('department'),
+    hiredAt: date('hired_at', { mode: 'string' }).notNull(),
+    phone: text('phone').notNull(),
+    email: text('email'),
+    status: text('status', { enum: STAFF_STATUSES }).notNull().default('active'),
+    userId: uuid('user_id')
+      .unique()
+      .references(() => users.id),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  (table) => [check('staff_status_valid', sql`${table.status} in ('active', 'inactive')`)],
+);
+
+// Fotos (foto-pipeline, door 1; funcionarios, door 2). Cada foto tem exatamente um dono, aluno ou
+// funcionário (`photos_one_owner`). As chaves estrangeiras não cascateiam: apagar o dono de vez é da
+// `privacidade`, que remove as fotos antes. No máximo uma foto corrente por dono, garantida pelos
+// índices parciais; `version` guarda as anteriores para a `foto-captura`. O `id` é o `photoId` da
+// chave do objeto no bucket (door 2).
 export const photos = pgTable(
   'photos',
   {
     id: id(),
-    studentId: uuid('student_id')
-      .notNull()
-      .references(() => students.id),
+    studentId: uuid('student_id').references(() => students.id),
+    staffId: uuid('staff_id').references(() => staff.id),
     version: integer('version').notNull(),
     isCurrent: boolean('is_current').notNull(),
     createdAt: instant('created_at').notNull().defaultNow(),
@@ -264,7 +291,10 @@ export const photos = pgTable(
   (table) => [
     check('photos_version_positive', sql`${table.version} >= 1`),
     check('photos_expiry_matches_current', sql`${table.isCurrent} = (${table.expiresAt} IS NULL)`),
+    check('photos_one_owner', sql`num_nonnulls(${table.studentId}, ${table.staffId}) = 1`),
     unique('photos_student_id_version_unique').on(table.studentId, table.version),
+    unique('photos_staff_id_version_unique').on(table.staffId, table.version),
     uniqueIndex('photos_one_current_idx').on(table.studentId).where(sql`${table.isCurrent}`),
+    uniqueIndex('photos_one_current_staff_idx').on(table.staffId).where(sql`${table.isCurrent}`),
   ],
 );

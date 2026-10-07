@@ -81,13 +81,13 @@ test('student_foreign_key_without_cascade_blocks_delete', async () => {
        from information_schema.referential_constraints rc
        join information_schema.table_constraints tc on tc.constraint_name = rc.constraint_name
        join information_schema.constraint_column_usage ccu on ccu.constraint_name = rc.unique_constraint_name
-      where tc.table_name = 'photos' and tc.constraint_type = 'FOREIGN KEY'`,
+      where tc.table_name = 'photos' and tc.constraint_type = 'FOREIGN KEY' and tc.constraint_name = 'photos_student_id_students_id_fk'`,
   );
   expect(constraint).toEqual({ delete_rule: 'NO ACTION', references: 'students' });
   const [column] = await rows<{ columns: string[] }>(
     `select array_agg(a.attname::text) as columns
        from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
-      where c.conrelid = 'photos'::regclass and c.contype = 'f'`,
+      where c.conrelid = 'photos'::regclass and c.contype = 'f' and c.conname = 'photos_student_id_students_id_fk'`,
   );
   expect(column!.columns).toEqual(['student_id']);
 
@@ -112,8 +112,12 @@ test('defaults_uuidv7_and_not_null', async () => {
   );
   expect(photo!.version).toBe(7);
 
+  // `student_id` deixou de ser `NOT NULL` (funcionarios, door 2): sem dono, quem recusa é `photos_one_owner`
+  const noOwner = await failureOf('insert into photos (version, is_current) values ($1, $2)', [1, true]);
+  expect(noOwner.code).toBe(CHECK_VIOLATION);
+  expect(noOwner.message).toContain('photos_one_owner');
+
   const missing: Array<[field: string, text: string, values: unknown[]]> = [
-    ['student_id', 'insert into photos (version, is_current) values ($1, $2)', [1, true]],
     ['version', 'insert into photos (student_id, is_current) values ($1, $2)', [studentId, true]],
     ['is_current', 'insert into photos (student_id, version) values ($1, $2)', [studentId, 2]],
   ];
@@ -166,6 +170,33 @@ test('partial_unique_index_one_current_per_student', async () => {
   expect(await photoCount(second)).toBe(1);
 });
 
+test('owner_check_exactly_one_of_student_or_staff_four_combinations', async () => {
+  const studentId = await insertStudent();
+  const [staff] = await rows<{ id: string }>(
+    `insert into staff (name, cpf, position, hired_at, phone) values ('Funcionária de Teste', $1, 'Recepcionista', '2020-01-01', '11912345678') returning id`,
+    [nextCpf()],
+  );
+  const staffId = staff!.id;
+  const countRows = async () => Number((await rows<{ n: string }>('select count(*) as n from photos'))[0]!.n);
+  const total = await countRows();
+
+  // os dois donos, e nenhum: recusados pelo `CHECK`, sem gravar a linha
+  for (const [label, text, values] of [
+    ['os dois', 'insert into photos (student_id, staff_id, version, is_current) values ($1, $2, 1, true)', [studentId, staffId]],
+    ['nenhum', 'insert into photos (version, is_current) values (1, true)', []],
+  ] as const) {
+    const failure = await failureOf(text, [...values]);
+    expect(failure.code, label).toBe(CHECK_VIOLATION);
+    expect(failure.message, label).toContain('photos_one_owner');
+  }
+  expect(await countRows()).toBe(total);
+
+  // só o aluno e só o funcionário entram
+  await client.query('insert into photos (student_id, version, is_current) values ($1, 1, true)', [studentId]);
+  await client.query('insert into photos (staff_id, version, is_current) values ($1, 1, true)', [staffId]);
+  expect(await countRows()).toBe(total + 2);
+});
+
 test('migration_0005_adds_only_photos_without_tenant_or_owner_columns', async () => {
   const tables = await rows<{ table_name: string }>(
     `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -183,7 +214,7 @@ test('migration_0005_adds_only_photos_without_tenant_or_owner_columns', async ()
     'users',
     'verifications',
   ];
-  expect(tables.map((row) => row.table_name)).toEqual([...before, 'photos'].sort());
+  expect(tables.map((row) => row.table_name)).toEqual([...before, 'photos', 'staff'].sort());
 
   const columns = await rows<{ column_name: string }>(
     `select column_name from information_schema.columns where table_schema = 'public' and table_name = 'photos'`,
@@ -231,6 +262,7 @@ test('migration_0006_adds_only_nullable_expires_at_and_keeps_existing_rows_curre
   rmSync(join(until0005, '0006_photo_expiry.sql'));
   const journalPath = join(until0005, 'meta/_journal.json');
   const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: Array<{ idx: number }> };
+  const fullJournal = structuredClone(journal);
   journal.entries = journal.entries.filter((entry) => entry.idx <= 5);
   expect(journal.entries).toHaveLength(6);
   writeFileSync(journalPath, JSON.stringify(journal));
@@ -269,7 +301,11 @@ test('migration_0006_adds_only_nullable_expires_at_and_keeps_existing_rows_curre
     const photosBefore = await photosOf();
     expect(photosBefore).toHaveLength(2);
 
-    migrate(url.toString());
+    // só até a `0006`: as migrações seguintes (a `0007` mexe em `photos`) não são o que este teste mede
+    journal.entries = fullJournal.entries.filter((entry) => entry.idx <= 6);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    cpSync(join(repoRoot, 'packages/database/migrations/0006_photo_expiry.sql'), join(until0005, '0006_photo_expiry.sql'));
+    migrate(url.toString(), until0005);
 
     expect(await columnsOf()).toEqual([
       ...columnsBefore,
