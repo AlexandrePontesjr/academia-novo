@@ -325,6 +325,8 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { id: staffId } = (await staffMember.json()) as { id: string };
   await admin.get('/api/staff'); // staff.list_viewed
   await admin.get(`/api/staff/${staffId}`); // staff.viewed
+  await admin.patch(`/api/staff/${staffId}`, { position: 'Coordenadora' }); // staff.updated
+  await admin.delete(`/api/staff/${staffId}`); // staff.inactivated
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -334,8 +336,6 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   // as ações de funcionário saem desta lista no commit da rota que passa a gravá-las (funcionarios, S1 a S7);
   // a lista só encolhe, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
   const STAFF_ACTIONS_NOT_ROUTED_YET: string[] = [
-    'staff.updated',
-    'staff.inactivated',
     'staff.user_linked',
     'staff.user_unlinked',
     'staff.photo_uploaded',

@@ -111,8 +111,6 @@ export const STAFF_ROUTES: StaffRoute[] = [
  * afirmar o resultado de verdade nela. Enquanto uma rota está aqui, a prova exige o `404` dela.
  */
 export const UNBUILT_STAFF_ROUTES: string[] = [
-  'PATCH /api/staff/:id',
-  'DELETE /api/staff/:id',
   'PUT /api/staff/:id/user',
   'DELETE /api/staff/:id/user',
   'POST /api/staff/:id/photo',

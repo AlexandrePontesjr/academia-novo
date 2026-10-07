@@ -1,4 +1,4 @@
-import type { CreateStaffRequest, Staff, StaffListItem } from '@academia/contracts';
+import type { CreateStaffRequest, Staff, StaffListItem, UpdateStaffRequest } from '@academia/contracts';
 import { type Database, eq, schema, sql } from '@academia/database';
 import { audit, type AuditActor, diffOf } from '../audit/audit.ts';
 import { isUniqueViolation } from '../db-errors.ts';
@@ -37,6 +37,8 @@ export type StaffListRecord = Omit<StaffListItem, 'photoUrl'>;
 
 type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 
+export type StaffChange = { outcome: 'ok'; staff: StaffRecord } | { outcome: 'not_found' } | { outcome: 'cpf_taken' };
+
 /** Leitura e escrita de `staff`, e a linha de auditoria de cada uma, na mesma transação. */
 export class StaffService {
   constructor(private readonly db: Database['db']) {}
@@ -74,6 +76,61 @@ export class StaffService {
       if (isUniqueViolation(error)) return null;
       throw error;
     }
+  }
+
+  /**
+   * Altera só os campos enviados, com a linha travada: duas edições de campos diferentes se somam. Sem
+   * mudança de valor não grava nada, nem em `staff` nem na trilha.
+   */
+  async update(id: string, change: UpdateStaffRequest, actor: AuditActor): Promise<StaffChange> {
+    if (!UUID.test(id)) return { outcome: 'not_found' };
+    try {
+      return await this.db.transaction(async (tx): Promise<StaffChange> => {
+        const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+        if (!row) return { outcome: 'not_found' };
+
+        const before = fieldsOf(row);
+        const after: Fields = { ...before };
+        for (const field of TRACKED) {
+          const sent = change[field];
+          if (sent !== undefined) (after as Record<string, unknown>)[field] = sent;
+        }
+        const user = await userOf(tx, row.userId);
+        const diff = diffOf(before, after, TRACKED, REGISTRABLE);
+        if (!diff) return { outcome: 'ok', staff: toRecord(row, user) };
+
+        const [updated] = await tx
+          .update(staff)
+          .set({ ...after, status: after.status as Row['status'], updatedAt: new Date() })
+          .where(eq(staff.id, id))
+          .returning();
+        await audit.record(tx, { actor, action: 'staff.updated', entity: 'staff', entityId: id, diff });
+        return { outcome: 'ok', staff: toRecord(updated!, user) };
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) return { outcome: 'cpf_taken' };
+      throw error;
+    }
+  }
+
+  /** Inativa o funcionário: a linha, o vínculo e as fotos ficam. `false` se ele não existe; já inativo, nada muda. */
+  async inactivate(id: string, actor: AuditActor): Promise<boolean> {
+    if (!UUID.test(id)) return false;
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+      if (!row) return false;
+      if (row.status === 'inactive') return true;
+
+      await tx.update(staff).set({ status: 'inactive', updatedAt: new Date() }).where(eq(staff.id, id));
+      await audit.record(tx, {
+        actor,
+        action: 'staff.inactivated',
+        entity: 'staff',
+        entityId: id,
+        diff: diffOf({ status: row.status }, { status: 'inactive' }, ['status'], REGISTRABLE),
+      });
+      return true;
+    });
   }
 
   /**

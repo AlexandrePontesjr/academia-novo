@@ -1,12 +1,14 @@
 import {
   type CreateStaffRequest,
   createStaffRequestSchema,
+  type UpdateStaffRequest,
+  updateStaffRequestSchema,
   type Staff,
   staffListResponseSchema,
   type StaffListResponse,
   staffSchema,
 } from '@academia/contracts';
-import { Body, Controller, Get, Inject, NotFoundException, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import { PhotosService } from '../photos/photos.service.ts';
@@ -49,5 +51,24 @@ export class StaffController {
     if (!found) throw new NotFoundException();
     const photoUrl = (await this.photos.staffPhotoUrls([found.id], 'medium')).get(found.id) ?? null;
     return { ...found, photoUrl };
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'hr_finance')
+  @Input(updateStaffRequestSchema)
+  @Output(200, staffSchema)
+  async update(@Param('id') id: string, @Body() body: UpdateStaffRequest, @Actor() actor: AuditActor): Promise<Staff> {
+    const change = await this.staff.update(id, body, actor);
+    if (change.outcome === 'not_found') throw new NotFoundException();
+    if (change.outcome === 'cpf_taken') throw new ProblemException(409, 'cpf_taken');
+    const photoUrl = (await this.photos.staffPhotoUrls([id], 'medium')).get(id) ?? null;
+    return { ...change.staff, photoUrl };
+  }
+
+  @Delete(':id')
+  @Roles('admin', 'hr_finance')
+  @Output(204)
+  async inactivate(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    if (!(await this.staff.inactivate(id, actor))) throw new NotFoundException();
   }
 }
