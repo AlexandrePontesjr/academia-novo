@@ -3,6 +3,7 @@ import {
   auditActionSchema,
   consentSchema,
   consentTermsResponseSchema,
+  createStaffRequestSchema,
   createStudentRequestSchema,
   grantConsentRequestSchema,
   isMinor,
@@ -18,6 +19,8 @@ import {
   photoVariantSchema,
   problemSchema,
   sessionResponseSchema,
+  staffListItemSchema,
+  staffSchema,
   studentSchema,
   studentsResponseSchema,
   twoFactorEnableResponseSchema,
@@ -228,8 +231,8 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(20);
-  expect([...AUDIT_ACTIONS]).toEqual([
+  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
     'student.updated',
@@ -243,6 +246,139 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'student.photo_version_purged',
   ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
+  const before = [
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+    'student.photo_uploaded',
+    'student.photo_removed',
+    'student.photo_replaced',
+    'student.photo_version_purged',
+  ];
+
+  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect([...AUDIT_ACTIONS]).toEqual([
+    ...before,
+    'staff.created',
+    'staff.updated',
+    'staff.inactivated',
+    'staff.viewed',
+    'staff.list_viewed',
+    'staff.user_linked',
+    'staff.user_unlinked',
+    'staff.photo_uploaded',
+    'staff.photo_removed',
+    'staff.photo_replaced',
+    'staff.photo_version_purged',
+  ]);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('staff_schemas_accept_and_reject_and_share_cpf_and_phone_rules_with_students', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+
+  // criação: os cinco campos obrigatórios, e a falta de cada um recusada
+  const create = { name: 'Rafaela Prado', cpf: '529.982.247-25', position: 'Fisioterapeuta', hiredAt: '2021-03-15', phone: '(11) 91234-5678' };
+  expect(createStaffRequestSchema.safeParse(create).success).toBe(true);
+  for (const field of Object.keys(create)) {
+    const result = createStaffRequestSchema.safeParse(without(create, field));
+    expect(result.success, `sem ${field}`).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path.join('.')), `sem ${field}`).toEqual([field]);
+  }
+
+  // a ficha: `user` e `photoUrl` nulos ou preenchidos; a situação fora dos dois valores é recusada
+  const ficha = {
+    id,
+    name: 'Rafaela Prado',
+    status: 'active',
+    cpf: '52998224725',
+    position: 'Fisioterapeuta',
+    department: null,
+    hiredAt: '2021-03-15',
+    phone: '11912345678',
+    email: null,
+    user: null,
+    photoUrl: null,
+  };
+  const user = { id, name: 'Rafaela', email: 'rafaela@exemplo.com', role: 'reception', active: true };
+  expect(staffSchema.safeParse(ficha).success).toBe(true);
+  expect(staffSchema.safeParse({ ...ficha, user, photoUrl: '/api/photo-files/x/medium?exp=1&sig=a' }).success).toBe(true);
+  expect(staffSchema.safeParse({ ...ficha, status: 'inactive' }).success).toBe(true);
+  for (const status of ['suspended', 'Active', 'ativo', '']) {
+    expect(staffSchema.safeParse({ ...ficha, status }).success, `status ${JSON.stringify(status)}`).toBe(false);
+  }
+
+  // o item da lista: só as seis chaves
+  const item = { id, name: 'Rafaela Prado', position: 'Fisioterapeuta', department: null, status: 'active', photoUrl: null };
+  expect(staffListItemSchema.safeParse(item).success).toBe(true);
+  for (const extra of ['cpf', 'phone', 'email', 'hiredAt', 'user']) {
+    expect(staffListItemSchema.safeParse({ ...item, [extra]: 'x' }).success, `chave a mais ${extra}`).toBe(false);
+  }
+  for (const field of Object.keys(item)) {
+    expect(staffListItemSchema.safeParse(without(item, field)).success, `item sem ${field}`).toBe(false);
+  }
+
+  // CPF e telefone: uma definição só, o mesmo veredito e o mesmo valor guardado nos dois schemas
+  const student = { name: 'Ana Lima', birthDate: '2000-01-01', phone: '11912345678', cpf: '52998224725' };
+  const staff = { name: 'Ana Lima', position: 'Instrutora', hiredAt: '2020-01-01', phone: '11912345678', cpf: '52998224725' };
+  const cpfs: Array<[sent: string, accepted: boolean]> = [
+    ['529.982.247-25', true],
+    ['52998224725', true],
+    ['123.456.789-09', true],
+    ['12345678909', true],
+    ['5299822472', false],
+    ['529982247251', false],
+    ['11111111111', false],
+    ['00000000000', false],
+    ['529.982.247-15', false],
+    ['529.982.247-24', false],
+    ['5299822472a', false],
+    ['', false],
+  ];
+  expect(cpfs).toHaveLength(12);
+  for (const [cpf, accepted] of cpfs) {
+    const onStudent = createStudentRequestSchema.safeParse({ ...student, cpf });
+    const onStaff = createStaffRequestSchema.safeParse({ ...staff, cpf });
+    expect(onStaff.success, `cpf ${JSON.stringify(cpf)}`).toBe(accepted);
+    expect(onStaff.success, `cpf ${JSON.stringify(cpf)} igual ao do aluno`).toBe(onStudent.success);
+    expect(onStaff.data?.cpf, `cpf ${JSON.stringify(cpf)} guardado`).toBe(onStudent.data?.cpf);
+  }
+  const phones: Array<[sent: string, accepted: boolean]> = [
+    ['(11) 91234-5678', true],
+    ['11912345678', true],
+    ['(11) 1234-5678', true],
+    ['1112345678', true],
+    ['11 91234 5678', true],
+    ['123456789', false],
+    ['119123456789', false],
+    ['(11) 91234-56789', false],
+    ['11abcdefghi', false],
+    ['', false],
+  ];
+  expect(phones).toHaveLength(10);
+  for (const [phone, accepted] of phones) {
+    const onStudent = createStudentRequestSchema.safeParse({ ...student, phone });
+    const onStaff = createStaffRequestSchema.safeParse({ ...staff, phone });
+    expect(onStaff.success, `telefone ${JSON.stringify(phone)}`).toBe(accepted);
+    expect(onStaff.success, `telefone ${JSON.stringify(phone)} igual ao do aluno`).toBe(onStudent.success);
+    expect(onStaff.data?.phone, `telefone ${JSON.stringify(phone)} guardado`).toBe(onStudent.data?.phone);
+  }
 });
 
 test('student_schema_has_optional_profile_fields', () => {
@@ -352,7 +488,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(20);
+  expect(AUDIT_ACTIONS).toHaveLength(31);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -372,7 +508,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(20);
+  expect(AUDIT_ACTIONS).toHaveLength(31);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -396,7 +532,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(20);
+  expect(AUDIT_ACTIONS).toHaveLength(31);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -417,7 +553,7 @@ test('audit_actions_end_with_replace_and_purge_in_order', () => {
     'student.photo_uploaded',
     'student.photo_removed',
   ]);
-  expect(AUDIT_ACTIONS.slice(18)).toEqual(['student.photo_replaced', 'student.photo_version_purged']);
+  expect(AUDIT_ACTIONS.slice(18, 20)).toEqual(['student.photo_replaced', 'student.photo_version_purged']);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 

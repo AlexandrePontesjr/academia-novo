@@ -3,6 +3,8 @@ export * from './auth.ts';
 export * from './consents.ts';
 export * from './health.ts';
 export * from './photos.ts';
+export { saoPauloToday } from './person.ts';
 export * from './problem.ts';
+export * from './staff.ts';
 export * from './students.ts';
 export * from './users.ts';

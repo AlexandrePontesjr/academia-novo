@@ -165,8 +165,11 @@ export class PhotosService {
       .where(and(eq(photos.isCurrent, false), lte(photos.expiresAt, sql`now()`)));
     const outcome = { purged: 0, failed: 0 };
     for (const version of expired) {
+      // `student_id` é anulável desde a `0007`; a versão de funcionário é da rotina por dono (funcionarios, S7)
+      const { studentId } = version;
+      if (studentId === null) continue;
       const removed = await Promise.allSettled(
-        PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(version.studentId, version.id, variant))),
+        PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(studentId, version.id, variant))),
       );
       if (removed.some((result) => result.status === 'rejected')) {
         outcome.failed += 1;
@@ -182,7 +185,7 @@ export class PhotosService {
           actor: NO_ACTOR,
           action: 'student.photo_version_purged',
           entity: 'student',
-          entityId: version.studentId,
+          entityId: studentId,
         });
         return true;
       });
@@ -207,7 +210,7 @@ export class PhotosService {
       .select({ studentId: photos.studentId, id: photos.id })
       .from(photos)
       .where(and(inArray(photos.studentId, studentIds), eq(photos.isCurrent, true)));
-    return new Map(rows.map((row) => [row.studentId, row.id]));
+    return new Map(rows.flatMap((row): Array<[string, string]> => (row.studentId === null ? [] : [[row.studentId, row.id]])));
   }
 
   /** A URL assinada da variante da foto corrente, ou `undefined` se o aluno não tem foto. */
@@ -231,7 +234,8 @@ export class PhotosService {
   async fileOf(photoId: string, variant: PhotoVariant): Promise<Buffer | undefined> {
     if (!UUID.test(photoId)) return undefined;
     const [row] = await this.db.select({ studentId: photos.studentId }).from(photos).where(eq(photos.id, photoId));
-    if (!row) return undefined;
+    // a foto de funcionário é da rotina por dono (funcionarios, S7)
+    if (!row?.studentId) return undefined;
     try {
       return await this.storage.get(photoKey(row.studentId, photoId, variant));
     } catch (error) {

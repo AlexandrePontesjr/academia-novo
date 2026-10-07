@@ -34,6 +34,17 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'student.photo_removed': 'Foto do aluno removida',
   'student.photo_replaced': 'Foto do aluno trocada',
   'student.photo_version_purged': 'Versão anterior da foto excluída',
+  'staff.created': 'Funcionário criado',
+  'staff.updated': 'Funcionário editado',
+  'staff.inactivated': 'Funcionário inativado',
+  'staff.viewed': 'Ficha de funcionário visualizada',
+  'staff.list_viewed': 'Lista de funcionários visualizada',
+  'staff.user_linked': 'Usuário vinculado ao funcionário',
+  'staff.user_unlinked': 'Usuário desvinculado do funcionário',
+  'staff.photo_uploaded': 'Foto do funcionário enviada',
+  'staff.photo_removed': 'Foto do funcionário removida',
+  'staff.photo_replaced': 'Foto do funcionário trocada',
+  'staff.photo_version_purged': 'Versão anterior da foto do funcionário excluída',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;
