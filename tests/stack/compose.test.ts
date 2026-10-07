@@ -548,6 +548,174 @@ describe('stack de pé', () => {
     ).toBe('1|1');
   }, 300_000);
 
+  test('staff_registered_through_web_pages_audited_photo_replaced_and_expired_version_purged', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** As chaves do bucket da stack sob o prefixo do funcionário, relativas a ele. */
+    const keysOf = (staffId: string) => {
+      const listed = stack.compose(
+        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/photos/main/${staffId}/"`,
+      );
+      expect(listed.status, listed.output).toBe(0);
+      return listed.output
+        .split(/\r?\n/)
+        .flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? [])
+        .sort();
+    };
+    const waitFor = async (what: string, done: () => boolean | Promise<boolean>) => {
+      const deadline = Date.now() + 60_000;
+      while (!(await done())) {
+        expect(Date.now(), `${what} em até 60 s`).toBeLessThan(deadline);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    };
+    /** Um usuário do perfil dado, criado pela CLI da stack, e a sessão dele pela origem do web. */
+    const account = async (role: 'admin' | 'hr_finance' | 'reception', email: string, password: string) => {
+      const created = stack.compose(
+        `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name ${role}`,
+      );
+      expect(created.status, created.output).toBe(0);
+      // a CLI cria `admin`, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+      if (role !== 'admin') psql(`update users set role = '${role}' where email = '${email}'`);
+      const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      // a stack não tem gerador de TOTP: o 2FA do `admin` é posto depois de entrar, como as suítes da API fazem
+      if (role === 'admin') psql(`update users set two_factor_enabled = true where email = '${email}'`);
+      return {
+        id: psql(`select id from users where email = '${email}'`),
+        cookie: login.headers
+          .getSetCookie()
+          .map((setCookie) => setCookie.split(';')[0])
+          .join('; '),
+      };
+    };
+    const headersOf = (cookie: string, userAgent: string, forwardedFor: string) => ({
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': userAgent,
+      'X-Forwarded-For': forwardedFor,
+    });
+
+    // a migração 0007 foi aplicada ao subir
+    expect(psql(`select to_regclass('public.staff')`)).toBe('staff');
+
+    const hr = await account('hr_finance', 'rh.da.stack@exemplo.com', 'senha-da-stack-rh-1');
+    const admin = await account('admin', 'admin.dos.funcionarios@exemplo.com', 'senha-da-stack-adm-1');
+    const reception = await account('reception', 'recepcao.vinculada@exemplo.com', 'senha-da-stack-rec-1');
+    const hrHeaders = headersOf(hr.cookie, 'teste-rh/1.0', '203.0.113.41');
+
+    // o RH cria o funcionário
+    const created = await fetch(`${stack.webOrigin}/api/staff`, {
+      method: 'POST',
+      headers: { ...hrHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Funcionária da Stack',
+        cpf: '529.982.247-25',
+        position: 'Fisioterapeuta',
+        hiredAt: '2021-03-15',
+        phone: '(11) 91234-5678',
+      }),
+    });
+    expect(created.status, await created.clone().text()).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+
+    // envia a foto por POST e a troca por PUT, na origem do container `web`
+    const send = async (method: 'POST' | 'PUT', background: string) => {
+      const jpeg = await sharp({ create: { width: 800, height: 1000, channels: 3, background } }).jpeg().toBuffer();
+      const form = new FormData();
+      form.append('file', new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }), 'foto.jpg');
+      return fetch(`${stack.webOrigin}/api/staff/${id}/photo`, { method, headers: hrHeaders, body: form });
+    };
+    const first = await send('POST', '#cc3322');
+    expect(first.status, await first.clone().text()).toBe(201);
+    const previousId = ((await first.json()) as { id: string }).id;
+    const replaced = await send('PUT', '#2233cc');
+    expect(replaced.status, await replaced.clone().text()).toBe(201);
+    const current = (await replaced.json()) as { id: string; version: number };
+    expect(current.version).toBe(2);
+
+    // o Administrador vincula o usuário de recepção
+    const linked = await fetch(`${stack.webOrigin}/api/staff/${id}/user`, {
+      method: 'PUT',
+      headers: { ...headersOf(admin.cookie, 'teste-adm/1.0', '203.0.113.42'), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: reception.id }),
+    });
+    expect(linked.status, await linked.clone().text()).toBe(204);
+
+    // cada página renderizada deixa a sua linha: as linhas são lidas do banco da stack, não pelas rotas
+    const count = (action: string) => Number(psql(`select count(*) from audit_logs where action = '${action}'`));
+    const open = (path: string, cookie: string) =>
+      fetch(`${stack.webOrigin}${path}`, { headers: { Cookie: cookie, 'User-Agent': 'teste-rh/1.0', 'X-Forwarded-For': '203.0.113.41' } });
+    const [lists, views] = [count('staff.list_viewed'), count('staff.viewed')];
+
+    const list = await open('/staff', hr.cookie);
+    expect(list.status).toBe(200);
+    expect(count('staff.list_viewed')).toBe(lists + 1);
+    expect(count('staff.viewed')).toBe(views);
+
+    const ficha = await open(`/staff/${id}`, hr.cookie);
+    expect(ficha.status).toBe(200);
+    expect(count('staff.viewed')).toBe(views + 1);
+    const edit = await open(`/staff/${id}/edit`, hr.cookie);
+    expect(edit.status).toBe(200);
+    expect(count('staff.viewed')).toBe(views + 2);
+    expect(count('staff.list_viewed')).toBe(lists + 1);
+    expect(
+      psql(`select ip || '|' || user_agent from audit_logs where action = 'staff.viewed' and entity_id = '${id}' and user_id = '${hr.id}'`).split(/\r?\n/),
+    ).toEqual(['203.0.113.41|teste-rh/1.0', '203.0.113.41|teste-rh/1.0']);
+
+    // a recepção não passa da mensagem de permissão e não deixa linha
+    const [rows, listsBefore, viewsBefore] = [
+      Number(psql(`select count(*) from audit_logs where entity = 'staff'`)),
+      count('staff.list_viewed'),
+      count('staff.viewed'),
+    ];
+    const denied = await open('/staff', reception.cookie);
+    expect(denied.status).toBe(200);
+    expect(await denied.text()).toContain('Você não tem permissão para acessar esta página.');
+    expect(Number(psql(`select count(*) from audit_logs where entity = 'staff'`))).toBe(rows);
+    expect([count('staff.list_viewed'), count('staff.viewed')]).toEqual([listsBefore, viewsBefore]);
+
+    // o prazo da versão anterior vai para o passado, e a API reinicia: o expurgo roda na subida
+    const variants = ['large.webp', 'medium.webp', 'thumb.webp'];
+    expect(keysOf(id)).toEqual([...variants.map((name) => `${current.id}/${name}`), ...variants.map((name) => `${previousId}/${name}`)].sort());
+    psql(`update photos set expires_at = now() - interval '1 second' where id = '${previousId}'`);
+    const restarted = stack.compose('restart api');
+    expect(restarted.status, restarted.output).toBe(0);
+
+    await waitFor('a linha da versão vencida sair de photos', () => psql(`select count(*) from photos where id = '${previousId}'`) === '0');
+    await waitFor('as chaves da versão vencida saírem do bucket', () => keysOf(id).every((key) => !key.startsWith(previousId)));
+    expect(keysOf(id)).toEqual(variants.map((name) => `${current.id}/${name}`));
+
+    // a foto corrente continua sendo entregue pela URL assinada da ficha
+    await waitFor('a API voltar a responder', () =>
+      fetch(`${stack.webOrigin}/api/staff/${id}`, { headers: hrHeaders }).then(
+        (response) => response.status === 200,
+        () => false,
+      ),
+    );
+    const ficheiro = await fetch(`${stack.webOrigin}/api/staff/${id}`, { headers: hrHeaders });
+    const { photoUrl } = (await ficheiro.json()) as { photoUrl: string };
+    expect(photoUrl).toContain(current.id);
+    const file = await fetch(`${stack.webOrigin}${photoUrl}`);
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-type')).toBe('image/webp');
+
+    expect(
+      psql(
+        `select count(*) filter (where user_id is null) || '|' || count(*) from audit_logs where action = 'staff.photo_version_purged' and entity_id = '${id}'`,
+      ),
+    ).toBe('1|1');
+  }, 300_000);
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
