@@ -2,12 +2,13 @@ import type { Role, Staff, StaffListItem } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import { createClient } from './support/client.ts';
-import { bucketObject, type PhotoStack, startPhotoStack } from './support/photos.ts';
+import { bucketObject, jpegBytes, type PhotoStack, startPhotoStack } from './support/photos.ts';
 import { problem } from './support/stack.ts';
 import {
   FICHA_KEYS,
   LIST_ITEM_KEYS,
   insertStaff,
+  putStaffPhoto,
   resetStaff,
   seedStaffPhoto,
   staffBody,
@@ -91,13 +92,15 @@ test('ficha_photo_url_medium_signed_for_current_photo_null_without', async () =>
   expect(Buffer.from(await served.arrayBuffer()).equals(await bucketObject(env.minio, first.keys.medium))).toBe(true);
   expect(((await (await client.get(`/api/staff/${without}`)).json()) as Staff).photoUrl).toBeNull();
 
-  // depois da troca, a ficha traz o `photoId` novo: a anterior fica guardada, com prazo, e a nova é a corrente
-  await env.stack.query(`update photos set is_current = false, expires_at = now() + interval '30 days' where id = $1`, [first.photoId]);
-  const second = await seedStaffPhoto(env.stack, env.minio, withPhoto!, { version: 2 });
-  expect(second.photoId).not.toBe(first.photoId);
+  // depois da troca pelo `PUT`, a ficha traz o `photoId` novo: a anterior fica guardada, com prazo, e a nova é a corrente
+  const replaced = await putStaffPhoto(client, withPhoto!, await jpegBytes());
+  expect(replaced.status).toBe(201);
+  const second = (await replaced.json()) as { id: string; version: number };
+  expect(second.version).toBe(2);
+  expect(second.id).not.toBe(first.photoId);
 
   const swapped = (await (await client.get(`/api/staff/${withPhoto}`)).json()) as Staff;
-  expect(swapped.photoUrl).toMatch(new RegExp(`^/api/photo-files/${second.photoId}/medium\\?`));
+  expect(swapped.photoUrl).toMatch(new RegExp(`^/api/photo-files/${second.id}/medium\\?`));
 });
 
 test('ficha_200_writes_one_staff_viewed_row', async () => {
