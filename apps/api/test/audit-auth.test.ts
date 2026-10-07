@@ -315,13 +315,16 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await stack.query(`update photos set expires_at = now() - interval '1 second' where student_id = $1 and not is_current`, [studentId]);
   await stack.api.purge(); // student.photo_version_purged
   await admin.delete(`/api/students/${studentId}/photo`); // student.photo_removed
-  await admin.post('/api/staff', {
+  const staffMember = await admin.post('/api/staff', {
     name: 'Funcionária Percorre',
     cpf: '529.982.247-25',
     position: 'Recepcionista',
     hiredAt: '2020-01-15',
     phone: '11912345678',
   }); // staff.created
+  const { id: staffId } = (await staffMember.json()) as { id: string };
+  await admin.get('/api/staff'); // staff.list_viewed
+  await admin.get(`/api/staff/${staffId}`); // staff.viewed
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -333,8 +336,6 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const STAFF_ACTIONS_NOT_ROUTED_YET: string[] = [
     'staff.updated',
     'staff.inactivated',
-    'staff.viewed',
-    'staff.list_viewed',
     'staff.user_linked',
     'staff.user_unlinked',
     'staff.photo_uploaded',

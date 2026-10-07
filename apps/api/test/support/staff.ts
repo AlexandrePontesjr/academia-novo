@@ -1,6 +1,9 @@
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import type { Staff } from '@academia/contracts';
 import { expect } from 'vitest';
 import type { Client } from './client.ts';
+import { webpBytes } from './photos.ts';
+import type { Minio } from './servers.ts';
 import type { Stack } from './stack.ts';
 import { cpfOf } from './students.ts';
 
@@ -108,8 +111,6 @@ export const STAFF_ROUTES: StaffRoute[] = [
  * afirmar o resultado de verdade nela. Enquanto uma rota está aqui, a prova exige o `404` dela.
  */
 export const UNBUILT_STAFF_ROUTES: string[] = [
-  'GET /api/staff',
-  'GET /api/staff/:id',
   'PATCH /api/staff/:id',
   'DELETE /api/staff/:id',
   'PUT /api/staff/:id/user',
@@ -129,4 +130,42 @@ export function bodyFor(route: StaffRoute): unknown {
   if (route.method === 'PATCH') return { position: 'Coordenadora' };
   if (route.method === 'PUT' && route.path.endsWith('/user')) return { userId: '018f0000-0000-7000-8000-000000000001' };
   return undefined;
+}
+
+/** Esvazia `staff` (e as fotos de funcionário, que a chave estrangeira não deixa para trás). */
+export async function resetStaff(stack: Stack) {
+  await stack.query('delete from photos where staff_id is not null');
+  await stack.query('delete from staff');
+}
+
+export const staffPhotoPrefix = (staffId: string) => `photos/main/${staffId}/`;
+
+/**
+ * Uma foto de funcionário posta direto no banco e no bucket, com as três variantes de tamanhos
+ * diferentes: serve às provas de leitura enquanto a rota de envio não é a que cria a linha.
+ */
+export async function seedStaffPhoto(
+  stack: Stack,
+  minio: Pick<Minio, 'client' | 'bucket'>,
+  staffId: string,
+  { version = 1, current = true }: { version?: number; current?: boolean } = {},
+) {
+  const [row] = await stack.query<{ id: string }>(
+    `insert into photos (staff_id, version, is_current, expires_at)
+     values ($1, $2, $3, case when $3 then null else now() + interval '30 days' end) returning id`,
+    [staffId, version, current],
+  );
+  const photoId = row!.id;
+  const sizes = { thumb: [96, 128], medium: [240, 320], large: [600, 800] } as const;
+  const keys: Record<'thumb' | 'medium' | 'large', string> = {
+    thumb: `${staffPhotoPrefix(staffId)}${photoId}/thumb.webp`,
+    medium: `${staffPhotoPrefix(staffId)}${photoId}/medium.webp`,
+    large: `${staffPhotoPrefix(staffId)}${photoId}/large.webp`,
+  };
+  for (const [variant, [width, height]] of Object.entries(sizes) as Array<[keyof typeof sizes, readonly [number, number]]>) {
+    await minio.client.send(
+      new PutObjectCommand({ Bucket: minio.bucket, Key: keys[variant], Body: await webpBytes(width, height), ContentType: 'image/webp' }),
+    );
+  }
+  return { photoId, keys };
 }

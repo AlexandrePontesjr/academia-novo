@@ -213,6 +213,19 @@ export class PhotosService {
     return new Map(rows.flatMap((row): Array<[string, string]> => (row.studentId === null ? [] : [[row.studentId, row.id]])));
   }
 
+  /** `photoUrl` do funcionário (`null` sem foto) para cada `id`, na variante dada (funcionarios, door 2). */
+  async staffPhotoUrls(staffIds: string[], variant: PhotoVariant): Promise<Map<string, string | null>> {
+    const rows =
+      staffIds.length === 0
+        ? []
+        : await this.db
+            .select({ staffId: photos.staffId, id: photos.id })
+            .from(photos)
+            .where(and(inArray(photos.staffId, staffIds), eq(photos.isCurrent, true)));
+    const current = new Map(rows.map((row) => [row.staffId, row.id]));
+    return new Map(staffIds.map((id) => [id, current.has(id) ? this.signer.issue(current.get(id)!, variant).url : null]));
+  }
+
   /** A URL assinada da variante da foto corrente, ou `undefined` se o aluno não tem foto. */
   async urlFor(studentId: string, variant: PhotoVariant): Promise<PhotoUrlResponse | undefined> {
     const photoId = await this.currentId(studentId);
@@ -233,11 +246,15 @@ export class PhotosService {
   /** Os bytes da variante de uma foto, ou `undefined` se a foto não existe mais. */
   async fileOf(photoId: string, variant: PhotoVariant): Promise<Buffer | undefined> {
     if (!UUID.test(photoId)) return undefined;
-    const [row] = await this.db.select({ studentId: photos.studentId }).from(photos).where(eq(photos.id, photoId));
-    // a foto de funcionário é da rotina por dono (funcionarios, S7)
-    if (!row?.studentId) return undefined;
+    const [row] = await this.db
+      .select({ studentId: photos.studentId, staffId: photos.staffId })
+      .from(photos)
+      .where(eq(photos.id, photoId));
+    // quem diz de quem é a foto é a linha, nunca o prefixo da chave (funcionarios, door 3)
+    const ownerId = row?.studentId ?? row?.staffId;
+    if (!ownerId) return undefined;
     try {
-      return await this.storage.get(photoKey(row.studentId, photoId, variant));
+      return await this.storage.get(photoKey(ownerId, photoId, variant));
     } catch (error) {
       if (error instanceof StorageUnavailable) throw new ProblemException(503, 'storage_unavailable');
       throw error;

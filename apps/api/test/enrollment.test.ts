@@ -70,7 +70,9 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'POST /api/students/:id/photo',
       'PUT /api/students/:id/photo',
       'DELETE /api/students/:id/photo',
+      'GET /api/staff',
       'POST /api/staff',
+      'GET /api/staff/:id',
       'GET /api/openapi.json',
     ].sort(),
   );
