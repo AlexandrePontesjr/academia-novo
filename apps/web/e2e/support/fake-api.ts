@@ -102,11 +102,21 @@ export class FakeApi {
   /** Sem sessão, `GET /api/auth/session` responde `401`. */
   session: SessionResponse | undefined;
   private readonly routes = new Map<string, Responder>();
+  private readonly prefixes = new Map<string, Responder>();
   private readonly sockets = new Set<Socket>();
   private server: Server | undefined;
 
   on(method: string, path: string, responder: Responder) {
     this.routes.set(`${method} ${path}`, responder);
+  }
+
+  /**
+   * Responde a toda requisição, de qualquer método, a `prefix` ou a um caminho abaixo dele que nenhuma
+   * rota de `on` tenha tomado: é o que dá a uma família de rotas a mesma regra de acesso da API real.
+   * Registrar de novo o mesmo `prefix` troca a resposta anterior.
+   */
+  onPrefix(prefix: string, responder: Responder) {
+    this.prefixes.set(prefix, responder);
   }
 
   /** As requisições de escrita que chegaram. */
@@ -117,6 +127,11 @@ export class FakeApi {
   private reply(request: Recorded): Reply {
     const responder = this.routes.get(`${request.method} ${request.path}`);
     if (responder) return typeof responder === 'function' ? responder(request) : responder;
+    for (const [prefix, family] of this.prefixes) {
+      if (request.path === prefix || request.path.startsWith(`${prefix}/`)) {
+        return typeof family === 'function' ? family(request) : family;
+      }
+    }
     if (request.method === 'GET' && request.path === '/api/auth/session') {
       return this.session ? { status: 200, body: this.session } : problem(401, 'unauthorized');
     }
