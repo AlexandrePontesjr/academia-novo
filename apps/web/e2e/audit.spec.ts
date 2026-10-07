@@ -583,3 +583,122 @@ test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, 
   await expect(purged.locator('td:nth-child(5)'), 'IP').toHaveText('—');
   await expect(purged.locator('td:nth-child(6)'), 'Navegador').toHaveText('—');
 });
+
+const STAFF_LABELS = [
+  'Funcionário criado',
+  'Funcionário editado',
+  'Funcionário inativado',
+  'Ficha de funcionário visualizada',
+  'Lista de funcionários visualizada',
+  'Usuário vinculado ao funcionário',
+  'Usuário desvinculado do funcionário',
+  'Foto do funcionário enviada',
+  'Foto do funcionário removida',
+  'Foto do funcionário trocada',
+  'Versão anterior da foto do funcionário excluída',
+];
+const STAFF_ACTIONS = [
+  'staff.created',
+  'staff.updated',
+  'staff.inactivated',
+  'staff.viewed',
+  'staff.list_viewed',
+  'staff.user_linked',
+  'staff.user_unlinked',
+  'staff.photo_uploaded',
+  'staff.photo_removed',
+  'staff.photo_replaced',
+  'staff.photo_version_purged',
+] as const;
+const STAFF_ID = '018f0000-0000-7000-8000-0000000005bb';
+
+test('staff_actions_labelled_filter_has_thirty_one_and_authorless_row_dashes', async ({ page, api }) => {
+  serve(
+    api,
+    STAFF_ACTIONS.map((action) =>
+      logOf({
+        action,
+        entity: 'staff',
+        entityId: action === 'staff.list_viewed' ? null : STAFF_ID,
+        // o expurgo não tem autor: sem usuário, sem IP e sem navegador
+        ...(action === 'staff.photo_version_purged' && { user: null, ip: null, userAgent: null }),
+      }),
+    ),
+  );
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr')).toHaveCount(11);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(STAFF_LABELS);
+
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options).toHaveLength(31);
+  // as onze novas ocupam as posições 21 a 31, nessa ordem
+  expect(options.slice(20)).toEqual(STAFF_LABELS);
+  expect(AUDIT_ACTIONS.slice(20)).toEqual(STAFF_ACTIONS);
+
+  const purged = page.locator('tbody tr:nth-child(11)');
+  await expect(purged.locator('td:nth-child(2)'), 'Usuário').toHaveText('—');
+  await expect(purged.locator('td:nth-child(5)'), 'IP').toHaveText('—');
+  await expect(purged.locator('td:nth-child(6)'), 'Navegador').toHaveText('—');
+});
+
+test('staff_target_link_ver_funcionario_and_dash_without_target', async ({ page, api }) => {
+  serve(api, [
+    logOf({ action: 'staff.viewed', entity: 'staff', entityId: STAFF_ID }),
+    logOf({ action: 'staff.list_viewed', entity: 'staff', entityId: null }),
+  ]);
+
+  await page.goto('/audit');
+
+  const linked = page.locator('tbody tr:nth-child(1) td:nth-child(4)');
+  await expect(linked.getByRole('link', { name: 'Ver funcionário', exact: true })).toHaveAttribute(
+    'href',
+    `/staff/${STAFF_ID}`,
+  );
+  const listed = page.locator('tbody tr:nth-child(2) td:nth-child(4)');
+  await expect(listed).toHaveText('—');
+  await expect(listed.getByRole('link')).toHaveCount(0);
+});
+
+test('staff_diff_shows_status_change_and_field_name', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'staff.updated',
+      entity: 'staff',
+      entityId: STAFF_ID,
+      diff: { fields: ['status', 'position'], values: { status: { from: 'active', to: 'inactive' } } },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  const details = page.locator('tbody tr:nth-child(1) td:nth-child(7)');
+  await expect(details.getByText('Situação: Ativo → Inativo', { exact: true })).toBeVisible();
+  await expect(details.getByText('Cargo alterado', { exact: true })).toBeVisible();
+  // só as duas frases: nenhum valor de cargo
+  expect(await details.locator('li').allTextContents()).toEqual(['Situação: Ativo → Inativo', 'Cargo alterado']);
+});
+
+test('staff_diff_shows_linked_user_by_current_name', async ({ page, api }) => {
+  expect(USERS[0]!.name).toBe('Pessoa 1');
+  serve(api, [
+    logOf({
+      action: 'staff.user_linked',
+      entity: 'staff',
+      entityId: STAFF_ID,
+      diff: { fields: ['userId'], values: { userId: { from: null, to: USERS[0]!.id } } },
+    }),
+    logOf({
+      action: 'staff.user_unlinked',
+      entity: 'staff',
+      entityId: STAFF_ID,
+      diff: { fields: ['userId'], values: { userId: { from: USERS[0]!.id, to: null } } },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr:nth-child(1) td:nth-child(7)').getByText('Usuário vinculado: — → Pessoa 1', { exact: true })).toBeVisible();
+  await expect(page.locator('tbody tr:nth-child(2) td:nth-child(7)').getByText('Usuário vinculado: Pessoa 1 → —', { exact: true })).toBeVisible();
+});

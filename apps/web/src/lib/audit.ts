@@ -1,4 +1,12 @@
-import type { AuditAction, AuditLog, ConsentGrantor, ConsentPurpose, Role, StudentStatus } from '@academia/contracts';
+import type {
+  AuditAction,
+  AuditLog,
+  ConsentGrantor,
+  ConsentPurpose,
+  Role,
+  StudentStatus,
+  User,
+} from '@academia/contracts';
 import { GRANTOR_LABELS, PURPOSE_LABELS } from './consents.ts';
 import { ROLE_LABELS } from './roles.ts';
 import { STATUS_LABELS } from './students.ts';
@@ -101,10 +109,17 @@ const FIELD_LABELS: Record<string, string> = {
   purpose: 'Finalidade',
   termVersion: 'Versão do termo',
   grantedBy: 'Concedido por',
+  // funcionário: a trilha guarda o valor só de `status` e de `userId`; dos demais, o nome do campo
+  position: 'Cargo',
+  department: 'Setor',
+  hiredAt: 'Data de admissão',
+  userId: 'Usuário vinculado',
 };
 
-function valueLabel(field: string, value: unknown): string {
+function valueLabel(field: string, value: unknown, users: UserNames): string {
   if (value === null || value === undefined) return '—';
+  // a trilha guarda o id do usuário: a tela mostra o nome de agora, ou o id se o usuário não está na lista
+  if (field === 'userId') return users.find((user) => user.id === value)?.name ?? String(value);
   if (field === 'role') return ROLE_LABELS[value as Role] ?? String(value);
   if (field === 'active') return value ? 'Ativo' : 'Inativo';
   if (field === 'status') return STATUS_LABELS[value as StudentStatus] ?? String(value);
@@ -114,18 +129,20 @@ function valueLabel(field: string, value: unknown): string {
   return String(value);
 }
 
+type UserNames = Array<Pick<User, 'id' | 'name'>>;
+
 /**
  * O `diff` em frases: o antes e o depois dos campos que a trilha guarda, e só "alterado" para os
  * demais. Na criação não há antes: sai só o valor com que o registro nasceu.
  */
-export function diffDetails({ action, diff }: Pick<AuditLog, 'action' | 'diff'>): string[] {
+export function diffDetails({ action, diff }: Pick<AuditLog, 'action' | 'diff'>, users: UserNames = []): string[] {
   if (!diff) return [];
   const created = action.endsWith('.created');
   return diff.fields.flatMap((field) => {
     const label = FIELD_LABELS[field] ?? field;
     const change = diff.values[field];
-    if (created) return change ? [`${label}: ${valueLabel(field, change.to)}`] : [];
+    if (created) return change ? [`${label}: ${valueLabel(field, change.to, users)}`] : [];
     if (!change) return [`${label} alterado`];
-    return [`${label}: ${valueLabel(field, change.from)} → ${valueLabel(field, change.to)}`];
+    return [`${label}: ${valueLabel(field, change.from, users)} → ${valueLabel(field, change.to, users)}`];
   });
 }

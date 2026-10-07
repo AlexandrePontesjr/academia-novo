@@ -91,6 +91,14 @@ function target(item: AuditLog, users: User[]): ReactNode {
       </Link>
     );
   }
+  // idem para o funcionário: o link leva à ficha
+  if (item.entity === 'staff') {
+    return (
+      <Link href={`/staff/${item.entityId}`} prefetch={false} className="text-primary underline underline-offset-4">
+        Ver funcionário
+      </Link>
+    );
+  }
   // o nome atual do alvo: a trilha não guarda nome
   const user = item.entity === 'user' ? users.find((candidate) => candidate.id === item.entityId) : undefined;
   return user?.name ?? item.entityId;
@@ -112,7 +120,7 @@ function AuditTable({ items, users }: { items: AuditLog[]; users: User[] }) {
       </thead>
       <tbody>
         {items.map((item) => {
-          const details = diffDetails(item);
+          const details = diffDetails(item, users);
           return (
             <TableRow key={item.id}>
               <TableCell className="whitespace-nowrap">{formatInstant(item.createdAt)}</TableCell>
