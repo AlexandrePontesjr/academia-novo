@@ -11,6 +11,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const NOT_NULL_VIOLATION = '23502';
 const FOREIGN_KEY_VIOLATION = '23503';
 const CHECK_VIOLATION = '23514';
+const EXCLUSION_VIOLATION = '23P01';
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 
 let container: StartedPostgreSqlContainer;
@@ -345,4 +346,116 @@ test('migration_0008_adds_plans_enrollments_and_btree_gist_and_keeps_existing_ta
     await other.end().catch(() => undefined);
     rmSync(until0007, { recursive: true, force: true });
   }
+});
+
+/** Uma linha de matrícula por SQL, sem passar por rota nenhuma. */
+async function insertEnrollment(studentId: string, planId: string, startsAt: string, endsAt: string, cancelled = false) {
+  const [row] = await rows<{ id: string }>(
+    `insert into enrollments (student_id, plan_id, starts_at, ends_at, price_cents, cancelled_at)
+     values ($1, $2, $3, $4, 9990, case when $5 then now() end) returning id`,
+    [studentId, planId, startsAt, endsAt, cancelled],
+  );
+  return row!.id;
+}
+
+test('enrollments_no_overlap_eleven_cases_by_sql', async () => {
+  const planId = await insertPlan();
+  const insert = 'insert into enrollments (student_id, plan_id, starts_at, ends_at, price_cents) values ($1, $2, $3, $4, 9990)';
+  let cases = 0;
+  /** Um aluno com a linha A, não cancelada, de 2026-10-07 a 2026-11-06. */
+  const studentWithA = async () => {
+    const studentId = await insertStudent();
+    return { studentId, a: await insertEnrollment(studentId, planId, '2026-10-07', '2026-11-06') };
+  };
+  const refusedByExclusion = async (label: string, statement: string, values: unknown[]) => {
+    const total = await count('enrollments');
+    const failure = (await failureOf(statement, values)) as { code?: string; constraint?: string };
+    expect(failure.code, label).toBe(EXCLUSION_VIOLATION);
+    expect(failure.constraint, label).toBe('enrollments_no_overlap');
+    expect(await count('enrollments'), label).toBe(total);
+    cases += 1;
+  };
+
+  // cinco períodos do mesmo aluno com ao menos um dia em comum com A, recusados no INSERT
+  const overlapping: Array<[label: string, startsAt: string, endsAt: string]> = [
+    ['o mesmo período', '2026-10-07', '2026-11-06'],
+    ['um dia em comum, o último de A', '2026-11-06', '2026-12-05'],
+    ['um dia em comum, o primeiro de A', '2026-09-08', '2026-10-07'],
+    ['contido em A', '2026-10-10', '2026-10-20'],
+    ['contém A', '2026-10-01', '2026-12-31'],
+  ];
+  expect(overlapping).toHaveLength(5);
+  for (const [label, startsAt, endsAt] of overlapping) {
+    const { studentId, a } = await studentWithA();
+    const before = await rowOf('enrollments', a);
+
+    await refusedByExclusion(label, insert, [studentId, planId, startsAt, endsAt]);
+
+    expect(await rowOf('enrollments', a), label).toBe(before);
+  }
+
+  // quatro aceitos: colado depois, colado antes, o mesmo período de outro aluno e o mesmo período com A cancelada
+  const accepted = async (label: string, studentId: string, startsAt: string, endsAt: string) => {
+    const total = await count('enrollments');
+    await client.query(insert, [studentId, planId, startsAt, endsAt]);
+    expect(await count('enrollments'), label).toBe(total + 1);
+    cases += 1;
+  };
+  await accepted('colado depois de A', (await studentWithA()).studentId, '2026-11-07', '2026-12-06');
+  await accepted('colado antes de A', (await studentWithA()).studentId, '2026-09-07', '2026-10-06');
+  await studentWithA();
+  await accepted('o mesmo período de outro aluno', await insertStudent(), '2026-10-07', '2026-11-06');
+  const withCancelledA = await insertStudent();
+  await insertEnrollment(withCancelledA, planId, '2026-10-07', '2026-11-06', true);
+  await accepted('o mesmo período quando A está cancelada', withCancelledA, '2026-10-07', '2026-11-06');
+
+  // desfazer o cancelamento de uma linha sobreposta a uma viva
+  const revived = await insertStudent();
+  const cancelledRow = await insertEnrollment(revived, planId, '2026-10-07', '2026-11-06', true);
+  await insertEnrollment(revived, planId, '2026-10-07', '2026-11-06');
+  const cancelledBefore = await rowOf('enrollments', cancelledRow);
+  await refusedByExclusion('UPDATE que limpa cancelled_at', 'update enrollments set cancelled_at = null where id = $1', [cancelledRow]);
+  expect(await rowOf('enrollments', cancelledRow)).toBe(cancelledBefore);
+
+  // recuar em um dia o início da linha colada a A
+  const { studentId: moved } = await studentWithA();
+  const glued = await insertEnrollment(moved, planId, '2026-11-07', '2026-12-06');
+  const gluedBefore = await rowOf('enrollments', glued);
+  await refusedByExclusion('UPDATE que recua starts_at em um dia', `update enrollments set starts_at = '2026-11-06' where id = $1`, [glued]);
+  expect(await rowOf('enrollments', glued)).toBe(gluedBefore);
+
+  expect(cases).toBe(11);
+});
+
+test('enrollments_ends_at_and_price_checks', async () => {
+  const planId = await insertPlan();
+  const insert = 'insert into enrollments (student_id, plan_id, starts_at, ends_at, price_cents) values ($1, $2, $3, $4, $5) returning id';
+
+  const refused: Array<[label: string, startsAt: string, endsAt: string, priceCents: number]> = [
+    ['ends_at um dia antes de starts_at', '2026-10-07', '2026-10-06', 9990],
+    ['price_cents igual a -1', '2026-10-07', '2026-11-06', -1],
+  ];
+  for (const [label, startsAt, endsAt, priceCents] of refused) {
+    const total = await count('enrollments');
+    const failure = await failureOf(insert, [await insertStudent(), planId, startsAt, endsAt, priceCents]);
+    expect(failure.code, label).toBe(CHECK_VIOLATION);
+    expect(await count('enrollments'), label).toBe(total);
+  }
+
+  // um período de um dia só, de graça
+  const total = await count('enrollments');
+  const [row] = await rows<{ id: string }>(insert, [await insertStudent(), planId, '2026-10-07', '2026-10-07', 0]);
+  expect(await count('enrollments')).toBe(total + 1);
+  expect(JSON.parse((await rowOf('enrollments', row!.id))!)).toMatchObject({ starts_at: '2026-10-07', ends_at: '2026-10-07', price_cents: 0 });
+
+  // as mesmas duas recusas no UPDATE de uma linha que existe, que fica como estava
+  const before = await rowOf('enrollments', row!.id);
+  for (const [column, value] of [
+    ['ends_at', '2026-10-06'],
+    ['price_cents', -1],
+  ] as const) {
+    const failure = await failureOf(`update enrollments set ${column} = $2 where id = $1`, [row!.id, value]);
+    expect(failure.code, `update ${column}`).toBe(CHECK_VIOLATION);
+  }
+  expect(await rowOf('enrollments', row!.id)).toBe(before);
 });
