@@ -3,8 +3,11 @@ import {
   auditActionSchema,
   consentSchema,
   consentTermsResponseSchema,
+  createEnrollmentRequestSchema,
+  createPlanRequestSchema,
   createStaffRequestSchema,
   createStudentRequestSchema,
+  enrollmentSchema,
   grantConsentRequestSchema,
   isMinor,
   guardianRequestSchema,
@@ -17,6 +20,7 @@ import {
   photoCreatedSchema,
   photoUrlResponseSchema,
   photoVariantSchema,
+  planSchema,
   problemSchema,
   sessionResponseSchema,
   staffListItemSchema,
@@ -25,6 +29,7 @@ import {
   studentSchema,
   studentsResponseSchema,
   twoFactorEnableResponseSchema,
+  updatePlanRequestSchema,
   userSchema,
   usersResponseSchema,
 } from '@academia/contracts';
@@ -233,7 +238,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect(AUDIT_ACTIONS).toHaveLength(36);
   expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
@@ -274,8 +279,8 @@ test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
     'student.photo_version_purged',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(31);
-  expect([...AUDIT_ACTIONS]).toEqual([
+  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect([...AUDIT_ACTIONS].slice(0, 31)).toEqual([
     ...before,
     'staff.created',
     'staff.updated',
@@ -490,7 +495,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect(AUDIT_ACTIONS).toHaveLength(36);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -510,7 +515,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect(AUDIT_ACTIONS).toHaveLength(36);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -534,7 +539,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect(AUDIT_ACTIONS).toHaveLength(36);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -915,4 +920,113 @@ test('staff_bodies_match_contract_schemas_and_new_codes_are_known', async () => 
   } finally {
     await down.api.close();
   }
+});
+
+test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
+  const before = [
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+    'student.photo_uploaded',
+    'student.photo_removed',
+    'student.photo_replaced',
+    'student.photo_version_purged',
+    'staff.created',
+    'staff.updated',
+    'staff.inactivated',
+    'staff.viewed',
+    'staff.list_viewed',
+    'staff.user_linked',
+    'staff.user_unlinked',
+    'staff.photo_uploaded',
+    'staff.photo_removed',
+    'staff.photo_replaced',
+    'staff.photo_version_purged',
+  ];
+  expect(before).toHaveLength(31);
+
+  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect([...AUDIT_ACTIONS]).toEqual([
+    ...before,
+    'plan.created',
+    'plan.updated',
+    'plan.inactivated',
+    'student.enrollment_created',
+    'student.enrollment_cancelled',
+  ]);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('plan_and_enrollment_schemas_accept_and_reject', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+  const paths = (result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[] }> } }) =>
+    result.success ? 'aceita' : [...new Set(result.error!.issues.map((issue) => issue.path.join('.')))].join(',');
+
+  // criação de plano: os três obrigatórios, com e sem `rules`; a falta de cada um recusada
+  const create = { name: 'Mensal', period: 'monthly', priceCents: 9990 };
+  expect(paths(createPlanRequestSchema.safeParse(create))).toBe('aceita');
+  expect(paths(createPlanRequestSchema.safeParse({ ...create, rules: 'Acesso livre de segunda a sábado.' }))).toBe('aceita');
+  for (const missing of ['name', 'period', 'priceCents'] as const) {
+    expect(paths(createPlanRequestSchema.safeParse({ ...create, [missing]: undefined })), missing).toBe(missing);
+  }
+  // dinheiro é inteiro de centavos, de `0` a `9999999`: nunca decimal nem texto
+  for (const priceCents of [99.9, '9990', -1, 10_000_000]) {
+    expect(paths(createPlanRequestSchema.safeParse({ ...create, priceCents })), JSON.stringify(priceCents)).toBe('priceCents');
+  }
+
+  // edição de plano: `period` não é aceito com valor nenhum, e `status` só aceita `active`
+  for (const period of ['monthly', 'quarterly', 'semiannual', 'annual', 'weekly', '', null, 1]) {
+    expect(paths(updatePlanRequestSchema.safeParse({ period })), JSON.stringify(period)).toBe('period');
+    expect(paths(updatePlanRequestSchema.safeParse({ name: 'Mensal Plus', period })), JSON.stringify(period)).toBe('period');
+  }
+  expect(paths(updatePlanRequestSchema.safeParse({ status: 'inactive' }))).toBe('status');
+  expect(paths(updatePlanRequestSchema.safeParse({ status: 'active' }))).toBe('aceita');
+  expect(paths(updatePlanRequestSchema.safeParse({ name: 'Mensal Plus', priceCents: 10990, rules: null }))).toBe('aceita');
+
+  // criação de matrícula: `planId` com `startsAt`, e a falta de cada um recusada
+  const enroll = { planId: id, startsAt: '2026-10-07' };
+  expect(paths(createEnrollmentRequestSchema.safeParse(enroll))).toBe('aceita');
+  for (const missing of ['planId', 'startsAt'] as const) {
+    expect(paths(createEnrollmentRequestSchema.safeParse({ ...enroll, [missing]: undefined })), missing).toBe(missing);
+  }
+
+  // resposta do plano: as seis chaves
+  const plan = { id, name: 'Mensal', period: 'monthly', priceCents: 9990, rules: null, status: 'active' };
+  expect(Object.keys(plan)).toHaveLength(6);
+  expect(paths(planSchema.safeParse(plan))).toBe('aceita');
+  expect(paths(planSchema.safeParse({ ...plan, rules: 'Somente manhãs.', status: 'inactive' }))).toBe('aceita');
+  expect(paths(planSchema.safeParse({ ...plan, period: 'weekly' }))).toBe('period');
+  expect(paths(planSchema.safeParse({ ...plan, status: 'suspended' }))).toBe('status');
+
+  // resposta da matrícula: as oito chaves, com cada uma das quatro situações
+  const enrollment = {
+    id,
+    plan: { id, name: 'Mensal', period: 'monthly' },
+    startsAt: '2026-10-07',
+    endsAt: '2026-11-06',
+    priceCents: 9990,
+    status: 'active',
+    createdAt: '2026-10-07T15:00:00.000Z',
+    cancelledAt: null,
+  };
+  expect(Object.keys(enrollment)).toHaveLength(8);
+  for (const status of ['scheduled', 'active', 'expired', 'cancelled']) {
+    expect(paths(enrollmentSchema.safeParse({ ...enrollment, status })), status).toBe('aceita');
+  }
+  expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'cancelled', cancelledAt: '2026-10-10T12:00:00.000Z' }))).toBe('aceita');
+  expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'suspended' }))).toBe('status');
+  expect(paths(enrollmentSchema.safeParse({ ...enrollment, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
 });

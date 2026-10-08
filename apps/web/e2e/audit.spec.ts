@@ -134,7 +134,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(31);
+  expect(AUDIT_ACTIONS).toHaveLength(36);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -174,6 +174,11 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Foto do funcionário removida',
     'Foto do funcionário trocada',
     'Versão anterior da foto do funcionário excluída',
+    'Plano criado',
+    'Plano editado',
+    'Plano inativado',
+    'Matrícula registrada',
+    'Matrícula cancelada',
   ]);
 });
 
@@ -209,6 +214,11 @@ const LABELS = [
   'Foto do funcionário removida',
   'Foto do funcionário trocada',
   'Versão anterior da foto do funcionário excluída',
+  'Plano criado',
+  'Plano editado',
+  'Plano inativado',
+  'Matrícula registrada',
+  'Matrícula cancelada',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -227,7 +237,7 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(31);
+  expect(options.slice(1)).toHaveLength(36);
   expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
@@ -479,7 +489,7 @@ test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) =>
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(31);
+  expect(options.slice(1)).toHaveLength(36);
   expect(options.slice(14, 17)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
   // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
   expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(consentActions);
@@ -540,7 +550,7 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(31);
+  expect(options.slice(1)).toHaveLength(36);
   // a posição de cada uma é a 17 e a 18 do vocabulário
   expect(options.slice(17, 19)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
   expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(photoActions);
@@ -563,7 +573,7 @@ test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, 
     'Versão anterior da foto excluída',
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
-  expect(options.slice(1)).toHaveLength(31);
+  expect(options.slice(1)).toHaveLength(36);
   expect(options.slice(1, 19)).toEqual(LABELS.slice(0, 18));
   // a posição de cada uma é a 19 e a 20 do vocabulário
   expect(options.slice(19, 21)).toEqual(['Foto do aluno trocada', 'Versão anterior da foto excluída']);
@@ -632,10 +642,10 @@ test('staff_actions_labelled_filter_has_thirty_one_and_authorless_row_dashes', a
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(STAFF_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(31);
-  // as onze novas ocupam as posições 21 a 31, nessa ordem
-  expect(options.slice(20)).toEqual(STAFF_LABELS);
-  expect(AUDIT_ACTIONS.slice(20)).toEqual(STAFF_ACTIONS);
+  expect(options).toHaveLength(36);
+  // as onze de funcionário ocupam as posições 21 a 31, nessa ordem
+  expect(options.slice(20, 31)).toEqual(STAFF_LABELS);
+  expect(AUDIT_ACTIONS.slice(20, 31)).toEqual(STAFF_ACTIONS);
 
   const purged = page.locator('tbody tr:nth-child(11)');
   await expect(purged.locator('td:nth-child(2)'), 'Usuário').toHaveText('—');

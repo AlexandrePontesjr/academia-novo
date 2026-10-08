@@ -340,11 +340,21 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(31);
+  expect(auditActionSchema.options).toHaveLength(36);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  expect(written).toEqual([...auditActionSchema.options].sort());
+  // as ações de plano e de matrícula saem desta lista no commit da rota que passa a gravá-las (planos-matriculas,
+  // S1 a S5); a lista só encolhe, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
+  const PLAN_ACTIONS_NOT_ROUTED_YET: string[] = [
+    'plan.created',
+    'plan.updated',
+    'plan.inactivated',
+    'student.enrollment_created',
+    'student.enrollment_cancelled',
+  ];
+  expect(written.filter((action) => PLAN_ACTIONS_NOT_ROUTED_YET.includes(action))).toEqual([]);
+  expect(written).toEqual(auditActionSchema.options.filter((action) => !PLAN_ACTIONS_NOT_ROUTED_YET.includes(action)).sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
-  expect(rows.filter((row) => row.entity !== 'user' && row.entity !== 'student' && row.entity !== 'staff')).toEqual([]);
+  expect(rows.filter((row) => !['user', 'student', 'staff', 'plan'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações novas, e só nelas
   const staffActions = auditActionSchema.options.filter((action) => action.startsWith('staff.'));
   expect(staffActions).toHaveLength(11);
