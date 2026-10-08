@@ -336,7 +336,10 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await stack.api.purge(); // staff.photo_version_purged
   await admin.delete(`/api/staff/${staffId}/photo`); // staff.photo_removed
   await admin.delete(`/api/staff/${staffId}`); // staff.inactivated
-  await admin.post('/api/plans', { name: 'Plano Percorre', period: 'monthly', priceCents: 9990 }); // plan.created
+  const plan = await admin.post('/api/plans', { name: 'Plano Percorre', period: 'monthly', priceCents: 9990 }); // plan.created
+  const { id: planId } = (await plan.json()) as { id: string };
+  await admin.patch(`/api/plans/${planId}`, { priceCents: 10990 }); // plan.updated
+  await admin.delete(`/api/plans/${planId}`); // plan.inactivated
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -346,8 +349,6 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   // as ações de plano e de matrícula saem desta lista no commit da rota que passa a gravá-las (planos-matriculas,
   // S1 a S5); a lista só encolhe, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
   const PLAN_ACTIONS_NOT_ROUTED_YET: string[] = [
-    'plan.updated',
-    'plan.inactivated',
     'student.enrollment_created',
     'student.enrollment_cancelled',
   ];
@@ -364,9 +365,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
     expect(ofAction.map((row) => row.entity), action).toEqual(ofAction.map(() => 'staff'));
   }
   expect(rows.filter((row) => row.entity === 'staff' && !row.action.startsWith('staff.'))).toEqual([]);
-  // `entity` igual a `plan` nas ações de plano que já têm rota, e só nelas
-  const planActions = auditActionSchema.options.filter((action) => action.startsWith('plan.') && !PLAN_ACTIONS_NOT_ROUTED_YET.includes(action));
-  expect(planActions.length).toBeGreaterThan(0);
+  // `entity` igual a `plan` nas três ações de plano, e só nelas
+  const planActions = auditActionSchema.options.filter((action) => action.startsWith('plan.'));
+  expect(planActions).toHaveLength(3);
   for (const action of planActions) {
     const ofAction = rows.filter((row) => row.action === action);
     expect(ofAction.length, action).toBeGreaterThan(0);

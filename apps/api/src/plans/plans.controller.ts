@@ -5,8 +5,10 @@ import {
   planSchema,
   type PlansResponse,
   plansResponseSchema,
+  type UpdatePlanRequest,
+  updatePlanRequestSchema,
 } from '@academia/contracts';
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import { Input, Output } from '../validation.ts';
@@ -30,5 +32,22 @@ export class PlansController {
   @Output(201, planSchema)
   create(@Body() body: CreatePlanRequest, @Actor() actor: AuditActor): Promise<Plan> {
     return this.plans.create(body, actor);
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'hr_finance')
+  @Input(updatePlanRequestSchema)
+  @Output(200, planSchema)
+  async update(@Param('id') id: string, @Body() body: UpdatePlanRequest, @Actor() actor: AuditActor): Promise<Plan> {
+    const updated = await this.plans.update(id, body, actor);
+    if (!updated) throw new NotFoundException();
+    return updated;
+  }
+
+  @Delete(':id')
+  @Roles('admin', 'hr_finance')
+  @Output(204)
+  async inactivate(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    if (!(await this.plans.inactivate(id, actor))) throw new NotFoundException();
   }
 }
