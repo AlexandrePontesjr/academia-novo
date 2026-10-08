@@ -298,3 +298,56 @@ export const photos = pgTable(
     uniqueIndex('photos_one_current_staff_idx').on(table.staffId).where(sql`${table.isCurrent}`),
   ],
 );
+
+export const PLAN_PERIODS = ['monthly', 'quarterly', 'semiannual', 'annual'] as const;
+export const PLAN_STATUSES = ['active', 'inactive'] as const;
+
+// Planos (planos-matriculas, doors 1 e 2). `period` é fixado no cadastro e nenhuma rota o altera;
+// `rules` é texto livre que as pessoas leem e o sistema não interpreta. `name` não é único: "Mensal"
+// pode existir em duas faixas de preço. O valor é sempre inteiro de centavos (AD-059).
+export const plans = pgTable(
+  'plans',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    period: text('period', { enum: PLAN_PERIODS }).notNull(),
+    priceCents: integer('price_cents').notNull(),
+    rules: text('rules'),
+    status: text('status', { enum: PLAN_STATUSES }).notNull().default('active'),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('plans_period_valid', sql`${table.period} in ('monthly', 'quarterly', 'semiannual', 'annual')`),
+    check('plans_status_valid', sql`${table.status} in ('active', 'inactive')`),
+    check('plans_price_cents_not_negative', sql`${table.priceCents} >= 0`),
+  ],
+);
+
+// Matrículas (planos-matriculas, doors 3 e 5): um período de um aluno num plano por linha. Só
+// `cancelled_at` muda, de nulo para um instante, uma vez; renovar insere a linha do período seguinte.
+// Não há coluna `status`: a situação é calculada na leitura (door 4). As chaves estrangeiras não
+// cascateiam. A restrição de exclusão `enrollments_no_overlap`, que o Drizzle não descreve, está na
+// migração `0008`: dois períodos não cancelados do mesmo aluno nunca têm um dia em comum.
+export const enrollments = pgTable(
+  'enrollments',
+  {
+    id: id(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id),
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => plans.id),
+    startsAt: date('starts_at', { mode: 'string' }).notNull(),
+    endsAt: date('ends_at', { mode: 'string' }).notNull(),
+    priceCents: integer('price_cents').notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    cancelledAt: instant('cancelled_at'),
+  },
+  (table) => [
+    check('enrollments_ends_at_not_before_starts_at', sql`${table.endsAt} >= ${table.startsAt}`),
+    check('enrollments_price_cents_not_negative', sql`${table.priceCents} >= 0`),
+    index('enrollments_student_id_starts_at_idx').on(table.studentId, table.startsAt),
+  ],
+);

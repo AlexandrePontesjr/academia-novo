@@ -210,6 +210,7 @@ test('migration_0007_adds_staff_and_staff_id_and_keeps_existing_photo_rows', asy
   cpSync(join(repoRoot, 'packages/database/migrations'), until0006, { recursive: true });
   const journalPath = join(until0006, 'meta/_journal.json');
   const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: Array<{ idx: number; tag: string }> };
+  const fullJournal = structuredClone(journal);
   const dropped = journal.entries.filter((entry) => entry.idx > 6);
   expect(dropped.map((entry) => entry.tag)).toContain('0007_staff');
   for (const entry of dropped) rmSync(join(until0006, `${entry.tag}.sql`));
@@ -255,7 +256,11 @@ test('migration_0007_adds_staff_and_staff_id_and_keeps_existing_photo_rows', asy
     const photosBefore = await photosOf();
     expect(photosBefore).toHaveLength(2);
 
-    migrate(url.toString());
+    // só até a `0007`: as migrações seguintes (a `0008` cria tabelas) não são o que este teste mede
+    journal.entries = fullJournal.entries.filter((entry) => entry.idx <= 7);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    cpSync(join(repoRoot, 'packages/database/migrations/0007_staff.sql'), join(until0006, '0007_staff.sql'));
+    migrate(url.toString(), until0006);
 
     expect(await tablesOf()).toEqual([...tablesBefore, 'staff'].sort());
     expect(await query('select * from staff')).toEqual([]);

@@ -57,6 +57,13 @@
       "when": 1791339735836,
       "tag": "0007_staff",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791487630154,
+      "tag": "0008_plans_enrollments",
+      "breakpoints": true
     }
   ]
 }
