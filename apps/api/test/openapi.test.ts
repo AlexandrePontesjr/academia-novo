@@ -271,3 +271,49 @@ test('staff_paths_declared_with_multipart_photo_and_json_bodies', async () => {
     expect(responses(operation)['201']?.content?.['application/json']?.schema, method).toEqual(studentCreated);
   }
 });
+
+test('plan_and_enrollment_paths_declared_with_json_bodies', async () => {
+  const json = (schema: z.ZodType) => JSON.parse(JSON.stringify(z.toJSONSchema(schema))) as Record<string, unknown>;
+  const { paths } = await document();
+
+  expect(Object.keys(paths['/api/plans'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/plans/{id}'] ?? {}).sort()).toEqual(['delete', 'patch']);
+  expect(Object.keys(paths['/api/students/{id}/enrollments'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/students/{id}/enrollments/{enrollmentId}'] ?? {})).toEqual(['delete']);
+  // as sete rotas, e nenhuma outra, sob os dois prefixos
+  const declared = Object.entries(paths)
+    .filter(([path]) => path.startsWith('/api/plans') || path.includes('/enrollments'))
+    .flatMap(([path, operations]) => Object.keys(operations).map((method) => `${method} ${path}`));
+  expect(declared.sort()).toEqual(
+    [
+      'get /api/plans',
+      'post /api/plans',
+      'patch /api/plans/{id}',
+      'delete /api/plans/{id}',
+      'get /api/students/{id}/enrollments',
+      'post /api/students/{id}/enrollments',
+      'delete /api/students/{id}/enrollments/{enrollmentId}',
+    ].sort(),
+  );
+
+  const bodies: Array<[method: string, path: string, schema: z.ZodType]> = [
+    ['post', '/api/plans', createPlanRequestSchema],
+    ['patch', '/api/plans/{id}', updatePlanRequestSchema],
+    ['post', '/api/students/{id}/enrollments', createEnrollmentRequestSchema],
+  ];
+  for (const [method, path, schema] of bodies) {
+    const content = paths[path]?.[method]?.requestBody?.content ?? {};
+
+    expect(Object.keys(content), `${method} ${path}`).toEqual(['application/json']);
+    expect(content['application/json']?.schema, `${method} ${path}`).toEqual(json(schema));
+  }
+  // as quatro que não recebem corpo não declaram nenhum
+  for (const [method, path] of [
+    ['get', '/api/plans'],
+    ['delete', '/api/plans/{id}'],
+    ['get', '/api/students/{id}/enrollments'],
+    ['delete', '/api/students/{id}/enrollments/{enrollmentId}'],
+  ] as const) {
+    expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
+  }
+});

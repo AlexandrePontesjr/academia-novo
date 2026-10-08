@@ -1,7 +1,10 @@
+import { saoPauloToday } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { jpegBytes } from './support/photos.ts';
+import { createPlan, enroll, planBody } from './support/plans.ts';
 import { type Stack, startStack } from './support/stack.ts';
 import { createStaff, sendStaffPhoto, staffBody, staffPhotoPath } from './support/staff.ts';
+import { createStudent, studentBody } from './support/students.ts';
 
 let stack: Stack;
 
@@ -77,6 +80,37 @@ test('hostile_input_never_answers_5xx', async () => {
   for (const body of ['[]', 'null', '7', '"texto"', '{"name":{"a":1}}']) {
     await note(`staff body ${body}`, await admin.request('POST', '/api/staff', { body, headers: { 'Content-Type': 'application/json' } }));
   }
+
+  // as rotas de plano e de matrícula: texto hostil em `name` e `rules`, em `planId` e `startsAt`, em todo `:id` e em todo corpo
+  const plan = await createPlan(admin);
+  const student = await createStudent(admin, studentBody(9101));
+  const enrollments = `/api/students/${student.id}/enrollments`;
+  const enrollment = await enroll(admin, student.id, plan.id, saoPauloToday());
+  const before = results.length;
+  for (const value of weird) {
+    const tag = JSON.stringify(value.slice(0, 8));
+    for (const field of ['name', 'rules']) {
+      await note(`plan create ${field} ${tag}`, await admin.post('/api/plans', planBody({ [field]: value })));
+      await note(`plan patch ${field} ${tag}`, await admin.patch(`/api/plans/${plan.id}`, { [field]: value }));
+    }
+    await note(`enroll planId ${tag}`, await admin.post(enrollments, { planId: value, startsAt: saoPauloToday() }));
+    await note(`enroll startsAt ${tag}`, await admin.post(enrollments, { planId: plan.id, startsAt: value }));
+  }
+  for (const segment of ['%E0%A4%A', '%00', 'a%2Fb', '..%2F..', 'x'.repeat(5000)]) {
+    const tag = segment.slice(0, 12);
+    await note(`plan patch ${tag}`, await admin.patch(`/api/plans/${segment}`, { name: 'X' }));
+    await note(`plan delete ${tag}`, await admin.delete(`/api/plans/${segment}`));
+    await note(`enrollments get ${tag}`, await admin.get(`/api/students/${segment}/enrollments`));
+    await note(`enrollments post ${tag}`, await admin.post(`/api/students/${segment}/enrollments`, { planId: plan.id, startsAt: saoPauloToday() }));
+    await note(`enrollments delete id ${tag}`, await admin.delete(`/api/students/${segment}/enrollments/${enrollment.id}`));
+    await note(`enrollments delete enrollmentId ${tag}`, await admin.delete(`${enrollments}/${segment}`));
+  }
+  for (const body of ['[]', 'null', '7', '"texto"', '{"name":{"a":1}}']) {
+    await note(`plan body ${body}`, await admin.request('POST', '/api/plans', { body, headers: { 'Content-Type': 'application/json' } }));
+    await note(`enroll body ${body}`, await admin.request('POST', enrollments, { body, headers: { 'Content-Type': 'application/json' } }));
+  }
+  // sete valores em seis campos, cinco segmentos em seis posições e cinco corpos nos dois `POST`
+  expect(results.length - before).toBe(7 * 6 + 5 * 6 + 5 * 2);
 
   expect(results.length).toBeGreaterThan(100);
   expect(results.filter((line) => line.startsWith('5'))).toEqual([]);

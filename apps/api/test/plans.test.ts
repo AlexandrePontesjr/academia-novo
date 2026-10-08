@@ -1,4 +1,4 @@
-import type { Plan, PlansResponse, Role } from '@academia/contracts';
+import { type Plan, type PlansResponse, type Role, saoPauloToday } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createClient } from './support/client.ts';
 import {
@@ -441,6 +441,49 @@ test('patch_and_delete_404_for_non_uuid_and_unknown_uuid', async () => {
 
   expect(cases).toBe(4);
   expect(await planCount(stack)).toBe(total);
+});
+
+test('foreign_origin_403_csrf_on_five_write_routes', async () => {
+  const { client } = await stack.session('hr_finance');
+  const planId = await insertPlan(stack, { name: 'Plano de Outra Origem' });
+  const [studentId, enrolledId] = (await insertStudents(stack, [
+    { name: 'Aluna de Outra Origem', cpf: cpfOf((students += 1)) },
+    { name: 'Matriculada de Outra Origem', cpf: cpfOf((students += 1)) },
+  ])) as [string, string];
+  const enrollmentId = await insertEnrollment(stack, { studentId: enrolledId, planId });
+  // cada corpo é o que a rota aceitaria da origem certa: a recusa é só da origem
+  const routes: Array<[method: string, path: string, body: unknown]> = [
+    ['POST', '/api/plans', planBody()],
+    ['PATCH', `/api/plans/${planId}`, { name: 'Outro Nome' }],
+    ['DELETE', `/api/plans/${planId}`, undefined],
+    ['POST', `/api/students/${studentId}/enrollments`, { planId, startsAt: saoPauloToday() }],
+    ['DELETE', `/api/students/${enrolledId}/enrollments/${enrollmentId}`, undefined],
+  ];
+  expect(routes).toHaveLength(5);
+  const attempts: Array<[label: string, options: { origin?: string | null; headers?: Record<string, string> }]> = [
+    ['Origin de outro site', { origin: 'http://evil.example' }],
+    ['sem Origin e Sec-Fetch-Site cross-site', { origin: null, headers: { 'Sec-Fetch-Site': 'cross-site' } }],
+  ];
+
+  for (const [method, path, sent] of routes) {
+    for (const [label, options] of attempts) {
+      const before = await planSnapshot(stack);
+
+      const response = await client.request(method, path, { body: sent, ...options });
+
+      const where = `${method} ${path} (${label})`;
+      expect(response.status, where).toBe(403);
+      expect((await problem(response)).code, where).toBe('csrf_rejected');
+      expect(await planSnapshot(stack), where).toEqual(before);
+    }
+  }
+
+  // da origem certa, as mesmas cinco requisições passam: o que as recusava era a origem
+  const accepted: number[] = [];
+  for (const [method, path, sent] of [routes[0]!, routes[1]!, routes[3]!, routes[4]!, routes[2]!]) {
+    accepted.push((await client.request(method, path, { body: sent })).status);
+  }
+  expect(accepted).toEqual([201, 200, 201, 204, 204]);
 });
 
 // achado da C104: o nome do plano vai para o `diff` da trilha, e o `jsonb` não guarda um substituto UTF-16 solto

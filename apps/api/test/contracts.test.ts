@@ -8,8 +8,10 @@ import {
   createStaffRequestSchema,
   createStudentRequestSchema,
   enrollmentSchema,
+  enrollmentsResponseSchema,
   grantConsentRequestSchema,
   isMinor,
+  saoPauloToday,
   guardianRequestSchema,
   studentConsentsResponseSchema,
   updateStudentRequestSchema,
@@ -21,6 +23,7 @@ import {
   photoUrlResponseSchema,
   photoVariantSchema,
   planSchema,
+  plansResponseSchema,
   problemSchema,
   sessionResponseSchema,
   staffListItemSchema,
@@ -41,6 +44,7 @@ import { freePort, type Minio, refusingDatabaseUrl, startMinio, startPostgres } 
 import { PASSWORD, type Stack, startStack } from './support/stack.ts';
 import { createAdult, createMinorWithGuardian, insertTerm } from './support/consents.ts';
 import { createStaff, postStaffPhoto, putStaffPhoto, resetStaff, staffBody } from './support/staff.ts';
+import { enrollmentsPath, planBody } from './support/plans.ts';
 import { createStudent, studentBody } from './support/students.ts';
 import { totpCode } from './support/totp.ts';
 
@@ -1029,4 +1033,83 @@ test('plan_and_enrollment_schemas_accept_and_reject', () => {
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'cancelled', cancelledAt: '2026-10-10T12:00:00.000Z' }))).toBe('aceita');
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'suspended' }))).toBe('status');
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
+});
+
+test('plan_and_enrollment_bodies_match_contract_schemas_and_three_new_codes', async () => {
+  // a lista vazia de planos só existe num banco sem plano: nenhum outro teste deste arquivo cria um
+  await stack.query('delete from enrollments');
+  await stack.query('delete from plans');
+  const hr = (await stack.session('hr_finance')).client;
+  const reception = (await stack.session('reception')).client;
+  const instructor = (await stack.session('instructor')).client;
+  const today = saoPauloToday();
+  const student = await createStudent(reception, studentBody(7501));
+  const other = await createStudent(reception, studentBody(7502));
+  const inactive = await createStudent(reception, studentBody(7503));
+  expect((await reception.delete(`/api/students/${inactive.id}`)).status).toBe(204);
+
+  const noPlans = await hr.get('/api/plans');
+  const createdPlan = await hr.post('/api/plans', planBody({ rules: 'Acesso livre de segunda a sábado.' }));
+  const plan = (await createdPlan.clone().json()) as { id: string };
+  const off = (await (await hr.post('/api/plans', planBody({ name: 'Fora de Linha' }))).json()) as { id: string };
+  expect((await hr.delete(`/api/plans/${off.id}`)).status).toBe(204);
+  const noEnrollments = await hr.get(enrollmentsPath(student.id));
+  const enrolled = await hr.post(enrollmentsPath(student.id), { planId: plan.id, startsAt: today });
+  // uma cancelada e uma viva, para a lista ter `cancelledAt` nos dois estados
+  const cancelled = (await (await hr.post(enrollmentsPath(other.id), { planId: plan.id, startsAt: today })).json()) as { id: string };
+  expect((await hr.delete(`${enrollmentsPath(other.id)}/${cancelled.id}`)).status).toBe(204);
+  expect((await hr.post(enrollmentsPath(other.id), { planId: plan.id, startsAt: today })).status).toBe(201);
+
+  const ok: Array<[route: string, status: number, schema: z.ZodType, response: Response]> = [
+    ['POST /api/plans', 201, planSchema, createdPlan],
+    ['PATCH /api/plans/:id', 200, planSchema, await hr.patch(`/api/plans/${plan.id}`, { priceCents: 10_990, rules: null })],
+    ['GET /api/plans (vazia)', 200, plansResponseSchema, noPlans],
+    ['GET /api/plans (com itens)', 200, plansResponseSchema, await reception.get('/api/plans')],
+    ['POST /api/students/:id/enrollments', 201, enrollmentSchema, enrolled],
+    ['GET /api/students/:id/enrollments (vazia)', 200, enrollmentsResponseSchema, noEnrollments],
+    ['GET /api/students/:id/enrollments (com itens)', 200, enrollmentsResponseSchema, await reception.get(enrollmentsPath(other.id))],
+  ];
+  expect(ok).toHaveLength(7);
+  expect(((await ok[2]![3].clone().json()) as { items: unknown[] }).items).toEqual([]);
+  expect(((await ok[3]![3].clone().json()) as { items: unknown[] }).items).toHaveLength(2);
+  expect(((await ok[5]![3].clone().json()) as { items: unknown[] }).items).toEqual([]);
+  expect(((await ok[6]![3].clone().json()) as { items: unknown[] }).items).toHaveLength(2);
+
+  const valid = { planId: plan.id, startsAt: today };
+  const problems: Array<[route: string, status: number, code: string, response: Response]> = [
+    ['401 em GET /api/plans', 401, 'unauthorized', await stack.client().get('/api/plans')],
+    ['401 em POST da matrícula', 401, 'unauthorized', await stack.client().post(enrollmentsPath(student.id), valid)],
+    ['403 em POST /api/plans', 403, 'forbidden', await reception.post('/api/plans', planBody())],
+    ['403 em GET das matrículas', 403, 'forbidden', await instructor.get(enrollmentsPath(student.id))],
+    ['404 em PATCH /api/plans/:id', 404, 'not_found', await hr.patch('/api/plans/abc', { name: 'Qualquer' })],
+    ['404 em DELETE da matrícula', 404, 'not_found', await hr.delete(`${enrollmentsPath(student.id)}/abc`)],
+    ['409 enrollment_overlap', 409, 'enrollment_overlap', await hr.post(enrollmentsPath(student.id), valid)],
+    ['409 plan_inactive', 409, 'plan_inactive', await hr.post(enrollmentsPath(student.id), { ...valid, planId: off.id })],
+    ['409 student_inactive', 409, 'student_inactive', await hr.post(enrollmentsPath(inactive.id), valid)],
+    ['422 em POST /api/plans', 422, 'validation_failed', await hr.post('/api/plans', planBody({ priceCents: 99.9 }))],
+    ['422 em POST da matrícula', 422, 'validation_failed', await hr.post(enrollmentsPath(student.id), { planId: 'abc', startsAt: today })],
+  ];
+  expect(problems).toHaveLength(11);
+  expect([...new Set(problems.map(([, status]) => status))]).toEqual([401, 403, 404, 409, 422]);
+  expect(problems.filter(([, status]) => status === 409).map(([, , code]) => code)).toEqual([
+    'enrollment_overlap',
+    'plan_inactive',
+    'student_inactive',
+  ]);
+
+  for (const [route, status, schema, response] of ok) {
+    const parsed = schema.safeParse(await response.json());
+
+    expect(response.status, route).toBe(status);
+    expect(parsed.success, `${route}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+  }
+  for (const [route, status, code, response] of problems) {
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status, route).toBe(status);
+    expect(body.status, route).toBe(status);
+    expect(body.code, route).toBe(code);
+    expect(response.headers.get('content-type'), route).toMatch(/^application\/problem\+json\b/);
+    expect(problemSchema.safeParse(body).success, route).toBe(true);
+  }
 });
