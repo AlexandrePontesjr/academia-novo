@@ -1,6 +1,7 @@
 import type { SessionResponse } from '@academia/contracts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { canReadPlans } from '../lib/plans.ts';
 import { ROLE_LABELS } from '../lib/roles.ts';
 import { canAccessStaff } from '../lib/staff.ts';
 import { SignOutButton } from './sign-out-button.tsx';
@@ -20,6 +21,11 @@ export function Shell({ session, children }: { session: SessionResponse; childre
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/">Início</Link>
           <Link href="/students">Alunos</Link>
+          {canReadPlans(user.role) && (
+            <Link href="/plans" prefetch={false}>
+              Planos
+            </Link>
+          )}
           {canAccessStaff(user.role) && (
             // abrir `/staff` é uma leitura auditada: o menu não pode pré-carregá-la
             <Link href="/staff" prefetch={false}>
