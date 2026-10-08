@@ -17,7 +17,7 @@ decisão.
 | 6 | `foto-pipeline` | enviar um arquivo de foto e vê-lo servido só por URL assinada | RF-13, RF-14, RF-15, RF-17, RF-18 | 4 | verificada (PASS, 81/81) |
 | 7 | `foto-captura` | capturar pela câmera, recortar em 3:4 e trocar a foto mantendo versões | RF-11, RF-12, RF-16 | 6 | verificada (PASS, 65/65) |
 | 8 | `funcionarios` | RH cadastra funcionários com foto; ninguém mais os vê, e cada visualização é auditada | RF-09, RF-10 | 3, 6 | verificada (PASS, 114/114, rodada 2 em `368106c`) |
-| 9 | `planos-matriculas` | criar planos e matricular um aluno com início, vencimento e renovação | RF-19, RF-20 | 4 | plano aprovado e checks escritos em 2026-10-08; Build não iniciado |
+| 9 | `planos-matriculas` | criar planos e matricular um aluno com início, vencimento e renovação | RF-19, RF-20 | 4 | plano aprovado e checks escritos em 2026-10-08; Build em três batches: A (S0 a S2, banco, contrato e rotas de plano) verde em `03246e5`; faltam B (matrículas e trilha) e C (telas e stack), e depois o Verifier |
 | 10 | `pagamentos` | registrar pagamento manual e ver o que está pendente ou atrasado | RF-21 | 9 | não iniciada |
 | 11 | `check-in` | a recepção busca o aluno, confere a foto e registra a presença | RF-22, RF-23 | 6, 9 | não iniciada |
 | 12 | `dashboard` | ver alunos ativos, vencimentos próximos e check-ins do dia | §8 tela 2 | 9, 11 | não iniciada |
