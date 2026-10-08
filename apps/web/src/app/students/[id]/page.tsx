@@ -1,4 +1,6 @@
 import {
+  type Enrollment,
+  enrollmentsResponseSchema,
   isMinor,
   saoPauloToday,
   type Student,
@@ -11,11 +13,15 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
+import { loadPlans } from '../../../lib/plans-server.ts';
+import { canReadPlans, canWritePlans } from '../../../lib/plans.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
 import { ConsentsBlock } from './consents-block.tsx';
 import { ConsentsLoadError } from './consents-load-error.tsx';
+import { EnrollmentsBlock } from './enrollments-block.tsx';
+import { EnrollmentsLoadError } from './enrollments-load-error.tsx';
 import { StatusActions } from './status-actions.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +49,17 @@ async function loadConsents(id: string): Promise<StudentConsentsResponse | 'fail
   }
 }
 
+/** As matrículas do aluno, na ordem da API, ou `failed`; só se pedem a quem pode vê-las. */
+async function loadEnrollments(id: string): Promise<Enrollment[] | 'failed'> {
+  try {
+    const response = await fetchApi(`/api/students/${encodeURIComponent(id)}/enrollments`, await headers());
+    if (response.status !== 200) return 'failed';
+    return enrollmentsResponseSchema.parse(await response.json()).items;
+  } catch {
+    return 'failed';
+  }
+}
+
 export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
@@ -50,6 +67,12 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
   const canWrite = canWriteStudents(session.user.role);
   // quem não vê o bloco não chega a pedir os dados dele; a API recusaria de qualquer forma
   const consents = typeof student === 'object' && canWrite ? await loadConsents(id) : undefined;
+  // o Instrutor não vê matrículas, e os planos só servem a quem matricula
+  const { role } = session.user;
+  const [enrollments, plans] =
+    typeof student === 'object' && canReadPlans(role)
+      ? await Promise.all([loadEnrollments(id), canWritePlans(role) ? loadPlans().then((list) => list ?? 'failed') : undefined])
+      : [];
 
   return (
     <Shell session={session}>
@@ -96,6 +119,16 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               studentName={student.name}
               minor={student.birthDate !== undefined && isMinor(student.birthDate, saoPauloToday())}
               data={consents}
+            />
+          )}
+          {enrollments === 'failed' && <EnrollmentsLoadError />}
+          {enrollments && enrollments !== 'failed' && (
+            <EnrollmentsBlock
+              studentId={student.id}
+              studentName={student.name}
+              studentStatus={student.status}
+              items={enrollments}
+              plans={plans}
             />
           )}
         </>
