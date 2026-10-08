@@ -19,6 +19,8 @@ import { PhotoSigner } from './photos/photo-signer.ts';
 import { PhotoStorage } from './photos/photo-storage.ts';
 import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
+import { PlansController } from './plans/plans.controller.ts';
+import { PlansService } from './plans/plans.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StaffController } from './staff/staff.controller.ts';
 import { StaffService } from './staff/staff.service.ts';
@@ -50,6 +52,7 @@ export class AppModule implements OnApplicationShutdown {
         ConsentsController,
         ConsentTermsController,
         PhotosController,
+        PlansController,
         OpenApiController,
       ],
       providers: [
@@ -89,6 +92,11 @@ export class AppModule implements OnApplicationShutdown {
           inject: [DATABASE, PhotoStorage, PhotoSigner],
         },
         PhotoPurge,
+        {
+          provide: PlansService,
+          useFactory: (database: Database) => new PlansService(database.db),
+          inject: [DATABASE],
+        },
         {
           provide: ConsentsService,
           useFactory: (database: Database) => new ConsentsService(database.db),
