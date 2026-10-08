@@ -732,6 +732,130 @@ describe('stack de pé', () => {
     ).toBe('1|1');
   }, 300_000);
 
+  test('plan_created_and_student_enrolled_through_web_with_overlap_refused_and_audit_rows', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** Um usuário do perfil dado, criado pela CLI da stack, e a sessão dele pela origem do web. */
+    const account = async (role: 'hr_finance' | 'reception' | 'instructor', email: string, password: string) => {
+      const created = stack.compose(
+        `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name ${role}`,
+      );
+      expect(created.status, created.output).toBe(0);
+      // a CLI cria `admin`, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+      psql(`update users set role = '${role}' where email = '${email}'`);
+      const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      return login.headers
+        .getSetCookie()
+        .map((setCookie) => setCookie.split(';')[0])
+        .join('; ');
+    };
+    const [userAgent, forwardedFor] = ['teste-planos/1.0', '203.0.113.51'];
+    const headersOf = (cookie: string) => ({
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': userAgent,
+      'X-Forwarded-For': forwardedFor,
+      'Content-Type': 'application/json',
+    });
+    const post = (path: string, cookie: string, body: unknown) =>
+      fetch(`${stack.webOrigin}${path}`, { method: 'POST', headers: headersOf(cookie), body: JSON.stringify(body) });
+    // o HTML da página traz U+00A0 entre `R$` e o número, como o `Intl` de `pt-BR` o escreve
+    const open = async (path: string, cookie: string) => {
+      const page = await fetch(`${stack.webOrigin}${path}`, {
+        headers: { Cookie: cookie, 'User-Agent': userAgent, 'X-Forwarded-For': forwardedFor },
+      });
+      expect(page.status, path).toBe(200);
+      return (await page.text()).replaceAll(String.fromCharCode(0xa0), ' ').replaceAll('&nbsp;', ' ');
+    };
+
+    // a migração 0008 foi aplicada ao subir, pelo papel do `compose.yaml`, que criou a extensão
+    expect(psql(`select extname from pg_extension where extname = 'btree_gist'`)).toBe('btree_gist');
+    expect(psql(`select to_regclass('public.plans')::text || ',' || to_regclass('public.enrollments')::text`)).toBe(
+      'plans,enrollments',
+    );
+    expect(psql(`select count(*) from audit_logs where action in ('plan.created', 'student.enrollment_created')`)).toBe('0');
+
+    const hr = await account('hr_finance', 'financeiro.dos.planos@exemplo.com', 'senha-da-stack-fin-1');
+    const reception = await account('reception', 'recepcao.dos.planos@exemplo.com', 'senha-da-stack-rec-2');
+    const instructor = await account('instructor', 'instrutor.dos.planos@exemplo.com', 'senha-da-stack-ins-1');
+
+    // quem cadastra o aluno é a recepção; quem cria o plano e matricula é o RH/Financeiro
+    const student = await post('/api/students', reception, {
+      name: 'Aluna Matriculada na Stack',
+      cpf: '714.602.380-01',
+      birthDate: '2000-01-01',
+      phone: '(11) 91234-5678',
+    });
+    expect(student.status, await student.clone().text()).toBe(201);
+    const studentId = ((await student.json()) as { id: string }).id;
+
+    const planName = 'Mensal da Stack';
+    const createdPlan = await post('/api/plans', hr, { name: planName, period: 'monthly', priceCents: 9990 });
+    expect(createdPlan.status, await createdPlan.clone().text()).toBe(201);
+    const planId = ((await createdPlan.json()) as { id: string }).id;
+
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const enrollments = `/api/students/${studentId}/enrollments`;
+    const enrolled = await post(enrollments, hr, { planId, startsAt: today });
+    expect(enrolled.status, await enrolled.clone().text()).toBe(201);
+    const enrollment = (await enrolled.json()) as { startsAt: string; endsAt: string; priceCents: number };
+    expect(enrollment.startsAt).toBe(today);
+    // a conta do vencimento é a do Postgres da stack
+    expect(enrollment.endsAt).toBe(psql(`select (date '${today}' + interval '1 month' - interval '1 day')::date`));
+    expect(enrollment.priceCents).toBe(9990);
+
+    // o mesmo período de novo é recusado pela restrição de exclusão
+    const repeated = await post(enrollments, hr, { planId, startsAt: today });
+    expect(repeated.status).toBe(409);
+    expect(((await repeated.json()) as { code: string }).code).toBe('enrollment_overlap');
+    expect(psql(`select count(*) from enrollments where student_id = '${studentId}'`)).toBe('1');
+
+    // a recepção lê e não matricula
+    const read = await fetch(`${stack.webOrigin}${enrollments}`, { headers: headersOf(reception) });
+    expect(read.status).toBe(200);
+    expect(((await read.json()) as { items: unknown[] }).items).toHaveLength(1);
+    const refused = await post(enrollments, reception, { planId, startsAt: today });
+    expect(refused.status).toBe(403);
+    expect(((await refused.json()) as { code: string }).code).toBe('forbidden');
+
+    // as três páginas, renderizadas pelo container `web`; nenhuma leitura deixa linha na trilha
+    const rows = psql('select count(*) from audit_logs');
+    const priceTable = await open('/plans', reception);
+    expect(priceTable).toContain(planName);
+    expect(priceTable).toContain('R$ 99,90');
+    const ficha = await open(`/students/${studentId}`, hr);
+    expect(ficha).toContain('Matrículas');
+    expect(ficha).toMatch(/>Ativa</);
+    const denied = await open('/plans', instructor);
+    expect(denied).toContain('Você não tem permissão para acessar esta página.');
+    expect(denied).not.toContain(planName);
+    expect(psql('select count(*) from audit_logs')).toBe(rows);
+
+    // as linhas são lidas do banco da stack, não pelas rotas: uma de cada, com o IP e o navegador enviados
+    expect(
+      psql(
+        `select action || ',' || entity || ',' || entity_id || ',' || ip || ',' || user_agent from audit_logs where action in ('plan.created', 'student.enrollment_created') order by id`,
+      ).split(/\r?\n/),
+    ).toEqual([
+      `plan.created,plan,${planId},${forwardedFor},${userAgent}`,
+      `student.enrollment_created,student,${studentId},${forwardedFor},${userAgent}`,
+    ]);
+  }, 300_000);
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
