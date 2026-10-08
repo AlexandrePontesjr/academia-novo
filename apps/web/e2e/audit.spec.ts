@@ -1,7 +1,11 @@
-import { AUDIT_ACTIONS, type AuditLog, type Role } from '@academia/contracts';
+import { AUDIT_ACTIONS, type AuditLog, type Plan, type Role } from '@academia/contracts';
+import type { Page } from '@playwright/test';
 import { expect, type FakeApi, problem, sessionOf, test, userOf } from './support/fake-api.ts';
+import { planOf, textsOf } from './support/plans.ts';
 
 const USERS = [userOf(1), userOf(2), userOf(3, { name: 'Marina Duarte' })];
+// o plano foi renomeado e reajustado depois das linhas da trilha: a tela mostra o nome de agora
+const PLANS: Plan[] = [planOf({ name: 'Mensal Plus', priceCents: 10990 })];
 
 let rows = 0;
 function logOf(overrides: Partial<AuditLog> = {}): AuditLog {
@@ -24,6 +28,7 @@ function logOf(overrides: Partial<AuditLog> = {}): AuditLog {
 function serve(api: FakeApi, items: AuditLog[], nextCursor: string | null = null) {
   api.session = sessionOf('admin');
   api.on('GET', '/api/users', { status: 200, body: { users: USERS } });
+  api.on('GET', '/api/plans', { status: 200, body: { items: PLANS } });
   api.on('GET', '/api/audit-logs', { status: 200, body: { items, nextCursor } });
 }
 
@@ -711,4 +716,172 @@ test('staff_diff_shows_linked_user_by_current_name', async ({ page, api }) => {
 
   await expect(page.locator('tbody tr:nth-child(1) td:nth-child(7)').getByText('Usuário vinculado: — → Pessoa 1', { exact: true })).toBeVisible();
   await expect(page.locator('tbody tr:nth-child(2) td:nth-child(7)').getByText('Usuário vinculado: Pessoa 1 → —', { exact: true })).toBeVisible();
+});
+
+const PLAN_LABELS = ['Plano criado', 'Plano editado', 'Plano inativado', 'Matrícula registrada', 'Matrícula cancelada'];
+const PLAN_ACTIONS = [
+  'plan.created',
+  'plan.updated',
+  'plan.inactivated',
+  'student.enrollment_created',
+  'student.enrollment_cancelled',
+] as const;
+const ENROLLED_ID = '018f0000-0000-7000-8000-0000000005cc';
+
+/** As frases da coluna "Detalhes" de uma linha, com o espaço do valor em reais normalizado. */
+const detailsOf = (page: Page, row: number) => textsOf(page.locator(`tbody tr:nth-child(${row}) td:nth-child(7) li`));
+
+test('plan_and_enrollment_actions_labelled_and_filter_has_thirty_six', async ({ page, api }) => {
+  serve(
+    api,
+    PLAN_ACTIONS.map((action) =>
+      action.startsWith('plan.')
+        ? logOf({ action, entity: 'plan', entityId: PLANS[0]!.id })
+        : logOf({ action, entity: 'student', entityId: ENROLLED_ID }),
+    ),
+  );
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr')).toHaveCount(5);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PLAN_LABELS);
+
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options).toHaveLength(36);
+  // as trinta e uma de antes, na ordem e com o texto de antes
+  expect(options.slice(0, 31)).toEqual(LABELS.slice(0, 31));
+  expect(options[30]).toBe('Versão anterior da foto do funcionário excluída');
+  // as cinco novas ocupam as posições 32 a 36, nessa ordem
+  expect(options.slice(31)).toEqual(PLAN_LABELS);
+  expect(AUDIT_ACTIONS.slice(31)).toEqual(PLAN_ACTIONS);
+});
+
+test('plan_target_link_ver_plano', async ({ page, api }) => {
+  const planId = '018f0000-0000-7000-8000-0000000009ab';
+  serve(api, [logOf({ action: 'plan.updated', entity: 'plan', entityId: planId })]);
+
+  await page.goto('/audit');
+
+  const target = page.locator('tbody tr:nth-child(1) td:nth-child(4)');
+  await expect(target.getByRole('link', { name: 'Ver plano', exact: true })).toHaveAttribute(
+    'href',
+    `/plans/${planId}/edit`,
+  );
+  await expect(target.getByRole('link')).toHaveCount(1);
+});
+
+test('plan_updated_details_show_price_change_and_rules_by_name', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'plan.updated',
+      entity: 'plan',
+      entityId: PLANS[0]!.id,
+      diff: { fields: ['priceCents', 'rules'], values: { priceCents: { from: 9990, to: 10990 } } },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  // só as duas frases: nenhum texto de regra
+  expect(await detailsOf(page, 1)).toEqual(['Valor: R$ 99,90 → R$ 109,90', 'Regras de acesso alterado']);
+});
+
+test('plan_created_details_show_four_values', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'plan.created',
+      entity: 'plan',
+      entityId: PLANS[0]!.id,
+      diff: {
+        fields: ['name', 'period', 'priceCents', 'status'],
+        values: {
+          name: { from: null, to: 'Mensal' },
+          period: { from: null, to: 'monthly' },
+          priceCents: { from: null, to: 9990 },
+          status: { from: null, to: 'active' },
+        },
+      },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  expect(await detailsOf(page, 1)).toEqual(['Nome: Mensal', 'Periodicidade: Mensal', 'Valor: R$ 99,90', 'Situação: Ativo']);
+});
+
+test('enrollment_created_details_show_plan_name_period_and_price_with_ver_aluno', async ({ page, api }) => {
+  expect(PLANS[0]!.name).toBe('Mensal Plus');
+  serve(api, [
+    logOf({
+      action: 'student.enrollment_created',
+      entity: 'student',
+      entityId: ENROLLED_ID,
+      diff: {
+        fields: ['planId', 'startsAt', 'endsAt', 'priceCents'],
+        values: {
+          planId: { from: null, to: PLANS[0]!.id },
+          startsAt: { from: null, to: '2026-10-07' },
+          endsAt: { from: null, to: '2026-11-06' },
+          priceCents: { from: null, to: 9990 },
+        },
+      },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  expect(await detailsOf(page, 1)).toEqual([
+    'Plano: — → Mensal Plus',
+    'Início: — → 07/10/2026',
+    'Vencimento: — → 06/11/2026',
+    'Valor: — → R$ 99,90',
+  ]);
+  await expect(
+    page.locator('tbody tr:nth-child(1) td:nth-child(4)').getByRole('link', { name: 'Ver aluno', exact: true }),
+  ).toHaveAttribute('href', `/students/${ENROLLED_ID}`);
+});
+
+test('enrollment_cancelled_and_plan_inactivated_details_and_unknown_plan_id', async ({ page, api }) => {
+  const unknownPlanId = '018f0000-0000-7000-8000-0000000009ff';
+  const cancelledOf = (planId: string) =>
+    logOf({
+      action: 'student.enrollment_cancelled',
+      entity: 'student',
+      entityId: ENROLLED_ID,
+      diff: {
+        fields: ['planId', 'startsAt', 'endsAt', 'priceCents'],
+        values: {
+          planId: { from: planId, to: null },
+          startsAt: { from: '2026-10-07', to: null },
+          endsAt: { from: '2026-11-06', to: null },
+          priceCents: { from: 9990, to: null },
+        },
+      },
+    });
+  serve(api, [
+    cancelledOf(PLANS[0]!.id),
+    logOf({
+      action: 'plan.inactivated',
+      entity: 'plan',
+      entityId: PLANS[0]!.id,
+      diff: { fields: ['status'], values: { status: { from: 'active', to: 'inactive' } } },
+    }),
+    cancelledOf(unknownPlanId),
+  ]);
+
+  await page.goto('/audit');
+
+  expect(await detailsOf(page, 1)).toEqual([
+    'Plano: Mensal Plus → —',
+    'Início: 07/10/2026 → —',
+    'Vencimento: 06/11/2026 → —',
+    'Valor: R$ 99,90 → —',
+  ]);
+  expect(await detailsOf(page, 2)).toEqual(['Situação: Ativo → Inativo']);
+  // o plano que a API não devolve aparece pelo próprio id
+  expect((await detailsOf(page, 3))[0]).toBe(`Plano: ${unknownPlanId} → —`);
+
+  await page.waitForTimeout(1000);
+  const planCalls = api.requests.filter((request) => request.path.startsWith('/api/plans'));
+  expect(planCalls.map((request) => `${request.method} ${request.path}`)).toEqual(['GET /api/plans']);
 });

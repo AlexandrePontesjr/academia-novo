@@ -2,6 +2,8 @@ import {
   type AuditLog,
   type AuditLogsResponse,
   auditLogsResponseSchema,
+  type Plan,
+  plansResponseSchema,
   problemSchema,
   type User,
   usersResponseSchema,
@@ -32,7 +34,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 type FilterErrors = Partial<Record<keyof AuditFilterValues, string>>;
 
 type Loaded =
-  | { kind: 'ok'; page: AuditLogsResponse; users: User[] }
+  | { kind: 'ok'; page: AuditLogsResponse; users: User[]; plans: Plan[] }
   | { kind: 'invalid'; errors: FilterErrors; users: User[] }
   | { kind: 'forbidden' }
   | { kind: 'failed' };
@@ -52,14 +54,18 @@ function apiQuery(filters: AuditFilterValues, cursor: string): URLSearchParams {
   return query;
 }
 
-/** A página da trilha e os usuários (os nomes do "Alvo" e do filtro), ou por que não vieram. */
+/**
+ * A página da trilha, os usuários (os nomes do "Alvo" e do filtro) e os planos (o nome do plano de uma
+ * matrícula), ou por que não vieram. Sem os planos a trilha segue legível: o plano aparece pelo id.
+ */
 async function load(filters: AuditFilterValues, cursor: string): Promise<Loaded> {
   try {
     const incoming = await headers();
     const query = apiQuery(filters, cursor);
-    const [logs, listed] = await Promise.all([
+    const [logs, listed, plansListed] = await Promise.all([
       fetchApi(`/api/audit-logs${query.size > 0 ? `?${query}` : ''}`, incoming),
       fetchApi('/api/users', incoming),
+      fetchApi('/api/plans', incoming).catch(() => undefined),
     ]);
     if (logs.status === 403 || listed.status === 403) return { kind: 'forbidden' };
     if (listed.status !== 200) return { kind: 'failed' };
@@ -75,7 +81,9 @@ async function load(filters: AuditFilterValues, cursor: string): Promise<Loaded>
       return Object.keys(errors).length > 0 ? { kind: 'invalid', errors, users } : { kind: 'failed' };
     }
     if (logs.status !== 200) return { kind: 'failed' };
-    return { kind: 'ok', page: auditLogsResponseSchema.parse(await logs.json()), users };
+    const plans =
+      plansListed?.status === 200 ? plansResponseSchema.safeParse(await plansListed.json()).data?.items : undefined;
+    return { kind: 'ok', page: auditLogsResponseSchema.parse(await logs.json()), users, plans: plans ?? [] };
   } catch {
     return { kind: 'failed' };
   }
@@ -99,12 +107,20 @@ function target(item: AuditLog, users: User[]): ReactNode {
       </Link>
     );
   }
+  // o plano se abre na edição, que é onde ele é lido por inteiro
+  if (item.entity === 'plan') {
+    return (
+      <Link href={`/plans/${item.entityId}/edit`} prefetch={false} className="text-primary underline underline-offset-4">
+        Ver plano
+      </Link>
+    );
+  }
   // o nome atual do alvo: a trilha não guarda nome
   const user = item.entity === 'user' ? users.find((candidate) => candidate.id === item.entityId) : undefined;
   return user?.name ?? item.entityId;
 }
 
-function AuditTable({ items, users }: { items: AuditLog[]; users: User[] }) {
+function AuditTable({ items, users, plans }: { items: AuditLog[]; users: User[]; plans: Plan[] }) {
   return (
     <Table>
       <thead>
@@ -120,7 +136,7 @@ function AuditTable({ items, users }: { items: AuditLog[]; users: User[] }) {
       </thead>
       <tbody>
         {items.map((item) => {
-          const details = diffDetails(item, users);
+          const details = diffDetails(item, users, plans);
           return (
             <TableRow key={item.id}>
               <TableCell className="whitespace-nowrap">{formatInstant(item.createdAt)}</TableCell>
@@ -189,7 +205,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
               <p>Nenhum registro encontrado.</p>
             ) : (
               <>
-                <AuditTable items={loaded.page.items} users={loaded.users} />
+                <AuditTable items={loaded.page.items} users={loaded.users} plans={loaded.plans} />
                 {nextPage && (
                   <div>
                     <Link href={nextPage} prefetch={false} className="text-sm text-primary underline underline-offset-4">

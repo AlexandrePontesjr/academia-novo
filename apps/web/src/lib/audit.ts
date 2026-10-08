@@ -3,13 +3,16 @@ import type {
   AuditLog,
   ConsentGrantor,
   ConsentPurpose,
+  Plan,
+  PlanPeriod,
   Role,
   StudentStatus,
   User,
 } from '@academia/contracts';
 import { GRANTOR_LABELS, PURPOSE_LABELS } from './consents.ts';
+import { formatPrice, PERIOD_LABELS } from './plans.ts';
 import { ROLE_LABELS } from './roles.ts';
-import { STATUS_LABELS } from './students.ts';
+import { formatBirthDate, STATUS_LABELS } from './students.ts';
 
 /** O fuso das datas da tela: uma instalação por academia (AD-016), sem horário de verão desde 2019. */
 const TIME_ZONE = 'America/Sao_Paulo';
@@ -119,12 +122,25 @@ const FIELD_LABELS: Record<string, string> = {
   department: 'Setor',
   hiredAt: 'Data de admissão',
   userId: 'Usuário vinculado',
+  // plano: a trilha guarda o valor de `name`, `period`, `priceCents` e `status`; de `rules`, só o nome do campo
+  period: 'Periodicidade',
+  priceCents: 'Valor',
+  rules: 'Regras de acesso',
+  // matrícula: o plano entra pelo id, com o início, o vencimento e o valor do período
+  planId: 'Plano',
+  startsAt: 'Início',
+  endsAt: 'Vencimento',
 };
 
-function valueLabel(field: string, value: unknown, users: UserNames): string {
+function valueLabel(field: string, value: unknown, users: UserNames, plans: PlanNames): string {
   if (value === null || value === undefined) return '—';
   // a trilha guarda o id do usuário: a tela mostra o nome de agora, ou o id se o usuário não está na lista
   if (field === 'userId') return users.find((user) => user.id === value)?.name ?? String(value);
+  // idem para o plano de uma matrícula
+  if (field === 'planId') return plans.find((plan) => plan.id === value)?.name ?? String(value);
+  if (field === 'period') return PERIOD_LABELS[value as PlanPeriod] ?? String(value);
+  if (field === 'priceCents') return typeof value === 'number' ? formatPrice(value) : String(value);
+  if (field === 'startsAt' || field === 'endsAt') return formatBirthDate(String(value));
   if (field === 'role') return ROLE_LABELS[value as Role] ?? String(value);
   if (field === 'active') return value ? 'Ativo' : 'Inativo';
   if (field === 'status') return STATUS_LABELS[value as StudentStatus] ?? String(value);
@@ -135,19 +151,26 @@ function valueLabel(field: string, value: unknown, users: UserNames): string {
 }
 
 type UserNames = Array<Pick<User, 'id' | 'name'>>;
+type PlanNames = Array<Pick<Plan, 'id' | 'name'>>;
 
 /**
  * O `diff` em frases: o antes e o depois dos campos que a trilha guarda, e só "alterado" para os
  * demais. Na criação não há antes: sai só o valor com que o registro nasceu.
  */
-export function diffDetails({ action, diff }: Pick<AuditLog, 'action' | 'diff'>, users: UserNames = []): string[] {
+export function diffDetails(
+  { action, diff }: Pick<AuditLog, 'action' | 'diff'>,
+  users: UserNames = [],
+  plans: PlanNames = [],
+): string[] {
   if (!diff) return [];
   const created = action.endsWith('.created');
   return diff.fields.flatMap((field) => {
     const label = FIELD_LABELS[field] ?? field;
     const change = diff.values[field];
-    if (created) return change ? [`${label}: ${valueLabel(field, change.to, users)}`] : [];
+    if (created) return change ? [`${label}: ${valueLabel(field, change.to, users, plans)}`] : [];
     if (!change) return [`${label} alterado`];
-    return [`${label}: ${valueLabel(field, change.from, users)} → ${valueLabel(field, change.to, users)}`];
+    return [
+      `${label}: ${valueLabel(field, change.from, users, plans)} → ${valueLabel(field, change.to, users, plans)}`,
+    ];
   });
 }
