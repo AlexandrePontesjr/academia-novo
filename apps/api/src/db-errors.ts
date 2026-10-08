@@ -1,7 +1,13 @@
 const UNIQUE_VIOLATION = '23505';
+const EXCLUSION_VIOLATION = '23P01';
 
 /** O Drizzle embrulha o erro do `pg` em `cause`. */
-export const isUniqueViolation = (error: unknown) =>
+const hasCode = (error: unknown, code: string) =>
   [error, (error as { cause?: unknown } | null)?.cause].some(
-    (candidate) => (candidate as { code?: unknown } | null)?.code === UNIQUE_VIOLATION,
+    (candidate) => (candidate as { code?: unknown } | null)?.code === code,
   );
+
+export const isUniqueViolation = (error: unknown) => hasCode(error, UNIQUE_VIOLATION);
+
+/** A recusa de uma restrição `EXCLUDE`, como a `enrollments_no_overlap` (door 5 de planos-matriculas). */
+export const isExclusionViolation = (error: unknown) => hasCode(error, EXCLUSION_VIOLATION);

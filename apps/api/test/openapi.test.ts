@@ -1,6 +1,7 @@
 import {
   auditLogsQuerySchema,
   changePasswordRequestSchema,
+  createEnrollmentRequestSchema,
   createPlanRequestSchema,
   createStaffRequestSchema,
   createStudentRequestSchema,
@@ -137,8 +138,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['put', '/api/staff/{id}/user', linkStaffUserRequestSchema],
     ['post', '/api/plans', createPlanRequestSchema],
     ['patch', '/api/plans/{id}', updatePlanRequestSchema],
+    ['post', '/api/students/{id}/enrollments', createEnrollmentRequestSchema],
   ];
-  expect(contracts).toHaveLength(17);
+  expect(contracts).toHaveLength(18);
 
   const { paths } = await document();
 

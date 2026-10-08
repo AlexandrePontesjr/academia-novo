@@ -1,5 +1,5 @@
-import type { Plan } from '@academia/contracts';
-import { expect } from 'vitest';
+import type { Enrollment, EnrollmentsResponse, Plan } from '@academia/contracts';
+import { expect, vi } from 'vitest';
 import { auditCount } from './audit.ts';
 import type { Client } from './client.ts';
 import type { Stack } from './stack.ts';
@@ -84,4 +84,66 @@ export async function insertEnrollment(
     [row.studentId, row.planId, row.startsAt ?? '2026-10-07', row.endsAt ?? '2026-11-06', row.priceCents ?? 9990, row.cancelled ?? false],
   );
   return inserted!.id;
+}
+
+/** O relógio padrão das provas de matrícula: dia 7 de outubro de 2026 em `America/Sao_Paulo`. */
+export const NOON = '2026-10-07T15:00:00Z';
+
+/** Põe o relógio do processo (o da API, que roda aqui dentro) naquele instante: só `Date`, e ele não anda sozinho. */
+export function clockAt(instant: string) {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date(instant) });
+}
+
+/** O instante do banco, que não segue o relógio do teste: serve de T0 e de T1. */
+export const databaseNow = async (stack: Stack) => (await stack.query<{ now: Date }>('select now() as now'))[0]!.now;
+
+export const enrollmentsPath = (studentId: string) => `/api/students/${studentId}/enrollments`;
+
+/** As oito chaves de uma matrícula, no `POST` e em cada item de `GET /api/students/:id/enrollments`. */
+export const ENROLLMENT_KEYS = ['id', 'plan', 'startsAt', 'endsAt', 'priceCents', 'status', 'createdAt', 'cancelledAt'];
+
+/** As chaves que nenhuma resposta de recusa pode trazer. */
+export const ENROLLMENT_DATA_KEYS = ['plan', 'startsAt', 'endsAt', 'priceCents', 'cancelledAt'];
+
+/** Matricula pela API e confere o `201`. */
+export async function enroll(client: Client, studentId: string, planId: string, startsAt = '2026-10-07'): Promise<Enrollment> {
+  const response = await client.post(enrollmentsPath(studentId), { planId, startsAt });
+  expect(response.status, `matrícula de preparação: ${planId} a partir de ${startsAt}`).toBe(201);
+  return (await response.json()) as Enrollment;
+}
+
+/** Lê as matrículas do aluno pela API e confere o `200`. */
+export async function listEnrollments(client: Client, studentId: string): Promise<Enrollment[]> {
+  const response = await client.get(enrollmentsPath(studentId));
+  expect(response.status, 'leitura das matrículas').toBe(200);
+  return ((await response.json()) as EnrollmentsResponse).items;
+}
+
+/** A matrícula como o banco a guarda (`to_jsonb`, sem depender de nome de coluna), ou `undefined`. */
+export async function enrollmentRow(stack: Stack, id: string) {
+  const [row] = await stack.query<{ row: Record<string, unknown> }>('select to_jsonb(e) as row from enrollments e where id = $1', [id]);
+  return row?.row;
+}
+
+/** O mesmo, como texto, para a comparação "linha idêntica". */
+export async function enrollmentRowText(stack: Stack, id: string) {
+  const [row] = await stack.query<{ row: string }>('select to_jsonb(e)::text as row from enrollments e where id = $1', [id]);
+  return row?.row;
+}
+
+/** As linhas de matrícula de um aluno como texto, da mais antiga à mais nova. */
+export async function enrollmentRowsTextOfStudent(stack: Stack, studentId: string) {
+  const rows = await stack.query<{ row: string }>('select to_jsonb(e)::text as row from enrollments e where student_id = $1 order by id', [studentId]);
+  return rows.map((entry) => entry.row);
+}
+
+/** Quantos pares de linhas não canceladas do aluno têm ao menos um dia em comum: a door 5 diz zero. */
+export async function overlappingPairs(stack: Stack, studentId: string) {
+  const [row] = await stack.query<{ n: string }>(
+    `select count(*) as n from enrollments a join enrollments b on a.student_id = b.student_id and a.id < b.id
+     where a.student_id = $1 and a.cancelled_at is null and b.cancelled_at is null
+       and a.starts_at <= b.ends_at and b.starts_at <= a.ends_at`,
+    [studentId],
+  );
+  return Number(row!.n);
 }

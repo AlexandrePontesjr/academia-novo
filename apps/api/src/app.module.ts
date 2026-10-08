@@ -24,6 +24,8 @@ import { PlansService } from './plans/plans.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StaffController } from './staff/staff.controller.ts';
 import { StaffService } from './staff/staff.service.ts';
+import { StudentEnrollmentsController } from './student-enrollments/student-enrollments.controller.ts';
+import { StudentEnrollmentsService } from './student-enrollments/student-enrollments.service.ts';
 import { StudentsController } from './students/students.controller.ts';
 import { StudentsService } from './students/students.service.ts';
 import { AUTH, DATABASE, ENV } from './tokens.ts';
@@ -53,6 +55,7 @@ export class AppModule implements OnApplicationShutdown {
         ConsentTermsController,
         PhotosController,
         PlansController,
+        StudentEnrollmentsController,
         OpenApiController,
       ],
       providers: [
@@ -95,6 +98,11 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: PlansService,
           useFactory: (database: Database) => new PlansService(database.db),
+          inject: [DATABASE],
+        },
+        {
+          provide: StudentEnrollmentsService,
+          useFactory: (database: Database) => new StudentEnrollmentsService(database.db),
           inject: [DATABASE],
         },
         {

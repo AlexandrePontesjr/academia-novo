@@ -84,6 +84,9 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'POST /api/plans',
       'PATCH /api/plans/:id',
       'DELETE /api/plans/:id',
+      'GET /api/students/:id/enrollments',
+      'POST /api/students/:id/enrollments',
+      'DELETE /api/students/:id/enrollments/:enrollmentId',
       'GET /api/openapi.json',
     ].sort(),
   );

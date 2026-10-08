@@ -1,4 +1,4 @@
-import { AUDIT_ACTIONS, auditActionSchema, type TwoFactorEnableResponse, type User } from '@academia/contracts';
+import { AUDIT_ACTIONS, auditActionSchema, saoPauloToday, type TwoFactorEnableResponse, type User } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount, auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
@@ -339,6 +339,12 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const plan = await admin.post('/api/plans', { name: 'Plano Percorre', period: 'monthly', priceCents: 9990 }); // plan.created
   const { id: planId } = (await plan.json()) as { id: string };
   await admin.patch(`/api/plans/${planId}`, { priceCents: 10990 }); // plan.updated
+  // o aluno de cima foi inativado, e inativo não é matriculado: a matrícula é de outro, antes de o plano sair de linha
+  const enrolled = await admin.post('/api/students', { name: 'Aluna Matriculada', cpf: '111.444.777-35', birthDate: '2000-01-01', phone: '11912345678' });
+  const { id: enrolledId } = (await enrolled.json()) as { id: string };
+  const enrollment = await admin.post(`/api/students/${enrolledId}/enrollments`, { planId, startsAt: saoPauloToday() }); // student.enrollment_created
+  const { id: enrollmentId } = (await enrollment.json()) as { id: string };
+  await admin.delete(`/api/students/${enrolledId}/enrollments/${enrollmentId}`); // student.enrollment_cancelled
   await admin.delete(`/api/plans/${planId}`); // plan.inactivated
 
   const rows = await auditRows(stack);
@@ -346,14 +352,7 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
 
   expect(auditActionSchema.options).toHaveLength(36);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  // as ações de plano e de matrícula saem desta lista no commit da rota que passa a gravá-las (planos-matriculas,
-  // S1 a S5); a lista só encolhe, e o `expect` abaixo reprova se uma ação dela já estiver sendo gravada
-  const PLAN_ACTIONS_NOT_ROUTED_YET: string[] = [
-    'student.enrollment_created',
-    'student.enrollment_cancelled',
-  ];
-  expect(written.filter((action) => PLAN_ACTIONS_NOT_ROUTED_YET.includes(action))).toEqual([]);
-  expect(written).toEqual(auditActionSchema.options.filter((action) => !PLAN_ACTIONS_NOT_ROUTED_YET.includes(action)).sort());
+  expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter((row) => !['user', 'student', 'staff', 'plan'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações novas, e só nelas
@@ -374,4 +373,12 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
     expect(ofAction.map((row) => row.entity), action).toEqual(ofAction.map(() => 'plan'));
   }
   expect(rows.filter((row) => row.entity === 'plan' && !row.action.startsWith('plan.'))).toEqual([]);
+  // `entity` igual a `student` nas duas ações de matrícula, com o id do aluno matriculado
+  const enrollmentActions = auditActionSchema.options.filter((action) => action.startsWith('student.enrollment_'));
+  expect(enrollmentActions).toHaveLength(2);
+  for (const action of enrollmentActions) {
+    const ofAction = rows.filter((row) => row.action === action);
+    expect(ofAction.length, action).toBeGreaterThan(0);
+    expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(ofAction.map(() => ['student', enrolledId]));
+  }
 });
