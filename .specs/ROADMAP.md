@@ -17,7 +17,7 @@ decisão.
 | 6 | `foto-pipeline` | enviar um arquivo de foto e vê-lo servido só por URL assinada | RF-13, RF-14, RF-15, RF-17, RF-18 | 4 | verificada (PASS, 81/81) |
 | 7 | `foto-captura` | capturar pela câmera, recortar em 3:4 e trocar a foto mantendo versões | RF-11, RF-12, RF-16 | 6 | verificada (PASS, 65/65) |
 | 8 | `funcionarios` | RH cadastra funcionários com foto; ninguém mais os vê, e cada visualização é auditada | RF-09, RF-10 | 3, 6 | verificada (PASS, 114/114, rodada 2 em `368106c`) |
-| 9 | `planos-matriculas` | criar planos e matricular um aluno com início, vencimento e renovação | RF-19, RF-20 | 4 | não iniciada |
+| 9 | `planos-matriculas` | criar planos e matricular um aluno com início, vencimento e renovação | RF-19, RF-20 | 4 | plano aprovado e checks escritos em 2026-10-08; Build não iniciado |
 | 10 | `pagamentos` | registrar pagamento manual e ver o que está pendente ou atrasado | RF-21 | 9 | não iniciada |
 | 11 | `check-in` | a recepção busca o aluno, confere a foto e registra a presença | RF-22, RF-23 | 6, 9 | não iniciada |
 | 12 | `dashboard` | ver alunos ativos, vencimentos próximos e check-ins do dia | §8 tela 2 | 9, 11 | não iniciada |
@@ -63,5 +63,5 @@ As questões do PRD §13, com a recomendação e o ponto em que cada uma passa a
 | O fluxo do §5.1 e as RF-11 a RF-18 falam de aluno; a rota `/staff/:id/photo` existe - mesmas regras? | fechada em `funcionarios`: as mesmas regras do aluno (tipos, 5 MiB, 300×400, três variantes, par `POST` e `PUT`, retenção e expurgo), com o funcionário como segundo dono de `photos` (AD-054, AD-055); só `admin` e `hr_finance` |
 | O diagrama do §5 mostra navegador → Next.js → NestJS; upload multipart de 5 MB passa pelo Next ou vai direto à API na mesma origem? | a parte de `auth-rbac` está fechada: o upload entra pela origem do web (AD-019). Segue aberta em `foto-pipeline` e `operacao`: quem o encaminha, o Next ou o proxy |
 | Processamento de imagem síncrono na API ou em fila no worker (o §5 deixa o Redis como opcional) | `foto-pipeline` |
-| "Regras de acesso" de um plano (RF-19) não têm formato definido | `planos-matriculas` |
+| "Regras de acesso" de um plano (RF-19) não têm formato definido | fechada em `planos-matriculas`: texto livre opcional de até 500 caracteres, que as pessoas leem e o sistema não interpreta (AD-058); regra que o `check-in` aplique sozinho será coluna nova ao lado do texto |
 | Dependências externas do §12: termo de consentimento revisado por jurídico e DPO nomeado | go-live de `consentimento` |
