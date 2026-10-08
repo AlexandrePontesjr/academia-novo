@@ -16,12 +16,16 @@ export type PlanStatus = z.infer<typeof planStatusSchema>;
 /** R$ 99.999,99: o maior valor de um plano. */
 export const PRICE_CENTS_MAX = 9_999_999;
 
+// um substituto UTF-16 solto não é texto: o `jsonb` da trilha, que guarda o nome do plano (door 6), o recusa
+const noLoneSurrogate = (value: string) => !/\p{Cs}/u.test(value);
+
 const planNameSchema = z
   .string('Informe o nome.')
   .trim()
   .min(1, 'Informe o nome.')
   .max(80, 'O nome deve ter no máximo 80 caracteres.')
-  .refine(noNul, 'O nome contém um caractere inválido.');
+  .refine(noNul, 'O nome contém um caractere inválido.')
+  .refine(noLoneSurrogate, 'O nome contém um caractere inválido.');
 
 /** Dinheiro é sempre inteiro de centavos (door 2): nunca decimal nem texto. */
 export const priceCentsSchema = z

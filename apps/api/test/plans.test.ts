@@ -442,3 +442,22 @@ test('patch_and_delete_404_for_non_uuid_and_unknown_uuid', async () => {
   expect(cases).toBe(4);
   expect(await planCount(stack)).toBe(total);
 });
+
+// achado da C104: o nome do plano vai para o `diff` da trilha, e o `jsonb` não guarda um substituto UTF-16 solto
+test('lone_surrogate_in_name_422_on_create_and_patch', async () => {
+  const { client } = await stack.session('hr_finance');
+  const created = await createPlan(client, planBody({ name: 'Nome Bem Formado 😀' }));
+  expect(created.name).toBe('Nome Bem Formado 😀');
+
+  for (const name of ['\ud800', 'Men\udc00sal']) {
+    const before = await planSnapshot(stack);
+
+    const posted = await client.post('/api/plans', planBody({ name }));
+    const patched = await client.patch(`/api/plans/${created.id}`, { name });
+
+    expect([posted.status, patched.status], JSON.stringify(name)).toEqual([422, 422]);
+    expect(await fieldErrorPaths(posted), JSON.stringify(name)).toContain('name');
+    expect(await fieldErrorPaths(patched), JSON.stringify(name)).toContain('name');
+    expect(await planSnapshot(stack), JSON.stringify(name)).toEqual(before);
+  }
+});
