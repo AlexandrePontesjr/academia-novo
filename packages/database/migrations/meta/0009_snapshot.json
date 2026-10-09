@@ -1,5 +1,5 @@
 {
-  "id": "821afcf8-4eac-4153-ad64-74ae419ce9a0",
+  "id": "0268a40b-0de7-41e9-9179-3487f4987eff",
   "prevId": "c8e3c009-0438-41fc-bc3b-56aaa6877c18",
   "version": "7",
   "dialect": "postgresql",
@@ -707,24 +707,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_at": {
-          "name": "paid_at",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -740,8 +722,8 @@
         }
       },
       "indexes": {
-        "payments_enrollment_id_idx": {
-          "name": "payments_enrollment_id_idx",
+        "payments_one_alive_idx": {
+          "name": "payments_one_alive_idx",
           "columns": [
             {
               "expression": "enrollment_id",
@@ -750,7 +732,8 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "\"payments\".\"voided_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -774,16 +757,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "payments_amount_cents_positive": {
-          "name": "payments_amount_cents_positive",
-          "value": "\"payments\".\"amount_cents\" > 0"
-        },
-        "payments_method_valid": {
-          "name": "payments_method_valid",
-          "value": "\"payments\".\"method\" in ('cash', 'pix', 'debit_card', 'credit_card', 'bank_transfer')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.photos": {
