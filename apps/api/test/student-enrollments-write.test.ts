@@ -258,6 +258,42 @@ test('enroll_starts_at_twelve_cases_around_today_in_sao_paulo', async () => {
   expect(cases).toBe(12);
 });
 
+test('enroll_starts_at_upper_limit_on_both_sides_of_the_sao_paulo_turn', async () => {
+  const planId = await insertPlan(stack, { name: 'Mensal', period: 'monthly' });
+
+  const refused = async (instant: string, startsAt: string) => {
+    const label = `${startsAt} às ${instant}`;
+    const client = await sessionAt(instant);
+    const studentId = await newStudent();
+    const before = await planSnapshot(stack);
+
+    const response = await client.post(enrollmentsPath(studentId), { planId, startsAt });
+
+    expect(response.status, label).toBe(422);
+    expect(await fieldErrorPaths(response), label).toContain('startsAt');
+    expect(await planSnapshot(stack), label).toEqual(before);
+    expect(await enrollmentIdsOf(studentId), label).toEqual([]);
+  };
+  const accepted = async (instant: string, startsAt: string) => {
+    const label = `${startsAt} às ${instant}`;
+    const client = await sessionAt(instant);
+    const studentId = await newStudent();
+
+    const response = await client.post(enrollmentsPath(studentId), { planId, startsAt });
+
+    expect(response.status, label).toBe(201);
+    const body = (await response.json()) as Enrollment;
+    expect(body.startsAt, label).toBe(startsAt);
+    expect(await enrollmentIdsOf(studentId), label).toEqual([body.id]);
+  };
+
+  // 02:59:59 UTC de 8/10 ainda é dia 7 em São Paulo: o limite é 2027-10-07
+  await refused('2026-10-08T02:59:59Z', '2027-10-08');
+  await accepted('2026-10-08T02:59:59Z', '2027-10-07');
+  // 03:00:00 UTC é a virada: hoje passa a ser dia 8, e o limite passa a ser 2027-10-08
+  await accepted('2026-10-08T03:00:00Z', '2027-10-08');
+});
+
 test('enroll_started_in_the_past_and_not_ended_201_active', async () => {
   const planId = await insertPlan(stack, { name: 'Mensal', period: 'monthly' });
 
