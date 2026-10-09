@@ -1,6 +1,7 @@
 import type { SessionResponse } from '@academia/contracts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { canReadPayments } from '../lib/payments.ts';
 import { canReadPlans } from '../lib/plans.ts';
 import { ROLE_LABELS } from '../lib/roles.ts';
 import { canAccessStaff } from '../lib/staff.ts';
@@ -24,6 +25,11 @@ export function Shell({ session, children }: { session: SessionResponse; childre
           {canReadPlans(user.role) && (
             <Link href="/plans" prefetch={false}>
               Planos
+            </Link>
+          )}
+          {canReadPayments(user.role) && (
+            <Link href="/payments" prefetch={false}>
+              Pagamentos
             </Link>
           )}
           {canAccessStaff(user.role) && (

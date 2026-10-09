@@ -98,6 +98,26 @@ test('plans_link_for_admin_hr_finance_and_reception', async ({ page, api }) => {
   }
 });
 
+test('payments_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
+  const visible: Record<Role, boolean> = {
+    admin: true,
+    reception: false,
+    hr_finance: true,
+    instructor: false,
+  };
+
+  for (const [role, expected] of Object.entries(visible) as Array<[Role, boolean]>) {
+    api.session = sessionOf(role);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Pagamentos', exact: true }), role).toHaveCount(expected ? 1 : 0);
+    if (expected) {
+      await expect(page.getByRole('link', { name: 'Pagamentos', exact: true }), role).toHaveAttribute('href', '/payments');
+    }
+  }
+});
+
 test('sign_out_calls_logout_and_goes_to_login', async ({ page, api }) => {
   api.session = sessionOf('reception');
   api.on('POST', '/api/auth/logout', () => {
