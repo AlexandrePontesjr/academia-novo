@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 28,
+  "next_id": 34,
   "lessons": [
     {
       "id": "L-001",
@@ -490,6 +490,114 @@
       ],
       "created": "2026-10-09T00:05:31Z",
       "last_seen": "2026-10-09T00:05:31Z"
+    },
+    {
+      "id": "L-028",
+      "key": "spec_precision_gap::when a claim says a write happened once count what a repeat would multiply such as audit rows not a column that is one whenever the row is set",
+      "text": "When a claim says a write happened once, count what a repeat would multiply, such as audit rows, not a column that is one whenever the row is set",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C18 (api)"
+      ],
+      "created": "2026-10-09T21:04:17Z",
+      "last_seen": "2026-10-09T21:04:17Z"
+    },
+    {
+      "id": "L-029",
+      "key": "spec_precision_gap::assert a recorded diff with exact equality not a partial match that accepts an extra key",
+      "text": "Assert a recorded diff with exact equality, not a partial match that accepts an extra key",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C34 (api)"
+      ],
+      "created": "2026-10-09T21:04:17Z",
+      "last_seen": "2026-10-09T21:04:17Z"
+    },
+    {
+      "id": "L-030",
+      "key": "spec_precision_gap::name in the proof of a check every half of its claim or cite the other check that proves the missing half",
+      "text": "Name in the proof of a check every half of its claim, or cite the other check that proves the missing half",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C63 (api)"
+      ],
+      "created": "2026-10-09T21:04:17Z",
+      "last_seen": "2026-10-09T21:04:17Z"
+    },
+    {
+      "id": "L-031",
+      "key": "spec_precision_gap::list in the proof line of a check every test that asserts its claim including tests added during build",
+      "text": "List in the Proof line of a check every test that asserts its claim, including tests added during Build",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C67 (api)"
+      ],
+      "created": "2026-10-09T21:04:18Z",
+      "last_seen": "2026-10-09T21:04:18Z"
+    },
+    {
+      "id": "L-032",
+      "key": "spec_precision_gap::prove at the schema level that each required key is refused when missing not only one of them",
+      "text": "Prove at the schema level that each required key is refused when missing, not only one of them",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C65 (api)"
+      ],
+      "created": "2026-10-09T21:04:18Z",
+      "last_seen": "2026-10-09T21:04:18Z"
+    },
+    {
+      "id": "L-033",
+      "key": "spec_precision_gap::cite as proof of a swept constraint a test that exercises it such as one that sends the forbidden input not one that only runs on the same route",
+      "text": "Cite as proof of a swept constraint a test that exercises it, such as one that sends the forbidden input, not one that only runs on the same route",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "pagamentos"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "Swept AD-020 (api)"
+      ],
+      "created": "2026-10-09T21:04:18Z",
+      "last_seen": "2026-10-09T21:04:18Z"
     }
   ]
 }

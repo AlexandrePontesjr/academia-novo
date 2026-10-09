@@ -176,6 +176,42 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: verification.md F2; door 1; apps/web/src/app/plans/page.tsx:66 (web)
 - last seen: 2026-10-09T00:05:31Z
 
+### L-028 - When a claim says a write happened once, count what a repeat would multiply, such as audit rows, not a column that is one whenever the row is set
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: C18 (api)
+- last seen: 2026-10-09T21:04:17Z
+
+### L-029 - Assert a recorded diff with exact equality, not a partial match that accepts an extra key
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: C34 (api)
+- last seen: 2026-10-09T21:04:17Z
+
+### L-030 - Name in the proof of a check every half of its claim, or cite the other check that proves the missing half
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: C63 (api)
+- last seen: 2026-10-09T21:04:17Z
+
+### L-031 - List in the Proof line of a check every test that asserts its claim, including tests added during Build
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: C67 (api)
+- last seen: 2026-10-09T21:04:18Z
+
+### L-032 - Prove at the schema level that each required key is refused when missing, not only one of them
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: C65 (api)
+- last seen: 2026-10-09T21:04:18Z
+
+### L-033 - Cite as proof of a swept constraint a test that exercises it, such as one that sends the forbidden input, not one that only runs on the same route
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: pagamentos
+- evidence: Swept AD-020 (api)
+- last seen: 2026-10-09T21:04:18Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
