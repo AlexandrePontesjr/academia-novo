@@ -5,7 +5,9 @@ import {
   saoPauloToday,
   type Student,
   type StudentConsentsResponse,
+  type StudentPayment,
   studentConsentsResponseSchema,
+  studentPaymentsResponseSchema,
   studentSchema,
 } from '@academia/contracts';
 import { Button } from '@academia/ui';
@@ -14,6 +16,7 @@ import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
 import { loadPlans } from '../../../lib/plans-server.ts';
+import { canReadPayments } from '../../../lib/payments.ts';
 import { canReadPlans, canWritePlans } from '../../../lib/plans.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
@@ -22,6 +25,8 @@ import { ConsentsBlock } from './consents-block.tsx';
 import { ConsentsLoadError } from './consents-load-error.tsx';
 import { EnrollmentsBlock } from './enrollments-block.tsx';
 import { EnrollmentsLoadError } from './enrollments-load-error.tsx';
+import { PaymentsBlock } from './payments-block.tsx';
+import { PaymentsLoadError } from './payments-load-error.tsx';
 import { StatusActions } from './status-actions.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +65,17 @@ async function loadEnrollments(id: string): Promise<Enrollment[] | 'failed'> {
   }
 }
 
+/** Os períodos do aluno com a situação de pagamento, na ordem da API, ou `failed`; só se pedem ao Financeiro. */
+async function loadPayments(id: string): Promise<StudentPayment[] | 'failed'> {
+  try {
+    const response = await fetchApi(`/api/students/${encodeURIComponent(id)}/payments`, await headers());
+    if (response.status !== 200) return 'failed';
+    return studentPaymentsResponseSchema.parse(await response.json()).items;
+  } catch {
+    return 'failed';
+  }
+}
+
 export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
@@ -73,6 +89,8 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
     typeof student === 'object' && canReadPlans(role)
       ? await Promise.all([loadEnrollments(id), canWritePlans(role) ? loadPlans().then((list) => list ?? 'failed') : undefined])
       : [];
+  // o que o aluno deve é do Financeiro: os outros perfis nem chegam a pedir
+  const payments = typeof student === 'object' && canReadPayments(role) ? await loadPayments(id) : undefined;
 
   return (
     <Shell session={session}>
@@ -130,6 +148,10 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               items={enrollments}
               plans={plans}
             />
+          )}
+          {payments === 'failed' && <PaymentsLoadError />}
+          {payments && payments !== 'failed' && (
+            <PaymentsBlock studentId={student.id} studentName={student.name} items={payments} />
           )}
         </>
       )}
