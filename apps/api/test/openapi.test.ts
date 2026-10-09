@@ -11,6 +11,7 @@ import {
   guardianRequestSchema,
   linkStaffUserRequestSchema,
   loginRequestSchema,
+  openPaymentsQuerySchema,
   photoFileQuerySchema,
   photoQuerySchema,
   passwordConfirmationRequestSchema,
@@ -315,6 +316,35 @@ test('plan_and_enrollment_paths_declared_with_json_bodies', async () => {
     ['delete', '/api/plans/{id}'],
     ['get', '/api/students/{id}/enrollments'],
     ['delete', '/api/students/{id}/enrollments/{enrollmentId}'],
+  ] as const) {
+    expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
+  }
+});
+
+test('payment_paths_and_status_query_parameter_come_from_contract_schema', async () => {
+  const { paths } = await document();
+  const properties = JSON.parse(JSON.stringify(z.toJSONSchema(openPaymentsQuerySchema).properties)) as Record<string, { enum?: string[] }>;
+  expect(Object.keys(properties)).toEqual(['status']);
+  expect(properties.status!.enum).toEqual(['pending', 'overdue']);
+
+  // as quatro rotas, e nenhuma outra, sob os dois prefixos
+  expect(Object.keys(paths['/api/students/{id}/payments'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/students/{id}/payments/{paymentId}'] ?? {})).toEqual(['delete']);
+  expect(Object.keys(paths['/api/payments'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths).filter((path) => path.includes('/payments'))).toHaveLength(3);
+
+  // `status` é o único parâmetro de `GET /api/payments`, opcional, e o schema é o do contrato
+  const parameters = paths['/api/payments']?.get?.parameters ?? [];
+  expect(parameters).toHaveLength(1);
+  expect(parameters[0]).toMatchObject({ name: 'status', in: 'query' });
+  expect(parameters[0]!.required).not.toBe(true);
+  expect(parameters[0]!.schema).toEqual(properties.status);
+
+  // as três que não recebem corpo não declaram nenhum
+  for (const [method, path] of [
+    ['get', '/api/students/{id}/payments'],
+    ['delete', '/api/students/{id}/payments/{paymentId}'],
+    ['get', '/api/payments'],
   ] as const) {
     expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
   }
