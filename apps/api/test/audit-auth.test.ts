@@ -344,6 +344,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { id: enrolledId } = (await enrolled.json()) as { id: string };
   const enrollment = await admin.post(`/api/students/${enrolledId}/enrollments`, { planId, startsAt: saoPauloToday() }); // student.enrollment_created
   const { id: enrollmentId } = (await enrollment.json()) as { id: string };
+  const payment = await admin.post(`/api/students/${enrolledId}/payments`, { enrollmentId, amountCents: 5000, paidAt: saoPauloToday(), method: 'pix' }); // student.payment_registered
+  const { id: paymentId } = (await payment.json()) as { id: string };
+  await admin.delete(`/api/students/${enrolledId}/payments/${paymentId}`); // student.payment_voided
   await admin.delete(`/api/students/${enrolledId}/enrollments/${enrollmentId}`); // student.enrollment_cancelled
   await admin.delete(`/api/plans/${planId}`); // plan.inactivated
 
@@ -377,6 +380,14 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const enrollmentActions = auditActionSchema.options.filter((action) => action.startsWith('student.enrollment_'));
   expect(enrollmentActions).toHaveLength(2);
   for (const action of enrollmentActions) {
+    const ofAction = rows.filter((row) => row.action === action);
+    expect(ofAction.length, action).toBeGreaterThan(0);
+    expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(ofAction.map(() => ['student', enrolledId]));
+  }
+  // `entity` igual a `student` nas duas ações de pagamento, com o id do aluno matriculado
+  const paymentActions = auditActionSchema.options.filter((action) => action.startsWith('student.payment_'));
+  expect(paymentActions).toHaveLength(2);
+  for (const action of paymentActions) {
     const ofAction = rows.filter((row) => row.action === action);
     expect(ofAction.length, action).toBeGreaterThan(0);
     expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(ofAction.map(() => ['student', enrolledId]));

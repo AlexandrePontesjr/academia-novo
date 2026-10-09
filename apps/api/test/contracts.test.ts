@@ -1110,7 +1110,7 @@ test('payment_schemas_accept_and_reject', () => {
   expect(paths(studentPaymentSchema.safeParse({ ...period, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
 
   // item da lista geral: as dez chaves, com o aluno só por `id` e `name`
-  const { payments: _payments, ...rest } = period;
+  const rest = Object.fromEntries(Object.entries(period).filter(([key]) => key !== 'payments'));
   const item = { ...rest, student: { id, name: 'Aluna Um' } };
   expect(Object.keys(item)).toHaveLength(10);
   expect(paths(openPaymentSchema.safeParse(item))).toBe('aceita');

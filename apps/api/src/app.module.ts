@@ -26,6 +26,8 @@ import { StaffController } from './staff/staff.controller.ts';
 import { StaffService } from './staff/staff.service.ts';
 import { StudentEnrollmentsController } from './student-enrollments/student-enrollments.controller.ts';
 import { StudentEnrollmentsService } from './student-enrollments/student-enrollments.service.ts';
+import { PaymentsController, StudentPaymentsController } from './student-payments/student-payments.controller.ts';
+import { StudentPaymentsService } from './student-payments/student-payments.service.ts';
 import { StudentsController } from './students/students.controller.ts';
 import { StudentsService } from './students/students.service.ts';
 import { AUTH, DATABASE, ENV } from './tokens.ts';
@@ -56,6 +58,8 @@ export class AppModule implements OnApplicationShutdown {
         PhotosController,
         PlansController,
         StudentEnrollmentsController,
+        StudentPaymentsController,
+        PaymentsController,
         OpenApiController,
       ],
       providers: [
@@ -103,6 +107,11 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: StudentEnrollmentsService,
           useFactory: (database: Database) => new StudentEnrollmentsService(database.db),
+          inject: [DATABASE],
+        },
+        {
+          provide: StudentPaymentsService,
+          useFactory: (database: Database) => new StudentPaymentsService(database.db),
           inject: [DATABASE],
         },
         {
