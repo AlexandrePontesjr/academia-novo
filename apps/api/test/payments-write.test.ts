@@ -1,14 +1,13 @@
-import type { RegisteredPayment, Role } from '@academia/contracts';
+import type { RegisteredPayment } from '@academia/contracts';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { written } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import {
   PAYMENT_DATA_KEYS,
   PAYMENT_KEYS,
+  aliveCountOf,
   insertPayment,
-  paidCentsOf,
   paymentBody,
-  paymentCount,
   paymentRow,
   paymentRowText,
   paymentRowWithoutVoidedAt,
@@ -57,34 +56,15 @@ const newStudent = async (status = 'active') =>
  * Um período de um aluno novo, direto no banco: por padrão o "mensal" de R$ 99,90 de 2026-10-07 a
  * 2026-11-06, que vence em 2026-10-07.
  */
-async function newPeriod(
-  options: { status?: string; priceCents?: number; startsAt?: string; endsAt?: string; cancelled?: boolean } = {},
-) {
+async function newPeriod(options: { status?: string; startsAt?: string; endsAt?: string; cancelled?: boolean } = {}) {
   const studentId = await newStudent(options.status);
   const enrollmentId = await insertEnrollment(stack, { studentId, planId, ...options });
   return { studentId, enrollmentId };
 }
 
-/** Move o relógio e abre, naquele instante, a sessão que as requisições seguintes usam. */
-async function sessionAt(instant: string, role: Role = 'hr_finance') {
-  clockAt(instant);
-  return (await stack.session(role)).client;
-}
-
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
-/** Confere um `422` com um item só, no `path` dado, e nada gravado desde a fotografia. */
-async function expectRefusedOn(client: Client, studentId: string, body: unknown, path: string, label: string) {
-  const before = await paymentSnapshot(stack);
-
-  const response = await client.post(paymentsPath(studentId), body);
-
-  expect(response.status, label).toBe(422);
-  expect(await fieldErrorPaths(response), label).toEqual([path]);
-  expect(await paymentSnapshot(stack), label).toEqual(before);
-}
-
-test('register_201_by_admin_and_hr_finance_with_the_seven_keys_five_methods_and_amount_edges', async () => {
+test('confirm_201_by_admin_and_hr_finance_with_three_keys_and_database_instant', async () => {
   for (const [role, client] of [
     ['admin', admin],
     ['hr_finance', hr],
@@ -101,171 +81,55 @@ test('register_201_by_admin_and_hr_finance_with_the_seven_keys_five_methods_and_
     // o `id` devolvido é o da única linha que passou a existir
     expect(await stack.query('select id from payments where enrollment_id = $1', [enrollmentId]), role).toEqual([{ id: body.id }]);
     expect(body.enrollmentId, role).toBe(enrollmentId);
-    expect(body.amountCents, role).toBe(5000);
-    expect(body.paidAt, role).toBe('2026-10-07');
-    expect(body.method, role).toBe('pix');
     expect(body.createdAt, role).toMatch(ISO_INSTANT);
     expect(new Date(body.createdAt).toISOString(), role).toBe(body.createdAt);
     expect(new Date(body.createdAt).getTime(), role).toBeGreaterThanOrEqual(t0.getTime());
     expect(new Date(body.createdAt).getTime(), role).toBeLessThanOrEqual(t1.getTime());
-    expect(body.voidedAt, role).toBeNull();
-    expect(await paymentRow(stack, body.id), role).toMatchObject({
-      id: body.id,
-      enrollment_id: enrollmentId,
-      amount_cents: 5000,
-      paid_at: '2026-10-07',
-      method: 'pix',
-      voided_at: null,
-    });
-  }
-
-  // cada uma das cinco formas é aceita e devolvida
-  const { studentId, enrollmentId } = await newPeriod();
-  for (const method of ['cash', 'pix', 'debit_card', 'credit_card', 'bank_transfer']) {
-    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 1000, method }));
-    const body = (await response.json()) as RegisteredPayment;
-
-    expect(response.status, method).toBe(201);
-    expect(body.method, method).toBe(method);
-    expect((await paymentRow(stack, body.id))!.method, method).toBe(method);
-  }
-
-  // o menor valor e o saldo inteiro
-  const small = await newPeriod();
-  const one = await hr.post(paymentsPath(small.studentId), paymentBody(small.enrollmentId, { amountCents: 1 }));
-  expect(one.status).toBe(201);
-  expect(((await one.json()) as RegisteredPayment).amountCents).toBe(1);
-  const whole = await newPeriod();
-  const all = await hr.post(paymentsPath(whole.studentId), paymentBody(whole.enrollmentId, { amountCents: 9990 }));
-  expect(all.status).toBe(201);
-  expect(((await all.json()) as RegisteredPayment).amountCents).toBe(9990);
-});
-
-test('register_amount_seven_refusals_422_on_amount_cents_and_the_top_edge_accepted', async () => {
-  const { studentId, enrollmentId } = await newPeriod();
-  const cases: Array<[label: string, amountCents: unknown]> = [
-    ['ausente', undefined],
-    ['null', null],
-    ['0', 0],
-    ['-1', -1],
-    ['10000000', 10_000_000],
-    ['99.9', 99.9],
-    ['"5000"', '5000'],
-  ];
-  expect(cases).toHaveLength(7);
-  for (const [label, amountCents] of cases) {
-    await expectRefusedOn(hr, studentId, paymentBody(enrollmentId, { amountCents }), 'amountCents', label);
-  }
-
-  // o teto de R$ 99.999,99 é aceito num período que vale isso
-  const top = await newPeriod({ priceCents: 9_999_999 });
-  const response = await hr.post(paymentsPath(top.studentId), paymentBody(top.enrollmentId, { amountCents: 9_999_999 }));
-  expect(response.status).toBe(201);
-  expect(((await response.json()) as RegisteredPayment).amountCents).toBe(9_999_999);
-});
-
-test('register_paid_at_fourteen_cases_around_today_and_start_in_sao_paulo', async () => {
-  let cases = 0;
-  const period = await newPeriod();
-
-  // relógio em 2026-10-07T15:00:00Z, o período começa em 2026-10-07
-  const refused: Array<[label: string, paidAt: unknown]> = [
-    ['ausente', undefined],
-    ['null', null],
-    ['2026-02-30', '2026-02-30'],
-    ['2026-13-01', '2026-13-01'],
-    ['26-10-07', '26-10-07'],
-    ['07/10/2026', '07/10/2026'],
-    ['amanhã', '2026-10-08'],
-    ['366 dias antes do início', '2025-10-06'],
-  ];
-  expect(refused).toHaveLength(8);
-  for (const [label, paidAt] of refused) {
-    await expectRefusedOn(hr, period.studentId, paymentBody(period.enrollmentId, { amountCents: 1, paidAt }), 'paidAt', label);
-    cases += 1;
-  }
-  for (const [label, paidAt] of [
-    ['hoje', '2026-10-07'],
-    ['365 dias antes do início', '2025-10-07'],
-  ] as const) {
-    const response = await hr.post(paymentsPath(period.studentId), paymentBody(period.enrollmentId, { amountCents: 1, paidAt }));
-    expect(response.status, label).toBe(201);
-    cases += 1;
-  }
-
-  // a virada do dia em São Paulo: 02:59:59Z ainda é o dia 7
-  const late = await sessionAt('2026-10-08T02:59:59Z');
-  await expectRefusedOn(late, period.studentId, paymentBody(period.enrollmentId, { amountCents: 1, paidAt: '2026-10-08' }), 'paidAt', '02:59:59Z, dia 8');
-  cases += 1;
-  const stillSeventh = await late.post(paymentsPath(period.studentId), paymentBody(period.enrollmentId, { amountCents: 1, paidAt: '2026-10-07' }));
-  const stillSeventhBody = (await stillSeventh.json()) as RegisteredPayment;
-  expect(stillSeventh.status, '02:59:59Z, dia 7').toBe(201);
-  cases += 1;
-
-  const turned = await sessionAt('2026-10-08T03:00:00Z');
-  const eighth = await turned.post(paymentsPath(period.studentId), paymentBody(period.enrollmentId, { amountCents: 1, paidAt: '2026-10-08' }));
-  const eighthBody = (await eighth.json()) as RegisteredPayment;
-  expect(eighth.status, '03:00:00Z, dia 8').toBe(201);
-  cases += 1;
-
-  // o dia é gravado e devolvido como foi enviado, sem deslocamento de fuso, também a 02:59:59Z
-  expect(stillSeventhBody.paidAt).toBe('2026-10-07');
-  expect((await stack.query<{ paid_at: string }>(`select paid_at::text as paid_at from payments where id = $1`, [stillSeventhBody.id]))[0]!.paid_at).toBe('2026-10-07');
-  expect(eighthBody.paidAt).toBe('2026-10-08');
-  expect((await stack.query<{ paid_at: string }>(`select paid_at::text as paid_at from payments where id = $1`, [eighthBody.id]))[0]!.paid_at).toBe('2026-10-08');
-  cases += 1;
-
-  expect(cases).toBe(14);
-});
-
-test('register_method_eight_refusals_422_on_method', async () => {
-  const { studentId, enrollmentId } = await newPeriod();
-  const cases: Array<[label: string, method: unknown]> = [
-    ['ausente', undefined],
-    ['null', null],
-    ['vazio', ''],
-    ['PIX', 'PIX'],
-    ['Pix', 'Pix'],
-    ['cheque', 'cheque'],
-    ['boleto', 'boleto'],
-    ['dinheiro', 'dinheiro'],
-  ];
-  expect(cases).toHaveLength(8);
-  for (const [label, method] of cases) {
-    await expectRefusedOn(hr, studentId, paymentBody(enrollmentId, { method }), 'method', label);
+    expect(await paymentRow(stack, body.id), role).toMatchObject({ id: body.id, enrollment_id: enrollmentId, voided_at: null });
   }
 });
 
-test('register_six_invalid_enrollment_ids_422_on_enrollment_id', async () => {
-  const { studentId } = await newPeriod();
-  const ofAnother = (await newPeriod()).enrollmentId;
-  const cases: Array<[label: string, enrollmentId: unknown]> = [
-    ['ausente', undefined],
-    ['null', null],
-    ['abc', 'abc'],
-    ['123', '123'],
-    ['uuid de período nenhum', unknownId()],
-    ['período de outro aluno', ofAnother],
+test('confirm_six_invalid_enrollment_ids_422_on_enrollment_id', async () => {
+  const mine = await newPeriod();
+  const other = await newPeriod();
+  const cases: Array<[label: string, body: unknown]> = [
+    ['ausente', {}],
+    ['null', { enrollmentId: null }],
+    ['"abc"', { enrollmentId: 'abc' }],
+    ['123', { enrollmentId: 123 }],
+    ['uuid de nenhum período', { enrollmentId: unknownId() }],
+    ['uuid de período de outro aluno', { enrollmentId: other.enrollmentId }],
   ];
   expect(cases).toHaveLength(6);
-  for (const [label, enrollmentId] of cases) {
-    await expectRefusedOn(hr, studentId, paymentBody('x', { enrollmentId }), 'enrollmentId', label);
+
+  for (const [label, body] of cases) {
+    const before = await paymentSnapshot(stack);
+
+    const response = await hr.post(paymentsPath(mine.studentId), body);
+
+    expect(response.status, label).toBe(422);
+    expect((await problem(response.clone())).code, label).toBe('validation_failed');
+    expect(await fieldErrorPaths(response), label).toEqual(['enrollmentId']);
+    expect(await paymentSnapshot(stack), label).toEqual(before);
   }
 });
 
-test('register_on_cancelled_period_409_enrollment_cancelled_three_cases', async () => {
-  const cases: Array<[label: string, payments: number[], amountCents: number]> = [
-    ['cancelado sem pagamento algum', [], 5000],
-    ['cancelado com 5000 pagos, saldo 4990', [5000], 1000],
-    // cancelado vem antes de "maior que o saldo": o saldo é zero e o motivo é o cancelamento
-    ['cancelado depois de pago por inteiro, saldo zero', [9990], 1],
-  ];
-  for (const [label, payments, amountCents] of cases) {
-    const { studentId, enrollmentId } = await newPeriod({ cancelled: true });
-    for (const amount of payments) await insertPayment(stack, { enrollmentId, amountCents: amount });
+test('confirm_on_cancelled_period_409_enrollment_cancelled_three_cases', async () => {
+  const withoutPayment = await newPeriod({ cancelled: true });
+  const withUndone = await newPeriod({ cancelled: true });
+  await insertPayment(stack, { enrollmentId: withUndone.enrollmentId, voided: true });
+  // aqui valem as duas recusas; o cancelamento vence
+  const withAlive = await newPeriod({ cancelled: true });
+  await insertPayment(stack, { enrollmentId: withAlive.enrollmentId });
+
+  for (const [label, { studentId, enrollmentId }] of [
+    ['cancelado sem pagamento', withoutPayment],
+    ['cancelado com confirmação desfeita', withUndone],
+    ['cancelado com confirmação viva', withAlive],
+  ] as const) {
     const before = await paymentSnapshot(stack);
 
-    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents }));
+    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId));
 
     expect(response.status, label).toBe(409);
     expect((await problem(response)).code, label).toBe('enrollment_cancelled');
@@ -273,86 +137,51 @@ test('register_on_cancelled_period_409_enrollment_cancelled_three_cases', async 
   }
 });
 
-test('register_above_balance_five_cases_409_payment_exceeds_balance', async () => {
-  let cases = 0;
-  const refusedWith = async (label: string, studentId: string, enrollmentId: string, amountCents: number) => {
+test('confirm_on_confirmed_period_409_payment_already_confirmed_three_cases', async () => {
+  const afterPost = await newPeriod();
+  await registerPayment(hr, afterPost.studentId, afterPost.enrollmentId);
+  const bySql = await newPeriod();
+  await insertPayment(stack, { enrollmentId: bySql.enrollmentId });
+  const afterUndo = await newPeriod();
+  const first = await registerPayment(hr, afterUndo.studentId, afterUndo.enrollmentId);
+  expect((await hr.delete(`${paymentsPath(afterUndo.studentId)}/${first.id}`)).status).toBe(204);
+  await registerPayment(hr, afterUndo.studentId, afterUndo.enrollmentId);
+
+  for (const [label, { studentId, enrollmentId }] of [
+    ['depois de um POST', afterPost],
+    ['confirmação posta por SQL', bySql],
+    ['depois de desfazer e confirmar de novo', afterUndo],
+  ] as const) {
     const before = await paymentSnapshot(stack);
 
-    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents }));
+    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId));
 
     expect(response.status, label).toBe(409);
-    expect((await problem(response)).code, label).toBe('payment_exceeds_balance');
+    expect((await problem(response)).code, label).toBe('payment_already_confirmed');
     expect(await paymentSnapshot(stack), label).toEqual(before);
-    cases += 1;
-  };
-
-  const empty = await newPeriod();
-  await refusedWith('9991 num período de 9990', empty.studentId, empty.enrollmentId, 9991);
-
-  const partly = await newPeriod();
-  await insertPayment(stack, { enrollmentId: partly.enrollmentId, amountCents: 5000 });
-  await refusedWith('4991 com 5000 pagos', partly.studentId, partly.enrollmentId, 4991);
-
-  const whole = await newPeriod();
-  await insertPayment(stack, { enrollmentId: whole.enrollmentId, amountCents: 9990 });
-  await refusedWith('1 num período pago por inteiro', whole.studentId, whole.enrollmentId, 1);
-
-  const free = await newPeriod({ priceCents: 0 });
-  await refusedWith('1 num período de valor zero', free.studentId, free.enrollmentId, 1);
-
-  const twice = await newPeriod();
-  await registerPayment(hr, twice.studentId, twice.enrollmentId, { amountCents: 5000 });
-  await refusedWith('o segundo de dois 5000 seguidos', twice.studentId, twice.enrollmentId, 5000);
-
-  expect(cases).toBe(5);
+  }
 });
 
-test('register_partial_twice_same_body_two_rows_then_the_rest_closes_the_balance', async () => {
-  const { studentId, enrollmentId } = await newPeriod();
-  const body = paymentBody(enrollmentId, { amountCents: 3000 });
-
-  const first = await hr.post(paymentsPath(studentId), body);
-  const second = await hr.post(paymentsPath(studentId), body);
-
-  expect([first.status, second.status]).toEqual([201, 201]);
-  const ids = [((await first.json()) as RegisteredPayment).id, ((await second.json()) as RegisteredPayment).id];
-  expect(ids[0]).not.toBe(ids[1]);
-  expect(await paymentRowsTextOf(stack, enrollmentId)).toHaveLength(2);
-  // soma 6000 e saldo 3990, escritos à mão
-  expect(await paidCentsOf(stack, enrollmentId)).toBe(6000);
-
-  const rest = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 3990 }));
-
-  expect(rest.status).toBe(201);
-  expect(await paidCentsOf(stack, enrollmentId)).toBe(9990);
-  // saldo zero: nem um centavo a mais cabe. A situação `paid` na leitura é a da conta única (C5),
-  // lida pelas rotas de leitura do batch B (C29, C30).
-  const more = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 1 }));
-  expect(more.status).toBe(409);
-  expect((await problem(more)).code).toBe('payment_exceeds_balance');
-});
-
-test('register_on_scheduled_active_and_expired_period_201_alike', async () => {
-  const cases: Array<[label: string, instant: string, paidAt: string]> = [
-    ['agendado', '2026-10-06T15:00:00Z', '2026-10-06'],
-    ['ativo', '2026-10-07T15:00:00Z', '2026-10-07'],
-    ['vencido', '2026-11-07T15:00:00Z', '2026-11-07'],
+test('confirm_on_scheduled_active_and_expired_period_201_alike', async () => {
+  const cases: Array<[label: string, startsAt: string, endsAt: string]> = [
+    ['agendado', '2026-12-01', '2026-12-31'],
+    ['ativo', '2026-10-07', '2026-11-06'],
+    ['vencido', '2026-08-01', '2026-08-31'],
   ];
-  for (const [label, instant, paidAt] of cases) {
-    const { studentId, enrollmentId } = await newPeriod({ startsAt: '2026-10-07', endsAt: '2026-11-06' });
-    const client = await sessionAt(instant);
+  for (const [label, startsAt, endsAt] of cases) {
+    const { studentId, enrollmentId } = await newPeriod({ startsAt, endsAt });
 
-    const response = await client.post(paymentsPath(studentId), paymentBody(enrollmentId, { paidAt }));
+    const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId));
     const body = (await response.json()) as RegisteredPayment;
 
     expect(response.status, label).toBe(201);
     expect(Object.keys(body).sort(), label).toEqual([...PAYMENT_KEYS].sort());
-    expect(body.paidAt, label).toBe(paidAt);
+    expect(body.enrollmentId, label).toBe(enrollmentId);
   }
 });
 
-test('register_for_suspended_and_inactive_student_201_like_active', async () => {
-  for (const status of ['suspended', 'inactive']) {
+test('confirm_for_inactive_and_suspended_student_201_like_active', async () => {
+  for (const status of ['active', 'inactive', 'suspended']) {
     const { studentId, enrollmentId } = await newPeriod({ status });
 
     const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId));
@@ -364,35 +193,36 @@ test('register_for_suspended_and_inactive_student_201_like_active', async () => 
   }
 });
 
-test('two_simultaneous_registers_over_the_balance_one_201_one_409', async () => {
+test('two_simultaneous_confirms_one_201_one_409_over_ten_rounds', async () => {
   for (let round = 0; round < 10; round += 1) {
     const { studentId, enrollmentId } = await newPeriod();
 
     const { result: responses, rows } = await written(stack, () =>
       releasedTogether([
-        () => hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 6000 })),
-        () => admin.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 6000 })),
+        () => hr.post(paymentsPath(studentId), paymentBody(enrollmentId)),
+        () => admin.post(paymentsPath(studentId), paymentBody(enrollmentId)),
       ]),
     );
 
     expect(responses.map((response) => response.status).sort(), `rodada ${round}`).toEqual([201, 409]);
     const refused = responses.find((response) => response.status === 409)!;
-    expect((await problem(refused)).code, `rodada ${round}`).toBe('payment_exceeds_balance');
+    expect((await problem(refused)).code, `rodada ${round}`).toBe('payment_already_confirmed');
+    expect(await aliveCountOf(stack, enrollmentId), `rodada ${round}`).toBe(1);
     expect(await paymentRowsTextOf(stack, enrollmentId), `rodada ${round}`).toHaveLength(1);
-    expect(await paidCentsOf(stack, enrollmentId), `rodada ${round}`).toBe(6000);
-    expect(rows.filter((row) => row.action === 'student.payment_registered'), `rodada ${round}`).toHaveLength(1);
+    expect(rows.filter((row) => row.action === 'student.payment_confirmed'), `rodada ${round}`).toHaveLength(1);
   }
 });
 
-test('payment_routes_404_for_non_uuid_and_unknown_student', async () => {
+test('student_routes_404_for_non_uuid_and_unknown_student_on_all_three', async () => {
   const existing = await newPeriod();
-  const paymentId = await insertPayment(stack, { enrollmentId: existing.enrollmentId });
+  const paymentId = await insertPayment(stack, { enrollmentId: existing.enrollmentId, voided: true });
   let cases = 0;
 
   for (const id of ['abc', unknownId()]) {
     const routes: Array<[method: string, path: string, body: unknown]> = [
       ['GET', paymentsPath(id), undefined],
-      ['POST', paymentsPath(id), paymentBody(existing.enrollmentId, { amountCents: 1000 })],
+      // o período é válido, de outro aluno: ainda assim é o aluno que não existe que responde
+      ['POST', paymentsPath(id), paymentBody(existing.enrollmentId)],
       ['DELETE', `${paymentsPath(id)}/${paymentId}`, undefined],
     ];
     for (const [method, path, sent] of routes) {
@@ -410,26 +240,26 @@ test('payment_routes_404_for_non_uuid_and_unknown_student', async () => {
   expect(cases).toBe(6);
 });
 
-test('reception_and_instructor_everything_403_fourteen_cases', async () => {
+test('reception_and_instructor_everything_403_sixteen_cases', async () => {
   const existing = await newPeriod();
   const paymentId = await insertPayment(stack, { enrollmentId: existing.enrollmentId });
-  const ids: Array<[label: string, student: string, enrollment: string, payment: string]> = [
-    ['ids que existem', existing.studentId, existing.enrollmentId, paymentId],
-    ['uuid de ninguém', unknownId(), unknownId(), unknownId()],
+  const ids: Array<[label: string, student: string, enrollment: string, payment: string, query: string]> = [
+    ['ids que existem', existing.studentId, existing.enrollmentId, paymentId, ''],
+    ['uuid de ninguém', unknownId(), unknownId(), unknownId(), '?status=overdue'],
   ];
   type Case = [role: 'reception' | 'instructor', method: string, path: string, body: unknown, label: string];
   const cases: Case[] = [];
   for (const role of ['reception', 'instructor'] as const) {
-    for (const [label, student, enrollment, payment] of ids) {
+    for (const [label, student, enrollment, payment, query] of ids) {
       cases.push(
         [role, 'GET', paymentsPath(student), undefined, label],
-        [role, 'POST', paymentsPath(student), paymentBody(enrollment, { amountCents: 1000 }), label],
+        [role, 'POST', paymentsPath(student), paymentBody(enrollment), label],
         [role, 'DELETE', `${paymentsPath(student)}/${payment}`, undefined, label],
+        [role, 'GET', `/api/payments${query}`, undefined, label],
       );
     }
-    cases.push([role, 'GET', '/api/payments', undefined, 'lista geral']);
   }
-  expect(cases).toHaveLength(14);
+  expect(cases).toHaveLength(16);
 
   const clients = { reception, instructor };
   for (const [role, method, path, sent, label] of cases) {
@@ -444,7 +274,7 @@ test('reception_and_instructor_everything_403_fourteen_cases', async () => {
     for (const key of PAYMENT_DATA_KEYS) expect(Object.keys(body), `${where} ${key}`).not.toContain(key);
     expect(await paymentSnapshot(stack), where).toEqual(before);
   }
-  // o pagamento que o `DELETE` visava continua não anulado
+  // o pagamento que o `DELETE` visava continua vivo
   expect((await paymentRow(stack, paymentId))!.voided_at).toBeNull();
 });
 
@@ -454,7 +284,7 @@ test('anonymous_401_on_four_payment_routes', async () => {
   const client = stack.client();
   const routes: Array<[method: string, path: string, body: unknown]> = [
     ['GET', paymentsPath(existing.studentId), undefined],
-    ['POST', paymentsPath(existing.studentId), paymentBody(existing.enrollmentId, { amountCents: 1000 })],
+    ['POST', paymentsPath(existing.studentId), paymentBody(existing.enrollmentId)],
     ['DELETE', `${paymentsPath(existing.studentId)}/${paymentId}`, undefined],
     ['GET', '/api/payments', undefined],
   ];
@@ -471,7 +301,7 @@ test('anonymous_401_on_four_payment_routes', async () => {
   }
 });
 
-test('void_204_sets_voided_at_from_database_and_keeps_row_and_other_columns', async () => {
+test('undo_204_sets_voided_at_from_database_and_keeps_row_and_other_columns', async () => {
   for (const [role, client] of [
     ['admin', admin],
     ['hr_finance', hr],
@@ -486,52 +316,51 @@ test('void_204_sets_voided_at_from_database_and_keeps_row_and_other_columns', as
     const t1 = await databaseNow(stack);
 
     expect(response.status, role).toBe(204);
-    const after = await paymentRow(stack, paymentId);
-    expect(after, role).toBeDefined();
-    const voidedAt = new Date(after!.voided_at as string).getTime();
-    expect(voidedAt, role).toBeGreaterThanOrEqual(t0.getTime());
-    expect(voidedAt, role).toBeLessThanOrEqual(t1.getTime());
+    expect(await response.text(), role).toBe('');
+    const voidedAt = new Date(String((await paymentRow(stack, paymentId))!.voided_at));
+    expect(voidedAt.getTime(), role).toBeGreaterThanOrEqual(t0.getTime());
+    expect(voidedAt.getTime(), role).toBeLessThanOrEqual(t1.getTime());
+    // a linha continua, e nada mais nela mudou
     expect(await paymentRowWithoutVoidedAt(stack, paymentId), role).toBe(before);
   }
 });
 
-test('void_of_voided_204_changes_nothing', async () => {
+test('undo_of_undone_204_changes_nothing', async () => {
   const { studentId, enrollmentId } = await newPeriod();
   const paymentId = await insertPayment(stack, { enrollmentId, voided: true });
   const before = await paymentRowText(stack, paymentId);
-  expect(JSON.parse(before!).voided_at).not.toBeNull();
+  const snapshot = await paymentSnapshot(stack);
 
   const response = await hr.delete(`${paymentsPath(studentId)}/${paymentId}`);
 
   expect(response.status).toBe(204);
   expect(await paymentRowText(stack, paymentId)).toBe(before);
+  expect(await paymentSnapshot(stack)).toEqual(snapshot);
 });
 
-test('void_returns_the_value_to_the_balance_and_a_new_register_fits_it', async () => {
+test('confirm_again_after_undo_201_new_row_old_row_kept', async () => {
   const { studentId, enrollmentId } = await newPeriod();
-  const payment = await registerPayment(hr, studentId, enrollmentId, { amountCents: 9990 });
+  const first = await registerPayment(hr, studentId, enrollmentId);
+  expect((await hr.delete(`${paymentsPath(studentId)}/${first.id}`)).status).toBe(204);
+  const undone = await paymentRowText(stack, first.id);
 
-  const exceeds = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 1 }));
-  expect(exceeds.status).toBe(409);
-  expect((await problem(exceeds)).code).toBe('payment_exceeds_balance');
+  const response = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId));
+  const second = (await response.json()) as RegisteredPayment;
 
-  expect((await hr.delete(`${paymentsPath(studentId)}/${payment.id}`)).status).toBe(204);
-  // o saldo voltou a 9990: nada pago
-  expect(await paidCentsOf(stack, enrollmentId)).toBe(0);
-
-  const again = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 9990 }));
-  expect(again.status).toBe(201);
-  const over = await hr.post(paymentsPath(studentId), paymentBody(enrollmentId, { amountCents: 1 }));
-  expect(over.status).toBe(409);
-  expect((await problem(over)).code).toBe('payment_exceeds_balance');
+  expect(response.status).toBe(201);
+  expect(second.id).not.toBe(first.id);
+  // a linha desfeita continua lá, igual, e só a nova está viva
+  expect(await paymentRowText(stack, first.id)).toBe(undone);
+  expect(await paymentRowsTextOf(stack, enrollmentId)).toHaveLength(2);
+  expect(await stack.query('select id from payments where enrollment_id = $1 and voided_at is null', [enrollmentId])).toEqual([{ id: second.id }]);
 });
 
-test('void_on_cancelled_period_204_like_on_a_live_one', async () => {
+test('undo_on_cancelled_period_204_like_on_a_live_one', async () => {
   const { studentId, enrollmentId } = await newPeriod();
-  const payment = await registerPayment(hr, studentId, enrollmentId, { amountCents: 5000 });
-  const cancel = await hr.delete(`${enrollmentsPath(studentId)}/${enrollmentId}`);
-  expect(cancel.status).toBe(204);
-  expect((await stack.query<{ cancelled_at: Date | null }>('select cancelled_at from enrollments where id = $1', [enrollmentId]))[0]!.cancelled_at).not.toBeNull();
+  const payment = await registerPayment(hr, studentId, enrollmentId);
+  // cancelado depois de confirmado, pela rota de matrícula que já existe
+  expect((await hr.delete(`${enrollmentsPath(studentId)}/${enrollmentId}`)).status).toBe(204);
+  expect((await paymentRow(stack, payment.id))!.voided_at).toBeNull();
   const before = await paymentRowWithoutVoidedAt(stack, payment.id);
 
   const t0 = await databaseNow(stack);
@@ -539,39 +368,36 @@ test('void_on_cancelled_period_204_like_on_a_live_one', async () => {
   const t1 = await databaseNow(stack);
 
   expect(response.status).toBe(204);
-  const after = await paymentRow(stack, payment.id);
-  const voidedAt = new Date(after!.voided_at as string).getTime();
-  expect(voidedAt).toBeGreaterThanOrEqual(t0.getTime());
-  expect(voidedAt).toBeLessThanOrEqual(t1.getTime());
+  const voidedAt = new Date(String((await paymentRow(stack, payment.id))!.voided_at));
+  expect(voidedAt.getTime()).toBeGreaterThanOrEqual(t0.getTime());
+  expect(voidedAt.getTime()).toBeLessThanOrEqual(t1.getTime());
   expect(await paymentRowWithoutVoidedAt(stack, payment.id)).toBe(before);
 });
 
-test('void_404_for_bad_unknown_and_other_students_payment_id', async () => {
+test('undo_404_for_bad_unknown_and_other_students_payment_id', async () => {
   const mine = await newPeriod();
   const other = await newPeriod();
   const othersPayment = await insertPayment(stack, { enrollmentId: other.enrollmentId });
-  const before = await paymentRowText(stack, othersPayment);
-  const cases: Array<[label: string, paymentId: string]> = [
-    ['abc', 'abc'],
+  const cases: Array<[label: string, id: string]> = [
+    ['não-uuid', 'abc'],
     ['uuid de pagamento nenhum', unknownId()],
     ['pagamento de outro aluno', othersPayment],
   ];
 
-  for (const [label, paymentId] of cases) {
-    const snapshot = await paymentSnapshot(stack);
+  for (const [label, id] of cases) {
+    const before = await paymentSnapshot(stack);
 
-    const response = await hr.delete(`${paymentsPath(mine.studentId)}/${paymentId}`);
+    const response = await hr.delete(`${paymentsPath(mine.studentId)}/${id}`);
 
     expect(response.status, label).toBe(404);
     expect((await problem(response)).code, label).toBe('not_found');
-    expect(await paymentSnapshot(stack), label).toEqual(snapshot);
+    expect(await paymentSnapshot(stack), label).toEqual(before);
   }
-  // o pagamento do outro aluno fica idêntico, não anulado
-  expect(await paymentRowText(stack, othersPayment)).toBe(before);
-  expect(JSON.parse(before!).voided_at).toBeNull();
+  // o pagamento do outro aluno continua vivo
+  expect((await paymentRow(stack, othersPayment))!.voided_at).toBeNull();
 });
 
-test('two_simultaneous_voids_204_204_one_voided_at_one_audit_row', async () => {
+test('two_simultaneous_undos_204_204_one_voided_at_one_audit_row_over_ten_rounds', async () => {
   for (let round = 0; round < 10; round += 1) {
     const { studentId, enrollmentId } = await newPeriod();
     const paymentId = await insertPayment(stack, { enrollmentId });
@@ -584,9 +410,49 @@ test('two_simultaneous_voids_204_204_one_voided_at_one_audit_row', async () => {
     );
 
     expect(responses.map((response) => response.status), `rodada ${round}`).toEqual([204, 204]);
-    expect((await paymentRow(stack, paymentId))!.voided_at, `rodada ${round}`).not.toBeNull();
-    expect(await paymentRowsTextOf(stack, enrollmentId), `rodada ${round}`).toHaveLength(1);
-    expect(rows.filter((row) => row.action === 'student.payment_voided'), `rodada ${round}`).toHaveLength(1);
+    const voided = await stack.query<{ n: string }>('select count(voided_at) as n from payments where id = $1', [paymentId]);
+    expect(Number(voided[0]!.n), `rodada ${round}`).toBe(1);
+    expect(rows.filter((row) => row.action === 'student.payment_undone'), `rodada ${round}`).toHaveLength(1);
   }
-  expect(await paymentCount(stack)).toBeGreaterThanOrEqual(10);
+});
+
+test('cancelling_a_period_leaves_its_payment_rows_identical_and_writes_only_its_own_audit_row', async () => {
+  const { studentId, enrollmentId } = await newPeriod();
+  // uma desfeita e uma viva no mesmo período
+  const undone = await insertPayment(stack, { enrollmentId, voided: true });
+  const alive = await insertPayment(stack, { enrollmentId });
+  const before = { undone: await paymentRowText(stack, undone), alive: await paymentRowText(stack, alive) };
+
+  const { result: response, rows } = await written(stack, () => hr.delete(`${enrollmentsPath(studentId)}/${enrollmentId}`));
+
+  expect(response.status).toBe(204);
+  expect({ undone: await paymentRowText(stack, undone), alive: await paymentRowText(stack, alive) }).toEqual(before);
+  expect(rows.map((row) => row.action)).toEqual(['student.enrollment_cancelled']);
+});
+
+test('confirm_racing_undo_never_5xx_and_leaves_at_most_one_alive_row_over_ten_rounds', async () => {
+  for (let round = 0; round < 10; round += 1) {
+    const { studentId, enrollmentId } = await newPeriod();
+    const paymentId = await insertPayment(stack, { enrollmentId });
+
+    const { result: responses, rows } = await written(stack, () =>
+      releasedTogether([
+        () => hr.post(paymentsPath(studentId), paymentBody(enrollmentId)),
+        () => admin.delete(`${paymentsPath(studentId)}/${paymentId}`),
+      ]),
+    );
+    const [confirm, undo] = responses as [Response, Response];
+
+    expect(undo.status, `rodada ${round}`).toBe(204);
+    const actions = rows.map((row) => row.action).sort();
+    if (confirm.status === 201) {
+      expect(await aliveCountOf(stack, enrollmentId), `rodada ${round}`).toBe(1);
+      expect(actions, `rodada ${round}`).toEqual(['student.payment_confirmed', 'student.payment_undone']);
+    } else {
+      expect(confirm.status, `rodada ${round}`).toBe(409);
+      expect((await problem(confirm)).code, `rodada ${round}`).toBe('payment_already_confirmed');
+      expect(await aliveCountOf(stack, enrollmentId), `rodada ${round}`).toBe(0);
+      expect(actions, `rodada ${round}`).toEqual(['student.payment_undone']);
+    }
+  }
 });

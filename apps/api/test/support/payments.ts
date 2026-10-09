@@ -6,50 +6,29 @@ import type { Stack } from './stack.ts';
 
 export const paymentsPath = (studentId: string) => `/api/students/${studentId}/payments`;
 
-/** As sete chaves de um pagamento no `POST` (`PAYMENT_KEYS`). */
-export const PAYMENT_KEYS = ['id', 'enrollmentId', 'amountCents', 'paidAt', 'method', 'createdAt', 'voidedAt'];
+/** As três chaves de um pagamento no `POST` (`PAYMENT_KEYS`). */
+export const PAYMENT_KEYS = ['id', 'enrollmentId', 'createdAt'];
 
 /** As chaves que nenhuma resposta de recusa de pagamento pode trazer. */
-export const PAYMENT_DATA_KEYS = [
-  'items',
-  'enrollmentId',
-  'amountCents',
-  'paidAt',
-  'method',
-  'priceCents',
-  'paidCents',
-  'balanceCents',
-  'student',
-  'plan',
-];
+export const PAYMENT_DATA_KEYS = ['items', 'enrollmentId', 'payment', 'student', 'plan', 'priceCents'];
 
-/** O "pagamento padrão" de teste: R$ 50,00 em Pix, em 7 de outubro de 2026. */
-export function paymentBody(enrollmentId: string, overrides: Record<string, unknown> = {}) {
-  return { enrollmentId, amountCents: 5000, paidAt: '2026-10-07', method: 'pix', ...overrides };
+/** O corpo do `POST`: confirmar é nomear o período, nada mais. */
+export function paymentBody(enrollmentId: string) {
+  return { enrollmentId };
 }
 
-/** Registra o pagamento pela API e confere o `201`. */
-export async function registerPayment(
-  client: Client,
-  studentId: string,
-  enrollmentId: string,
-  overrides: Record<string, unknown> = {},
-): Promise<RegisteredPayment> {
-  const body = paymentBody(enrollmentId, overrides);
-  const response = await client.post(paymentsPath(studentId), body);
-  expect(response.status, `pagamento de preparação: ${JSON.stringify(body)}`).toBe(201);
+/** Confirma o pagamento pela API e confere o `201`. */
+export async function registerPayment(client: Client, studentId: string, enrollmentId: string): Promise<RegisteredPayment> {
+  const response = await client.post(paymentsPath(studentId), paymentBody(enrollmentId));
+  expect(response.status, `confirmação de preparação: ${enrollmentId}`).toBe(201);
   return (await response.json()) as RegisteredPayment;
 }
 
-/** Insere um pagamento por SQL, sem passar por rota: serve a quem precisa dele já anulado ou datado fora da regra. */
-export async function insertPayment(
-  stack: Stack,
-  row: { enrollmentId: string; amountCents?: number; paidAt?: string; method?: string; voided?: boolean },
-): Promise<string> {
+/** Insere um pagamento por SQL, sem passar por rota: serve a quem precisa dele já desfeito ou posto fora da regra. */
+export async function insertPayment(stack: Stack, row: { enrollmentId: string; voided?: boolean }): Promise<string> {
   const [inserted] = await stack.query<{ id: string }>(
-    `insert into payments (enrollment_id, amount_cents, paid_at, method, voided_at)
-     values ($1, $2, $3, $4, case when $5 then now() end) returning id`,
-    [row.enrollmentId, row.amountCents ?? 5000, row.paidAt ?? '2026-10-07', row.method ?? 'pix', row.voided ?? false],
+    `insert into payments (enrollment_id, voided_at) values ($1, case when $2 then now() end) returning id`,
+    [row.enrollmentId, row.voided ?? false],
   );
   return inserted!.id;
 }
@@ -66,13 +45,13 @@ export async function paymentRowText(stack: Stack, id: string) {
   return row?.row;
 }
 
-/** A linha sem `voided_at`, a única coluna que a anulação muda. */
+/** A linha sem `voided_at`, a única coluna que o desfazimento muda. */
 export async function paymentRowWithoutVoidedAt(stack: Stack, id: string) {
   const [row] = await stack.query<{ row: string }>(`select (to_jsonb(p) - 'voided_at')::text as row from payments p where id = $1`, [id]);
   return row?.row;
 }
 
-/** As linhas de pagamento de um período como texto, da mais antiga à mais nova. */
+/** As linhas de pagamento de um período como texto, ordenadas por `id`. */
 export async function paymentRowsTextOf(stack: Stack, enrollmentId: string) {
   const rows = await stack.query<{ row: string }>('select to_jsonb(p)::text as row from payments p where enrollment_id = $1 order by id', [enrollmentId]);
   return rows.map((entry) => entry.row);
@@ -81,13 +60,10 @@ export async function paymentRowsTextOf(stack: Stack, enrollmentId: string) {
 export const paymentCount = async (stack: Stack) =>
   Number((await stack.query<{ n: string }>('select count(*) as n from payments'))[0]!.n);
 
-/** A soma dos pagamentos não anulados de um período, lida por SQL. */
-export async function paidCentsOf(stack: Stack, enrollmentId: string) {
-  const [row] = await stack.query<{ paid: string }>(
-    'select coalesce(sum(amount_cents), 0) as paid from payments where enrollment_id = $1 and voided_at is null',
-    [enrollmentId],
-  );
-  return Number(row!.paid);
+/** Quantas confirmações vivas (`voided_at` nulo) o período tem. */
+export async function aliveCountOf(stack: Stack, enrollmentId: string) {
+  const [row] = await stack.query<{ n: string }>('select count(*) as n from payments where enrollment_id = $1 and voided_at is null', [enrollmentId]);
+  return Number(row!.n);
 }
 
 /**

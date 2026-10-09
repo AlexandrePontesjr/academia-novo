@@ -184,8 +184,8 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Plano inativado',
     'Matrícula registrada',
     'Matrícula cancelada',
-    'Pagamento registrado',
-    'Pagamento anulado',
+    'Pagamento confirmado',
+    'Pagamento desfeito',
   ]);
 });
 
@@ -226,8 +226,8 @@ const LABELS = [
   'Plano inativado',
   'Matrícula registrada',
   'Matrícula cancelada',
-  'Pagamento registrado',
-  'Pagamento anulado',
+  'Pagamento confirmado',
+  'Pagamento desfeito',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {

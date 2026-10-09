@@ -14,7 +14,7 @@ import {
   isMinor,
   openPaymentSchema,
   openPaymentsQuerySchema,
-  paymentSchema,
+  registeredPaymentSchema,
   studentPaymentSchema,
   saoPauloToday,
   guardianRequestSchema,
@@ -991,7 +991,7 @@ test('audit_actions_end_with_two_payment_actions_in_order', () => {
     'student.enrollment_created',
     'student.enrollment_cancelled',
   ]);
-  expect(AUDIT_ACTIONS.slice(36)).toEqual(['student.payment_registered', 'student.payment_voided']);
+  expect(AUDIT_ACTIONS.slice(36)).toEqual(['student.payment_confirmed', 'student.payment_undone']);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 
@@ -1062,33 +1062,23 @@ test('payment_schemas_accept_and_reject', () => {
   const paths = (result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[] }> } }) =>
     result.success ? 'aceita' : [...new Set(result.error!.issues.map((issue) => issue.path.join('.')))].join(',');
 
-  // registro: os quatro campos, e a falta de cada um recusada
-  const create = { enrollmentId: id, amountCents: 5000, paidAt: '2026-10-07', method: 'pix' };
-  expect(paths(createPaymentRequestSchema.safeParse(create))).toBe('aceita');
-  for (const missing of ['enrollmentId', 'amountCents', 'paidAt', 'method'] as const) {
-    expect(paths(createPaymentRequestSchema.safeParse({ ...create, [missing]: undefined })), missing).toBe(missing);
-  }
-  // dinheiro é inteiro de centavos, de `1` a `9999999`: nunca zero, decimal nem texto
-  for (const amountCents of [0, -1, 10_000_000, 99.9, '5000']) {
-    expect(paths(createPaymentRequestSchema.safeParse({ ...create, amountCents })), JSON.stringify(amountCents)).toBe('amountCents');
-  }
-  for (const method of ['PIX', 'cheque']) {
-    expect(paths(createPaymentRequestSchema.safeParse({ ...create, method })), method).toBe('method');
-  }
-  expect(paths(createPaymentRequestSchema.safeParse({ ...create, enrollmentId: 'abc' }))).toBe('enrollmentId');
-  for (const paidAt of ['2026-02-30', '26-10-07']) {
-    expect(paths(createPaymentRequestSchema.safeParse({ ...create, paidAt })), paidAt).toBe('paidAt');
+  // confirmação: só `enrollmentId`, e a falta, `null`, o que não é uuid e um número recusados nele
+  expect(paths(createPaymentRequestSchema.safeParse({ enrollmentId: id }))).toBe('aceita');
+  for (const enrollmentId of [undefined, null, 'abc', 123]) {
+    expect(paths(createPaymentRequestSchema.safeParse({ enrollmentId })), JSON.stringify(enrollmentId)).toBe('enrollmentId');
   }
 
-  // resposta do pagamento: as seis chaves, e uma sétima recusada
-  const payment = { id, amountCents: 5000, paidAt: '2026-10-07', method: 'pix', createdAt: '2026-10-07T15:00:00.000Z', voidedAt: null };
-  expect(Object.keys(payment)).toHaveLength(6);
-  expect(paths(paymentSchema.safeParse(payment))).toBe('aceita');
-  expect(paths(paymentSchema.safeParse({ ...payment, voidedAt: '2026-10-08T12:00:00.000Z' }))).toBe('aceita');
-  expect(paths(paymentSchema.safeParse({ ...payment, enrollmentId: id }))).toBe('');
-  expect(paths(paymentSchema.safeParse({ ...payment, voidedAt: 'ontem' }))).toBe('voidedAt');
+  // resposta do `POST`: exatamente as três chaves
+  const registered = { id, enrollmentId: other, createdAt: '2026-10-07T15:00:00.000Z' };
+  expect(Object.keys(registered)).toHaveLength(3);
+  expect(paths(registeredPaymentSchema.safeParse(registered))).toBe('aceita');
+  expect(paths(registeredPaymentSchema.safeParse({ ...registered, voidedAt: null }))).toBe('');
+  expect(paths(registeredPaymentSchema.safeParse({ ...registered, amountCents: 5000 }))).toBe('');
+  for (const missing of ['id', 'enrollmentId', 'createdAt'] as const) {
+    expect(paths(registeredPaymentSchema.safeParse({ ...registered, [missing]: undefined })), missing).toBe(missing);
+  }
 
-  // período da ficha: as dez chaves, com cada uma das quatro situações
+  // período da ficha: as oito chaves, `payment` com `id` e `createdAt` ou nulo, com cada situação
   const plan = { id, name: 'Mensal', period: 'monthly' };
   const period = {
     enrollmentId: other,
@@ -1097,29 +1087,38 @@ test('payment_schemas_accept_and_reject', () => {
     endsAt: '2026-11-06',
     dueDate: '2026-10-07',
     priceCents: 9990,
-    paidCents: 5000,
-    balanceCents: 4990,
     status: 'pending',
-    payments: [payment],
+    payment: null,
   };
-  expect(Object.keys(period)).toHaveLength(10);
+  expect(Object.keys(period)).toHaveLength(8);
   for (const status of ['paid', 'pending', 'overdue', 'cancelled']) {
     expect(paths(studentPaymentSchema.safeParse({ ...period, status })), status).toBe('aceita');
   }
+  const alive = { id: other, createdAt: '2026-10-07T15:00:00.000Z' };
+  expect(paths(studentPaymentSchema.safeParse({ ...period, status: 'paid', payment: alive }))).toBe('aceita');
+  expect(paths(studentPaymentSchema.safeParse({ ...period, payment: { ...alive, voidedAt: null } }))).toBe('payment');
   expect(paths(studentPaymentSchema.safeParse({ ...period, status: 'scheduled' }))).toBe('status');
   expect(paths(studentPaymentSchema.safeParse({ ...period, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
+  // as chaves da versão anterior são recusadas
+  for (const extra of [{ paidCents: 0 }, { balanceCents: 9990 }, { payments: [] }]) {
+    expect(paths(studentPaymentSchema.safeParse({ ...period, ...extra })), JSON.stringify(extra)).toBe('');
+  }
 
-  // item da lista geral: as dez chaves, com o aluno só por `id` e `name`
-  const rest = Object.fromEntries(Object.entries(period).filter(([key]) => key !== 'payments'));
+  // item da lista geral: as oito chaves, com o aluno só por `id` e `name`
+  const { payment: _payment, ...rest } = period;
   const item = { ...rest, student: { id, name: 'Aluna Um' } };
-  expect(Object.keys(item)).toHaveLength(10);
+  expect(Object.keys(item)).toHaveLength(8);
   expect(paths(openPaymentSchema.safeParse(item))).toBe('aceita');
+  expect(paths(openPaymentSchema.safeParse({ ...item, status: 'overdue' }))).toBe('aceita');
   expect(paths(openPaymentSchema.safeParse({ ...item, student: { id, name: 'Aluna Um', cpf: '52998224725' } }))).toBe('student');
+  for (const extra of [{ paidCents: 0 }, { balanceCents: 9990 }, { payments: [] }]) {
+    expect(paths(openPaymentSchema.safeParse({ ...item, ...extra })), JSON.stringify(extra)).toBe('');
+  }
 
-  // query da lista geral
+  // query da lista geral: `pending`, `overdue` e a ausência
   expect(paths(openPaymentsQuerySchema.safeParse({}))).toBe('aceita');
   for (const status of ['pending', 'overdue']) expect(paths(openPaymentsQuerySchema.safeParse({ status })), status).toBe('aceita');
-  for (const status of ['paid', 'Pending', '']) expect(paths(openPaymentsQuerySchema.safeParse({ status })), status).toBe('status');
+  for (const status of ['paid', 'cancelled', '']) expect(paths(openPaymentsQuerySchema.safeParse({ status })), status).toBe('status');
 });
 
 test('plan_and_enrollment_bodies_match_contract_schemas_and_three_new_codes', async () => {

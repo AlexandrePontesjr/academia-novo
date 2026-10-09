@@ -344,9 +344,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { id: enrolledId } = (await enrolled.json()) as { id: string };
   const enrollment = await admin.post(`/api/students/${enrolledId}/enrollments`, { planId, startsAt: saoPauloToday() }); // student.enrollment_created
   const { id: enrollmentId } = (await enrollment.json()) as { id: string };
-  const payment = await admin.post(`/api/students/${enrolledId}/payments`, { enrollmentId, amountCents: 5000, paidAt: saoPauloToday(), method: 'pix' }); // student.payment_registered
+  const payment = await admin.post(`/api/students/${enrolledId}/payments`, { enrollmentId }); // student.payment_confirmed
   const { id: paymentId } = (await payment.json()) as { id: string };
-  await admin.delete(`/api/students/${enrolledId}/payments/${paymentId}`); // student.payment_voided
+  await admin.delete(`/api/students/${enrolledId}/payments/${paymentId}`); // student.payment_undone
   await admin.delete(`/api/students/${enrolledId}/enrollments/${enrollmentId}`); // student.enrollment_cancelled
   await admin.delete(`/api/plans/${planId}`); // plan.inactivated
 

@@ -35,21 +35,21 @@ export class StudentPaymentsController {
   @Roles('admin', 'hr_finance')
   @Input(createPaymentRequestSchema)
   @Output(201, registeredPaymentSchema)
-  async register(
+  async confirm(
     @Param('id') id: string,
     @Body() body: CreatePaymentRequest,
     @Actor() actor: AuditActor,
   ): Promise<RegisteredPayment> {
-    const result = await this.payments.register(id, body, actor);
+    const result = await this.payments.confirm(id, body, actor);
     switch (result.outcome) {
       case 'ok':
         return result.payment;
       case 'not_found':
         throw new NotFoundException();
-      case 'invalid':
-        throw validationProblem([{ path: result.path, message: result.message }]);
+      case 'invalid_enrollment':
+        throw validationProblem([{ path: 'enrollmentId', message: 'Escolha um período válido.' }]);
       case 'enrollment_cancelled':
-      case 'payment_exceeds_balance':
+      case 'payment_already_confirmed':
         throw new ProblemException(409, result.outcome);
     }
   }
@@ -57,12 +57,12 @@ export class StudentPaymentsController {
   @Delete(':paymentId')
   @Roles('admin', 'hr_finance')
   @Output(204)
-  async void(
+  async undo(
     @Param('id') id: string,
     @Param('paymentId') paymentId: string,
     @Actor() actor: AuditActor,
   ): Promise<void> {
-    if (!(await this.payments.void(id, paymentId, actor))) throw new NotFoundException();
+    if (!(await this.payments.undo(id, paymentId, actor))) throw new NotFoundException();
   }
 }
 

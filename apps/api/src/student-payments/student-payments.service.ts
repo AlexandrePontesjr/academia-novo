@@ -1,11 +1,8 @@
 import {
-  addDays,
   type CreatePaymentRequest,
   type OpenPayment,
   type OpenPaymentStatus,
-  PAID_AT_MAX_DAYS_BEFORE_START,
-  type Payment,
-  paymentBalance,
+  paymentStatus,
   type RegisteredPayment,
   saoPauloToday,
   type StudentPayment,
@@ -17,50 +14,36 @@ const { enrollments, payments, plans, students } = schema;
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
-/** Os campos de um pagamento cuja trilha guarda o valor (AD-026, AD-066): nenhum é dado pessoal. */
-const TRACKED = ['enrollmentId', 'amountCents', 'paidAt', 'method'] as const;
+/** Os campos do período cuja trilha guarda o valor (AD-026, AD-069): nenhum é dado pessoal. */
+const TRACKED = ['startsAt', 'priceCents'] as const;
 type Tracked = Record<(typeof TRACKED)[number], string | number | null>;
-const NOTHING: Tracked = { enrollmentId: null, amountCents: null, paidAt: null, method: null };
+const NOTHING: Tracked = { startsAt: null, priceCents: null };
 
-type Row = typeof payments.$inferSelect;
+type Period = typeof enrollments.$inferSelect;
 
-export type RegisterOutcome =
+const trackedOf = (period: Period): Tracked => ({ startsAt: period.startsAt, priceCents: period.priceCents });
+
+export type ConfirmOutcome =
   | { outcome: 'ok'; payment: RegisteredPayment }
   | { outcome: 'not_found' }
-  /** Um `422` por campo: o caminho que a tela marca e a mensagem. */
-  | { outcome: 'invalid'; path: 'enrollmentId' | 'paidAt'; message: string }
+  /** O período não existe ou é de outro aluno: um `422` no campo `enrollmentId`. */
+  | { outcome: 'invalid_enrollment' }
   | { outcome: 'enrollment_cancelled' }
-  | { outcome: 'payment_exceeds_balance' };
-
-const toPayment = (row: Row): Payment => ({
-  id: row.id,
-  amountCents: row.amountCents,
-  paidAt: row.paidAt,
-  method: row.method,
-  createdAt: row.createdAt.toISOString(),
-  voidedAt: row.voidedAt?.toISOString() ?? null,
-});
-
-const trackedOf = (row: Row): Tracked => ({
-  enrollmentId: row.enrollmentId,
-  amountCents: row.amountCents,
-  paidAt: row.paidAt,
-  method: row.method,
-});
+  | { outcome: 'payment_already_confirmed' };
 
 /** Os pagamentos de um aluno, pelo período, e a linha de auditoria de cada escrita. */
 export class StudentPaymentsService {
   constructor(private readonly db: Database['db']) {}
 
   /**
-   * Registra um pagamento com a linha do período travada em `FOR UPDATE` (door 2): dois registros do
-   * mesmo período esperam um pelo outro, e o teto da soma - o valor do período - é conferido com o que
-   * ficou. O banco não defende esse teto. A linha do aluno não é travada: o registro não cruza a ordem
-   * aluno-depois-plano do `POST` de matrícula.
+   * Confirma o pagamento de um período com a linha dele travada em `FOR UPDATE` (door 1): confirmar
+   * e cancelar o período esperam um pelo outro, e a unicidade de uma confirmação viva é do índice
+   * parcial, que a resposta `payment_already_confirmed` espelha. A linha do aluno não é travada: a
+   * confirmação não cruza a ordem aluno-depois-plano do `POST` de matrícula.
    */
-  async register(studentId: string, input: CreatePaymentRequest, actor: AuditActor): Promise<RegisterOutcome> {
+  async confirm(studentId: string, input: CreatePaymentRequest, actor: AuditActor): Promise<ConfirmOutcome> {
     if (!UUID.test(studentId)) return { outcome: 'not_found' };
-    return this.db.transaction(async (tx): Promise<RegisterOutcome> => {
+    return this.db.transaction(async (tx): Promise<ConfirmOutcome> => {
       const [student] = await tx.select({ id: students.id }).from(students).where(eq(students.id, studentId));
       if (!student) return { outcome: 'not_found' };
 
@@ -69,55 +52,36 @@ export class StudentPaymentsService {
         .from(enrollments)
         .where(and(eq(enrollments.id, input.enrollmentId), eq(enrollments.studentId, studentId)))
         .for('update');
-      if (!period) return { outcome: 'invalid', path: 'enrollmentId', message: 'Escolha um período válido.' };
-      if (input.paidAt < addDays(period.startsAt, -PAID_AT_MAX_DAYS_BEFORE_START)) {
-        return {
-          outcome: 'invalid',
-          path: 'paidAt',
-          message: 'A data do pagamento não pode ser anterior em mais de 365 dias ao início do período.',
-        };
-      }
+      if (!period) return { outcome: 'invalid_enrollment' };
       if (period.cancelledAt !== null) return { outcome: 'enrollment_cancelled' };
 
-      const [paid] = await tx
-        .select({ cents: sql<string>`coalesce(sum(${payments.amountCents}), 0)` })
+      const alive = await tx
+        .select({ id: payments.id })
         .from(payments)
         .where(and(eq(payments.enrollmentId, period.id), isNull(payments.voidedAt)));
-      if (input.amountCents > period.priceCents - Number(paid!.cents)) return { outcome: 'payment_exceeds_balance' };
+      if (alive.length > 0) return { outcome: 'payment_already_confirmed' };
 
-      const [row] = await tx
-        .insert(payments)
-        .values({ enrollmentId: period.id, amountCents: input.amountCents, paidAt: input.paidAt, method: input.method })
-        .returning();
-      const registered = row!;
+      const [row] = await tx.insert(payments).values({ enrollmentId: period.id }).returning();
+      const confirmed = row!;
       await audit.record(tx, {
         actor,
-        action: 'student.payment_registered',
+        action: 'student.payment_confirmed',
         entity: 'student',
         entityId: studentId,
-        diff: diffOf<Tracked>(NOTHING, trackedOf(registered), TRACKED, TRACKED),
+        diff: diffOf<Tracked>(NOTHING, trackedOf(period), TRACKED, TRACKED),
       });
       return {
         outcome: 'ok',
-        payment: {
-          id: registered.id,
-          enrollmentId: registered.enrollmentId,
-          amountCents: registered.amountCents,
-          paidAt: registered.paidAt,
-          method: registered.method,
-          createdAt: registered.createdAt.toISOString(),
-          voidedAt: null,
-        },
+        payment: { id: confirmed.id, enrollmentId: confirmed.enrollmentId, createdAt: confirmed.createdAt.toISOString() },
       };
     });
   }
 
   /**
    * Todos os períodos do aluno, cancelados inclusive, do início mais recente ao mais antigo e, no
-   * empate, de `enrollmentId` maior primeiro, cada um com os pagamentos dele (anulados inclusive, do
-   * `paidAt` mais recente ao mais antigo e, no empate, de `id` maior primeiro). O saldo e a situação
-   * são os da conta única, no dia de hoje. A leitura não grava na trilha. `undefined` quando o aluno
-   * não existe.
+   * empate, de `enrollmentId` maior primeiro. A situação é a da conta única, no dia de hoje; `payment`
+   * é a confirmação viva do período, se houver. A leitura não grava na trilha. `undefined` quando o
+   * aluno não existe.
    */
   async list(studentId: string): Promise<StudentPayment[] | undefined> {
     if (!UUID.test(studentId)) return undefined;
@@ -130,33 +94,27 @@ export class StudentPaymentsService {
       .innerJoin(plans, eq(plans.id, enrollments.planId))
       .where(eq(enrollments.studentId, studentId))
       .orderBy(desc(enrollments.startsAt), desc(enrollments.id));
-    const rows =
-      periods.length === 0
-        ? []
-        : await this.db
-            .select()
-            .from(payments)
-            .where(inArray(payments.enrollmentId, periods.map(({ period }) => period.id)))
-            .orderBy(desc(payments.paidAt), desc(payments.id));
+    const alive = await this.aliveOf(periods.map(({ period }) => period.id));
     const today = saoPauloToday();
     return periods.map(({ period, plan }) => {
-      const own = rows.filter((row) => row.enrollmentId === period.id);
+      const own = alive.filter((row) => row.enrollmentId === period.id);
+      const live = own[0];
       return {
         enrollmentId: period.id,
         plan,
         startsAt: period.startsAt,
         endsAt: period.endsAt,
         priceCents: period.priceCents,
-        ...paymentBalance(period, own, today),
-        payments: own.map(toPayment),
+        ...paymentStatus(period, own, today),
+        payment: live ? { id: live.id, createdAt: live.createdAt.toISOString() } : null,
       };
     });
   }
 
   /**
-   * Os períodos não cancelados com saldo, de aluno de qualquer situação, do vencimento mais antigo ao
-   * mais novo e, no empate, de `enrollmentId` crescente. O filtro por situação vem depois da conta
-   * única, em código, nunca em SQL.
+   * Os períodos não cancelados e sem confirmação viva, de aluno de qualquer situação, do vencimento
+   * mais antigo ao mais novo e, no empate, de `enrollmentId` crescente. O filtro por situação vem
+   * depois da conta única, em código, nunca em SQL.
    */
   async listOpen(status?: OpenPaymentStatus): Promise<OpenPayment[]> {
     const periods = await this.db
@@ -170,24 +128,13 @@ export class StudentPaymentsService {
       .innerJoin(students, eq(students.id, enrollments.studentId))
       .where(isNull(enrollments.cancelledAt))
       .orderBy(asc(enrollments.startsAt), asc(enrollments.id));
-    const rows =
-      periods.length === 0
-        ? []
-        : await this.db
-            .select()
-            .from(payments)
-            .where(
-              and(
-                inArray(payments.enrollmentId, periods.map(({ period }) => period.id)),
-                isNull(payments.voidedAt),
-              ),
-            );
+    const alive = await this.aliveOf(periods.map(({ period }) => period.id));
     const today = saoPauloToday();
     const items: OpenPayment[] = [];
     for (const { period, plan, student } of periods) {
-      const account = paymentBalance(
+      const account = paymentStatus(
         period,
-        rows.filter((row) => row.enrollmentId === period.id),
+        alive.filter((row) => row.enrollmentId === period.id),
         today,
       );
       if (account.status !== 'pending' && account.status !== 'overdue') continue;
@@ -206,40 +153,45 @@ export class StudentPaymentsService {
     return items;
   }
 
+  /** As confirmações vivas dos períodos dados. */
+  private async aliveOf(enrollmentIds: string[]) {
+    if (enrollmentIds.length === 0) return [];
+    return this.db
+      .select()
+      .from(payments)
+      .where(and(inArray(payments.enrollmentId, enrollmentIds), isNull(payments.voidedAt)));
+  }
+
   /**
-   * Anula: preenche `voided_at` com o instante do banco e mantém a linha, em qualquer situação do
-   * período. `false` quando o pagamento não existe ou é de outro aluno; já anulado, nada muda e nada é
-   * gravado. A linha do período é travada como no registro, e o `WHERE` repete a condição: duas
-   * anulações ao mesmo tempo gravam uma vez só.
+   * Desfaz: preenche `voided_at` com o instante do banco e mantém a linha, em qualquer situação do
+   * período. `false` quando o pagamento não existe ou é de outro aluno; já desfeito, nada muda e nada
+   * é gravado. A linha do período é travada como na confirmação, e o `WHERE` repete a condição: dois
+   * desfazimentos ao mesmo tempo gravam uma vez só.
    */
-  async void(studentId: string, paymentId: string, actor: AuditActor): Promise<boolean> {
+  async undo(studentId: string, paymentId: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(studentId) || !UUID.test(paymentId)) return false;
     return this.db.transaction(async (tx) => {
       const [found] = await tx
-        .select({ payment: payments })
+        .select({ payment: payments, period: enrollments })
         .from(payments)
         .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
         .where(and(eq(payments.id, paymentId), eq(enrollments.studentId, studentId)));
       if (!found) return false;
       if (found.payment.voidedAt !== null) return true;
 
-      await tx
-        .select({ id: enrollments.id })
-        .from(enrollments)
-        .where(eq(enrollments.id, found.payment.enrollmentId))
-        .for('update');
-      const voided = await tx
+      await tx.select({ id: enrollments.id }).from(enrollments).where(eq(enrollments.id, found.period.id)).for('update');
+      const undone = await tx
         .update(payments)
         .set({ voidedAt: sql`now()` })
         .where(and(eq(payments.id, paymentId), isNull(payments.voidedAt)))
         .returning({ id: payments.id });
-      if (voided.length === 0) return true;
+      if (undone.length === 0) return true;
       await audit.record(tx, {
         actor,
-        action: 'student.payment_voided',
+        action: 'student.payment_undone',
         entity: 'student',
         entityId: studentId,
-        diff: diffOf<Tracked>(trackedOf(found.payment), NOTHING, TRACKED, TRACKED),
+        diff: diffOf<Tracked>(trackedOf(found.period), NOTHING, TRACKED, TRACKED),
       });
       return true;
     });
