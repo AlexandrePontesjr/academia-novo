@@ -158,6 +158,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C38 - apps/web/e2e/photo-editor.spec.ts:172 (fault 4, round 2) (web)
 - last seen: 2026-10-06T02:55:34Z
 
+### L-025 - Prove every bound that depends on today in a time zone at both instants of the day turn, not only the bound nearest to today
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: planos-matriculas
+- evidence: verification.md fault 3; packages/contracts/src/plans.ts:129; C30 (api)
+- last seen: 2026-10-09T00:05:30Z
+
+### L-026 - When a check pins the clock for one bound of a day-dependent limit, state the day turn cases for every other bound of that limit
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: planos-matriculas
+- evidence: verification.md F1; C30; apps/api/test/student-enrollments-write.test.ts:248 (api)
+- last seen: 2026-10-09T00:05:30Z
+
+### L-027 - Prove that free text is displayed as plain text on a value that contains markup, not on a value that has none
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: planos-matriculas
+- evidence: verification.md F2; door 1; apps/web/src/app/plans/page.tsx:66 (web)
+- last seen: 2026-10-09T00:05:31Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

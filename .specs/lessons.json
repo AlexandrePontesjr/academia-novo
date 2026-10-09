@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 25,
+  "next_id": 28,
   "lessons": [
     {
       "id": "L-001",
@@ -436,6 +436,60 @@
       ],
       "created": "2026-10-06T02:55:34Z",
       "last_seen": "2026-10-06T02:55:34Z"
+    },
+    {
+      "id": "L-025",
+      "key": "surviving_mutant::prove every bound that depends on today in a time zone at both instants of the day turn not only the bound nearest to today",
+      "text": "Prove every bound that depends on today in a time zone at both instants of the day turn, not only the bound nearest to today",
+      "signal": "surviving_mutant",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "planos-matriculas"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md fault 3; packages/contracts/src/plans.ts:129; C30 (api)"
+      ],
+      "created": "2026-10-09T00:05:30Z",
+      "last_seen": "2026-10-09T00:05:30Z"
+    },
+    {
+      "id": "L-026",
+      "key": "spec_precision_gap::when a check pins the clock for one bound of a day dependent limit state the day turn cases for every other bound of that limit",
+      "text": "When a check pins the clock for one bound of a day-dependent limit, state the day turn cases for every other bound of that limit",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "planos-matriculas"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md F1; C30; apps/api/test/student-enrollments-write.test.ts:248 (api)"
+      ],
+      "created": "2026-10-09T00:05:30Z",
+      "last_seen": "2026-10-09T00:05:30Z"
+    },
+    {
+      "id": "L-027",
+      "key": "ac_gap::prove that free text is displayed as plain text on a value that contains markup not on a value that has none",
+      "text": "Prove that free text is displayed as plain text on a value that contains markup, not on a value that has none",
+      "signal": "ac_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "planos-matriculas"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md F2; door 1; apps/web/src/app/plans/page.tsx:66 (web)"
+      ],
+      "created": "2026-10-09T00:05:31Z",
+      "last_seen": "2026-10-09T00:05:31Z"
     }
   ]
 }
