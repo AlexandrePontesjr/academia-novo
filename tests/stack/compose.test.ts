@@ -856,6 +856,152 @@ describe('stack de pé', () => {
     ]);
   }, 300_000);
 
+  test('payment_confirmed_and_undone_through_web_with_duplicate_refused_and_audit_rows', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** Um usuário do perfil dado, criado pela CLI da stack, e a sessão dele pela origem do web. */
+    const account = async (role: 'hr_finance' | 'reception' | 'instructor', email: string, password: string) => {
+      const created = stack.compose(
+        `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name ${role}`,
+      );
+      expect(created.status, created.output).toBe(0);
+      // a CLI cria `admin`, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+      psql(`update users set role = '${role}' where email = '${email}'`);
+      const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      return login.headers
+        .getSetCookie()
+        .map((setCookie) => setCookie.split(';')[0])
+        .join('; ');
+    };
+    const [userAgent, forwardedFor] = ['teste-pagamentos/1.0', '203.0.113.61'];
+    const headersOf = (cookie: string, body = false) => ({
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': userAgent,
+      'X-Forwarded-For': forwardedFor,
+      ...(body && { 'Content-Type': 'application/json' }),
+    });
+    const post = (path: string, cookie: string, body: unknown) =>
+      fetch(`${stack.webOrigin}${path}`, { method: 'POST', headers: headersOf(cookie, true), body: JSON.stringify(body) });
+    const get = (path: string, cookie: string) => fetch(`${stack.webOrigin}${path}`, { headers: headersOf(cookie) });
+    const open = async (path: string, cookie: string) => {
+      const page = await get(path, cookie);
+      expect(page.status, path).toBe(200);
+      return (await page.text()).replaceAll(String.fromCharCode(0xa0), ' ').replaceAll('&nbsp;', ' ');
+    };
+    const auditRows = () => psql('select count(*) from audit_logs');
+
+    // a migração 0009 foi aplicada ao subir, pelo papel do `compose.yaml`: quatro colunas, o índice parcial e nenhuma extensão nova
+    expect(
+      psql(
+        `select string_agg(column_name, ',' order by column_name) from information_schema.columns where table_schema = 'public' and table_name = 'payments'`,
+      ),
+    ).toBe('created_at,enrollment_id,id,voided_at');
+    expect(psql(`select indexdef from pg_indexes where tablename = 'payments' and indexname = 'payments_one_alive_idx'`)).toMatch(
+      /CREATE UNIQUE INDEX payments_one_alive_idx ON public\.payments USING btree \(enrollment_id\) WHERE \(voided_at IS NULL\)/,
+    );
+    expect(psql(`select string_agg(extname, ',' order by extname) from pg_extension`)).toBe('btree_gist,pg_trgm,plpgsql');
+    expect(psql(`select count(*) from audit_logs where action in ('student.payment_confirmed', 'student.payment_undone')`)).toBe('0');
+
+    const hrEmail = 'financeiro.dos.pagamentos@exemplo.com';
+    const hr = await account('hr_finance', hrEmail, 'senha-da-stack-fin-3');
+    const reception = await account('reception', 'recepcao.dos.pagamentos@exemplo.com', 'senha-da-stack-rec-4');
+    const instructor = await account('instructor', 'instrutor.dos.pagamentos@exemplo.com', 'senha-da-stack-ins-3');
+
+    // o Financeiro matricula a partir de hoje, em `America/Sao_Paulo`: o período vence hoje e está pendente
+    const studentName = 'Aluna Pagante na Stack';
+    const student = await post('/api/students', reception, {
+      name: studentName,
+      cpf: '529.982.247-25',
+      birthDate: '2000-01-01',
+      phone: '(11) 91234-5678',
+    });
+    expect(student.status, await student.clone().text()).toBe(201);
+    const studentId = ((await student.json()) as { id: string }).id;
+    const createdPlan = await post('/api/plans', hr, { name: 'Mensal dos Pagamentos', period: 'monthly', priceCents: 9990 });
+    expect(createdPlan.status, await createdPlan.clone().text()).toBe(201);
+    const planId = ((await createdPlan.json()) as { id: string }).id;
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const enrolled = await post(`/api/students/${studentId}/enrollments`, hr, { planId, startsAt: today });
+    expect(enrolled.status, await enrolled.clone().text()).toBe(201);
+    const enrollmentId = ((await enrolled.json()) as { id: string }).id;
+
+    const route = `/api/students/${studentId}/payments`;
+    const before = await get(route, hr);
+    expect(before.status).toBe(200);
+    expect(((await before.json()) as { items: Array<{ status: string }> }).items.map((item) => item.status)).toEqual(['pending']);
+    expect(await open('/payments', hr)).toContain(studentName);
+
+    // confirmar: 201 com as três chaves, e o mesmo período de novo é recusado pelo índice
+    const confirmed = await post(route, hr, { enrollmentId });
+    expect(confirmed.status, await confirmed.clone().text()).toBe(201);
+    const payment = (await confirmed.json()) as { id: string; enrollmentId: string; createdAt: string };
+    expect(Object.keys(payment).sort()).toEqual(['createdAt', 'enrollmentId', 'id']);
+    expect(payment.enrollmentId).toBe(enrollmentId);
+    const repeated = await post(route, hr, { enrollmentId });
+    expect(repeated.status).toBe(409);
+    expect(((await repeated.json()) as { code: string }).code).toBe('payment_already_confirmed');
+    expect(psql(`select count(*) from payments where enrollment_id = '${enrollmentId}' and voided_at is null`)).toBe('1');
+
+    // as leituras e as páginas, depois de confirmar: nenhuma deixa linha na trilha
+    const afterConfirm = auditRows();
+    const paid = await get(route, hr);
+    expect(paid.status).toBe(200);
+    const [item] = ((await paid.json()) as { items: Array<{ status: string; payment: { id: string } | null }> }).items;
+    expect(item?.status).toBe('paid');
+    expect(item?.payment?.id).toBe(payment.id);
+    expect(await open(`/students/${studentId}`, hr)).toMatch(/>Pago</);
+    expect(await open('/payments', hr)).not.toContain(studentName);
+    // a recepção e o instrutor não veem o que o aluno deve
+    const denied = await get(route, reception);
+    expect(denied.status).toBe(403);
+    expect(((await denied.json()) as { code: string }).code).toBe('forbidden');
+    for (const cookie of [reception, instructor]) {
+      const page = await open('/payments', cookie);
+      expect(page).toContain('Você não tem permissão para acessar esta página.');
+      expect(page).not.toContain(studentName);
+    }
+    expect(auditRows()).toBe(afterConfirm);
+
+    // desfazer: 204, a linha fica com `voided_at` e o período volta à lista
+    const undone = await fetch(`${stack.webOrigin}${route}/${payment.id}`, { method: 'DELETE', headers: headersOf(hr) });
+    expect(undone.status).toBe(204);
+    expect(psql(`select voided_at is not null from payments where id = '${payment.id}'`)).toBe('t');
+    expect(psql(`select count(*) from payments where enrollment_id = '${enrollmentId}'`)).toBe('1');
+    const afterUndo = auditRows();
+    expect(await open('/payments', hr)).toContain(studentName);
+    expect(auditRows()).toBe(afterUndo);
+
+    // as linhas são lidas do banco da stack: uma de cada, com o autor, o IP e o navegador enviados
+    expect(
+      psql(
+        `select action || ',' || entity || ',' || entity_id || ',' || ip || ',' || user_agent from audit_logs where action in ('student.payment_confirmed', 'student.payment_undone') order by id`,
+      ).split(/\r?\n/),
+    ).toEqual([
+      `student.payment_confirmed,student,${studentId},${forwardedFor},${userAgent}`,
+      `student.payment_undone,student,${studentId},${forwardedFor},${userAgent}`,
+    ]);
+    expect(
+      psql(
+        `select count(*) from audit_logs where action in ('student.payment_confirmed', 'student.payment_undone') and user_id = (select id from users where email = '${hrEmail}')`,
+      ),
+    ).toBe('2');
+  }, 300_000);
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
