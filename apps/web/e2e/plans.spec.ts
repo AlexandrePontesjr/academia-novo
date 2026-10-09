@@ -143,6 +143,16 @@ test('list_formats_period_price_status_and_dash_for_null_rules', async ({ page, 
   expect(await page.locator('tbody tr td:nth-child(5)').allTextContents()).toEqual(['Ativo', 'Inativo', 'Ativo', 'Ativo']);
 });
 
+test('rules_markup_shown_as_literal_text_and_creates_no_element', async ({ page, api }) => {
+  servePlansAs(api, 'reception', stateOf({ plans: [planOf({ rules: '<b>x</b>' })] }));
+
+  await page.goto('/plans');
+
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  expect(await textsOf(page.locator('tbody tr td:nth-child(4)'))).toEqual(['<b>x</b>']);
+  await expect(page.locator('tbody b')).toHaveCount(0);
+});
+
 test('new_button_and_name_links_only_for_admin_and_hr_finance', async ({ page, api }) => {
   const plans = [planOf({ id: idOf(1), name: 'Mensal' }), planOf({ id: idOf(2), name: 'Anual', status: 'inactive' })];
   const names = page.locator('tbody tr td:nth-child(1)');
