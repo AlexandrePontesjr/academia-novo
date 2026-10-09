@@ -139,7 +139,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -184,6 +184,8 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Plano inativado',
     'Matrícula registrada',
     'Matrícula cancelada',
+    'Pagamento registrado',
+    'Pagamento anulado',
   ]);
 });
 
@@ -224,6 +226,8 @@ const LABELS = [
   'Plano inativado',
   'Matrícula registrada',
   'Matrícula cancelada',
+  'Pagamento registrado',
+  'Pagamento anulado',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -242,7 +246,7 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(36);
+  expect(options.slice(1)).toHaveLength(38);
   expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
@@ -494,7 +498,7 @@ test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) =>
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(36);
+  expect(options.slice(1)).toHaveLength(38);
   expect(options.slice(14, 17)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
   // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
   expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(consentActions);
@@ -555,7 +559,7 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(36);
+  expect(options.slice(1)).toHaveLength(38);
   // a posição de cada uma é a 17 e a 18 do vocabulário
   expect(options.slice(17, 19)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
   expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(photoActions);
@@ -578,7 +582,7 @@ test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, 
     'Versão anterior da foto excluída',
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
-  expect(options.slice(1)).toHaveLength(36);
+  expect(options.slice(1)).toHaveLength(38);
   expect(options.slice(1, 19)).toEqual(LABELS.slice(0, 18));
   // a posição de cada uma é a 19 e a 20 do vocabulário
   expect(options.slice(19, 21)).toEqual(['Foto do aluno trocada', 'Versão anterior da foto excluída']);
@@ -647,7 +651,7 @@ test('staff_actions_labelled_filter_has_thirty_one_and_authorless_row_dashes', a
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(STAFF_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(36);
+  expect(options).toHaveLength(38);
   // as onze de funcionário ocupam as posições 21 a 31, nessa ordem
   expect(options.slice(20, 31)).toEqual(STAFF_LABELS);
   expect(AUDIT_ACTIONS.slice(20, 31)).toEqual(STAFF_ACTIONS);
@@ -747,13 +751,13 @@ test('plan_and_enrollment_actions_labelled_and_filter_has_thirty_six', async ({ 
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PLAN_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(36);
+  expect(options).toHaveLength(38);
   // as trinta e uma de antes, na ordem e com o texto de antes
   expect(options.slice(0, 31)).toEqual(LABELS.slice(0, 31));
   expect(options[30]).toBe('Versão anterior da foto do funcionário excluída');
   // as cinco novas ocupam as posições 32 a 36, nessa ordem
-  expect(options.slice(31)).toEqual(PLAN_LABELS);
-  expect(AUDIT_ACTIONS.slice(31)).toEqual(PLAN_ACTIONS);
+  expect(options.slice(31, 36)).toEqual(PLAN_LABELS);
+  expect(AUDIT_ACTIONS.slice(31, 36)).toEqual(PLAN_ACTIONS);
 });
 
 test('plan_target_link_ver_plano', async ({ page, api }) => {

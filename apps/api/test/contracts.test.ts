@@ -4,6 +4,7 @@ import {
   consentSchema,
   consentTermsResponseSchema,
   createEnrollmentRequestSchema,
+  createPaymentRequestSchema,
   createPlanRequestSchema,
   createStaffRequestSchema,
   createStudentRequestSchema,
@@ -11,6 +12,10 @@ import {
   enrollmentsResponseSchema,
   grantConsentRequestSchema,
   isMinor,
+  openPaymentSchema,
+  openPaymentsQuerySchema,
+  paymentSchema,
+  studentPaymentSchema,
   saoPauloToday,
   guardianRequestSchema,
   studentConsentsResponseSchema,
@@ -242,7 +247,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
@@ -283,7 +288,7 @@ test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
     'student.photo_version_purged',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   expect([...AUDIT_ACTIONS].slice(0, 31)).toEqual([
     ...before,
     'staff.created',
@@ -499,7 +504,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -519,7 +524,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -543,7 +548,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(36);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -962,8 +967,8 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
   ];
   expect(before).toHaveLength(31);
 
-  expect(AUDIT_ACTIONS).toHaveLength(36);
-  expect([...AUDIT_ACTIONS]).toEqual([
+  expect(AUDIT_ACTIONS).toHaveLength(38);
+  expect([...AUDIT_ACTIONS].slice(0, 36)).toEqual([
     ...before,
     'plan.created',
     'plan.updated',
@@ -971,6 +976,22 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
     'student.enrollment_created',
     'student.enrollment_cancelled',
   ]);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('audit_actions_end_with_two_payment_actions_in_order', () => {
+  expect(AUDIT_ACTIONS).toHaveLength(38);
+  // as trinta e seis de antes, na ordem de antes (a última é a de matrícula cancelada)
+  expect(AUDIT_ACTIONS[0]).toBe('auth.login_succeeded');
+  expect(AUDIT_ACTIONS[35]).toBe('student.enrollment_cancelled');
+  expect(AUDIT_ACTIONS.slice(31, 36)).toEqual([
+    'plan.created',
+    'plan.updated',
+    'plan.inactivated',
+    'student.enrollment_created',
+    'student.enrollment_cancelled',
+  ]);
+  expect(AUDIT_ACTIONS.slice(36)).toEqual(['student.payment_registered', 'student.payment_voided']);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 
@@ -1033,6 +1054,72 @@ test('plan_and_enrollment_schemas_accept_and_reject', () => {
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'cancelled', cancelledAt: '2026-10-10T12:00:00.000Z' }))).toBe('aceita');
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, status: 'suspended' }))).toBe('status');
   expect(paths(enrollmentSchema.safeParse({ ...enrollment, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
+});
+
+test('payment_schemas_accept_and_reject', () => {
+  const id = '018f0000-0000-7000-8000-000000000001';
+  const other = '018f0000-0000-7000-8000-000000000002';
+  const paths = (result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[] }> } }) =>
+    result.success ? 'aceita' : [...new Set(result.error!.issues.map((issue) => issue.path.join('.')))].join(',');
+
+  // registro: os quatro campos, e a falta de cada um recusada
+  const create = { enrollmentId: id, amountCents: 5000, paidAt: '2026-10-07', method: 'pix' };
+  expect(paths(createPaymentRequestSchema.safeParse(create))).toBe('aceita');
+  for (const missing of ['enrollmentId', 'amountCents', 'paidAt', 'method'] as const) {
+    expect(paths(createPaymentRequestSchema.safeParse({ ...create, [missing]: undefined })), missing).toBe(missing);
+  }
+  // dinheiro é inteiro de centavos, de `1` a `9999999`: nunca zero, decimal nem texto
+  for (const amountCents of [0, -1, 10_000_000, 99.9, '5000']) {
+    expect(paths(createPaymentRequestSchema.safeParse({ ...create, amountCents })), JSON.stringify(amountCents)).toBe('amountCents');
+  }
+  for (const method of ['PIX', 'cheque']) {
+    expect(paths(createPaymentRequestSchema.safeParse({ ...create, method })), method).toBe('method');
+  }
+  expect(paths(createPaymentRequestSchema.safeParse({ ...create, enrollmentId: 'abc' }))).toBe('enrollmentId');
+  for (const paidAt of ['2026-02-30', '26-10-07']) {
+    expect(paths(createPaymentRequestSchema.safeParse({ ...create, paidAt })), paidAt).toBe('paidAt');
+  }
+
+  // resposta do pagamento: as seis chaves, e uma sétima recusada
+  const payment = { id, amountCents: 5000, paidAt: '2026-10-07', method: 'pix', createdAt: '2026-10-07T15:00:00.000Z', voidedAt: null };
+  expect(Object.keys(payment)).toHaveLength(6);
+  expect(paths(paymentSchema.safeParse(payment))).toBe('aceita');
+  expect(paths(paymentSchema.safeParse({ ...payment, voidedAt: '2026-10-08T12:00:00.000Z' }))).toBe('aceita');
+  expect(paths(paymentSchema.safeParse({ ...payment, enrollmentId: id }))).toBe('');
+  expect(paths(paymentSchema.safeParse({ ...payment, voidedAt: 'ontem' }))).toBe('voidedAt');
+
+  // período da ficha: as dez chaves, com cada uma das quatro situações
+  const plan = { id, name: 'Mensal', period: 'monthly' };
+  const period = {
+    enrollmentId: other,
+    plan,
+    startsAt: '2026-10-07',
+    endsAt: '2026-11-06',
+    dueDate: '2026-10-07',
+    priceCents: 9990,
+    paidCents: 5000,
+    balanceCents: 4990,
+    status: 'pending',
+    payments: [payment],
+  };
+  expect(Object.keys(period)).toHaveLength(10);
+  for (const status of ['paid', 'pending', 'overdue', 'cancelled']) {
+    expect(paths(studentPaymentSchema.safeParse({ ...period, status })), status).toBe('aceita');
+  }
+  expect(paths(studentPaymentSchema.safeParse({ ...period, status: 'scheduled' }))).toBe('status');
+  expect(paths(studentPaymentSchema.safeParse({ ...period, plan: { id, name: 'Mensal' } }))).toBe('plan.period');
+
+  // item da lista geral: as dez chaves, com o aluno só por `id` e `name`
+  const { payments: _payments, ...rest } = period;
+  const item = { ...rest, student: { id, name: 'Aluna Um' } };
+  expect(Object.keys(item)).toHaveLength(10);
+  expect(paths(openPaymentSchema.safeParse(item))).toBe('aceita');
+  expect(paths(openPaymentSchema.safeParse({ ...item, student: { id, name: 'Aluna Um', cpf: '52998224725' } }))).toBe('student');
+
+  // query da lista geral
+  expect(paths(openPaymentsQuerySchema.safeParse({}))).toBe('aceita');
+  for (const status of ['pending', 'overdue']) expect(paths(openPaymentsQuerySchema.safeParse({ status })), status).toBe('aceita');
+  for (const status of ['paid', 'Pending', '']) expect(paths(openPaymentsQuerySchema.safeParse({ status })), status).toBe('status');
 });
 
 test('plan_and_enrollment_bodies_match_contract_schemas_and_three_new_codes', async () => {

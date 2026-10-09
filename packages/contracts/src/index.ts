@@ -2,6 +2,7 @@ export * from './audit.ts';
 export * from './auth.ts';
 export * from './consents.ts';
 export * from './health.ts';
+export * from './payments.ts';
 export * from './photos.ts';
 export * from './plans.ts';
 export { saoPauloToday } from './person.ts';

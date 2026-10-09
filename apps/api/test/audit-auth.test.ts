@@ -350,7 +350,7 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(36);
+  expect(auditActionSchema.options).toHaveLength(38);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
