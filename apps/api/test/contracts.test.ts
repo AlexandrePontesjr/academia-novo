@@ -1105,8 +1105,7 @@ test('payment_schemas_accept_and_reject', () => {
   }
 
   // item da lista geral: as oito chaves, com o aluno só por `id` e `name`
-  const { payment: _payment, ...rest } = period;
-  const item = { ...rest, student: { id, name: 'Aluna Um' } };
+  const item = { ...Object.fromEntries(Object.entries(period).filter(([key]) => key !== 'payment')), student: { id, name: 'Aluna Um' } };
   expect(Object.keys(item)).toHaveLength(8);
   expect(paths(openPaymentSchema.safeParse(item))).toBe('aceita');
   expect(paths(openPaymentSchema.safeParse({ ...item, status: 'overdue' }))).toBe('aceita');
