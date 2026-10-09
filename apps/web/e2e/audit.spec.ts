@@ -889,3 +889,66 @@ test('enrollment_cancelled_and_plan_inactivated_details_and_unknown_plan_id', as
   const planCalls = api.requests.filter((request) => request.path.startsWith('/api/plans'));
   expect(planCalls.map((request) => `${request.method} ${request.path}`)).toEqual(['GET /api/plans']);
 });
+
+const PAYMENT_LABELS = ['Pagamento confirmado', 'Pagamento desfeito'];
+const PAYMENT_ACTIONS = ['student.payment_confirmed', 'student.payment_undone'] as const;
+
+const paymentDiff = (from: unknown[], to: unknown[]) => ({
+  fields: ['startsAt', 'priceCents'],
+  values: { startsAt: { from: from[0], to: to[0] }, priceCents: { from: from[1], to: to[1] } },
+});
+
+test('action_filter_offers_all_38_with_the_two_payment_labels_last', async ({ page, api }) => {
+  serve(
+    api,
+    PAYMENT_ACTIONS.map((action) => logOf({ action, entity: 'student', entityId: ENROLLED_ID })),
+  );
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PAYMENT_LABELS);
+
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options).toHaveLength(38);
+  // as trinta e seis de antes, na ordem e com o texto de antes
+  expect(options.slice(0, 36)).toEqual(LABELS.slice(0, 36));
+  expect(options[35]).toBe('Matrícula cancelada');
+  // as duas novas ocupam as posições 37 e 38, nessa ordem
+  expect(options.slice(36)).toEqual(PAYMENT_LABELS);
+  expect(AUDIT_ACTIONS.slice(36)).toEqual(PAYMENT_ACTIONS);
+  expect(AUDIT_ACTIONS).toHaveLength(38);
+});
+
+test('payment_confirmed_row_shows_inicio_valor_and_ver_aluno', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'student.payment_confirmed',
+      entity: 'student',
+      entityId: ENROLLED_ID,
+      diff: paymentDiff([null, null], ['2026-10-07', 9990]),
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  expect(await detailsOf(page, 1)).toEqual(['Início: — → 07/10/2026', 'Valor: — → R$ 99,90']);
+  await expect(
+    page.locator('tbody tr:nth-child(1) td:nth-child(4)').getByRole('link', { name: 'Ver aluno', exact: true }),
+  ).toHaveAttribute('href', `/students/${ENROLLED_ID}`);
+});
+
+test('payment_undone_row_shows_inicio_and_valor_with_dash_on_the_right', async ({ page, api }) => {
+  serve(api, [
+    logOf({
+      action: 'student.payment_undone',
+      entity: 'student',
+      entityId: ENROLLED_ID,
+      diff: paymentDiff(['2026-10-07', 9990], [null, null]),
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  expect(await detailsOf(page, 1)).toEqual(['Início: 07/10/2026 → —', 'Valor: R$ 99,90 → —']);
+});
