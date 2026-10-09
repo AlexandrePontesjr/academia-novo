@@ -64,6 +64,13 @@
       "when": 1791487630154,
       "tag": "0008_plans_enrollments",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791507272256,
+      "tag": "0009_payments",
+      "breakpoints": true
     }
   ]
 }

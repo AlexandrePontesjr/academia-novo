@@ -351,3 +351,30 @@ export const enrollments = pgTable(
     index('enrollments_student_id_starts_at_idx').on(table.studentId, table.startsAt),
   ],
 );
+
+export const PAYMENT_METHODS = ['cash', 'pix', 'debit_card', 'credit_card', 'bank_transfer'] as const;
+
+// Pagamentos (pagamentos, door 1): dinheiro recebido, uma linha por pagamento, de um período. Só
+// `voided_at` muda, de nulo para um instante, uma vez; corrigir é anular e registrar outro. Não há
+// `status`, `due_date` nem `student_id`: a situação e o vencimento são calculados na leitura (door 2) e
+// o aluno chega pelo período. A chave estrangeira não cascateia. O teto da soma de um período não é
+// do banco, é da trava da linha do período na API.
+export const payments = pgTable(
+  'payments',
+  {
+    id: id(),
+    enrollmentId: uuid('enrollment_id')
+      .notNull()
+      .references(() => enrollments.id),
+    amountCents: integer('amount_cents').notNull(),
+    paidAt: date('paid_at', { mode: 'string' }).notNull(),
+    method: text('method', { enum: PAYMENT_METHODS }).notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    voidedAt: instant('voided_at'),
+  },
+  (table) => [
+    check('payments_amount_cents_positive', sql`${table.amountCents} > 0`),
+    check('payments_method_valid', sql`${table.method} in ('cash', 'pix', 'debit_card', 'credit_card', 'bank_transfer')`),
+    index('payments_enrollment_id_idx').on(table.enrollmentId),
+  ],
+);
