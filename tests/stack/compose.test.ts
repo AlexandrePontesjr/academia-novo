@@ -1002,6 +1002,122 @@ describe('stack de pé', () => {
     ).toBe('2');
   }, 300_000);
 
+  test('dashboard_read_through_web_by_three_roles_follows_enrollment_and_payment_without_audit_rows', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** Um usuário do perfil dado, criado pela CLI da stack, e a sessão dele pela origem do web. */
+    const account = async (role: 'hr_finance' | 'reception' | 'instructor', email: string, password: string) => {
+      const created = stack.compose(
+        `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name ${role}`,
+      );
+      expect(created.status, created.output).toBe(0);
+      // a CLI cria `admin`, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+      psql(`update users set role = '${role}' where email = '${email}'`);
+      const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      return login.headers
+        .getSetCookie()
+        .map((setCookie) => setCookie.split(';')[0])
+        .join('; ');
+    };
+    const headersOf = (cookie: string, body = false) => ({
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      ...(body && { 'Content-Type': 'application/json' }),
+    });
+    const post = (path: string, cookie: string, body: unknown) =>
+      fetch(`${stack.webOrigin}${path}`, { method: 'POST', headers: headersOf(cookie, true), body: JSON.stringify(body) });
+    const open = async (cookie: string) => {
+      const page = await fetch(`${stack.webOrigin}/`, { headers: headersOf(cookie) });
+      expect(page.status).toBe(200);
+      return page.text();
+    };
+    interface Dashboard {
+      today: string;
+      students: { active: number };
+      enrollments: { active: number };
+      payments: { pending: number };
+    }
+    const dashboard = async (cookie: string) => {
+      const response = await fetch(`${stack.webOrigin}/api/dashboard`, { headers: headersOf(cookie) });
+      expect(response.status).toBe(200);
+      return (await response.json()) as Dashboard;
+    };
+    const auditRows = () => psql('select count(*) from audit_logs');
+    const saoPauloDay = () => psql(`select (now() at time zone 'America/Sao_Paulo')::date`);
+
+    // os três usuários nascem antes das leituras: o login grava na trilha
+    const hr = await account('hr_finance', 'financeiro.do.painel@exemplo.com', 'senha-da-stack-fin-4');
+    const reception = await account('reception', 'recepcao.do.painel@exemplo.com', 'senha-da-stack-rec-5');
+    const instructor = await account('instructor', 'instrutor.do.painel@exemplo.com', 'senha-da-stack-ins-4');
+
+    // o Financeiro lê as quatro chaves, e `today` é o dia de São Paulo lido do banco da stack
+    const beforeReads = auditRows();
+    const dayBefore = saoPauloDay();
+    const first = await dashboard(hr);
+    const dayAfter = saoPauloDay();
+    expect(Object.keys(first).sort()).toEqual(['enrollments', 'payments', 'students', 'today']);
+    expect([dayBefore, dayAfter]).toContain(first.today);
+    expect(auditRows()).toBe(beforeReads);
+
+    // um aluno novo matriculado a partir de hoje: um a mais em cada uma das três contagens
+    const student = await post('/api/students', reception, {
+      name: 'Aluno do Painel na Stack',
+      cpf: '862.883.667-57',
+      birthDate: '2000-01-01',
+      phone: '(11) 91234-5678',
+    });
+    expect(student.status, await student.clone().text()).toBe(201);
+    const studentId = ((await student.json()) as { id: string }).id;
+    const createdPlan = await post('/api/plans', hr, { name: 'Mensal do Painel', period: 'monthly', priceCents: 9990 });
+    expect(createdPlan.status, await createdPlan.clone().text()).toBe(201);
+    const planId = ((await createdPlan.json()) as { id: string }).id;
+    const enrolled = await post(`/api/students/${studentId}/enrollments`, hr, { planId, startsAt: saoPauloDay() });
+    expect(enrolled.status, await enrolled.clone().text()).toBe(201);
+    const enrollmentId = ((await enrolled.json()) as { id: string }).id;
+
+    const second = await dashboard(hr);
+    expect(second.students.active).toBe(first.students.active + 1);
+    expect(second.enrollments.active).toBe(first.enrollments.active + 1);
+    expect(second.payments.pending).toBe(first.payments.pending + 1);
+
+    // confirmado o pagamento, o período sai dos pendentes
+    const confirmed = await post(`/api/students/${studentId}/payments`, hr, { enrollmentId });
+    expect(confirmed.status, await confirmed.clone().text()).toBe(201);
+    const afterWrites = auditRows();
+    const third = await dashboard(hr);
+    expect(third.payments.pending).toBe(first.payments.pending);
+    expect(third.enrollments.active).toBe(second.enrollments.active);
+
+    // a recepção não recebe `payments`, e o instrutor só `today` e `students`
+    expect(Object.keys(await dashboard(reception)).sort()).toEqual(['enrollments', 'students', 'today']);
+    expect(Object.keys(await dashboard(instructor)).sort()).toEqual(['students', 'today']);
+    const anonymous = await fetch(`${stack.webOrigin}/api/dashboard`, { headers: { Origin: stack.webOrigin } });
+    expect(anonymous.status).toBe(401);
+    expect(((await anonymous.json()) as { code: string }).code).toBe('unauthorized');
+
+    // a página inicial pela origem do web: o Financeiro vê o card "Pagamentos", o instrutor só "Alunos"
+    const hrPage = await open(hr);
+    expect(hrPage).toContain('Painel');
+    expect(hrPage).toMatch(/<h3[^>]*>Pagamentos<\/h3>/);
+    const instructorPage = await open(instructor);
+    expect(instructorPage).toContain('Painel');
+    expect(instructorPage).toMatch(/<h3[^>]*>Alunos<\/h3>/);
+    expect(instructorPage).not.toContain('Pagamentos');
+    expect(instructorPage).not.toContain('Matrículas');
+
+    // nenhuma leitura e nenhuma abertura de página deixou linha na trilha
+    expect(auditRows()).toBe(afterWrites);
+  }, 300_000);
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
