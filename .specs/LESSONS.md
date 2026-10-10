@@ -8,7 +8,11 @@
 
 Corroborated across multiple features. Safe to apply as guidance.
 
-_none_
+### L-019 - When a criterion says a valid value, state the check on both bounds of validity, not on one sample value
+- signal: `spec_precision_gap` · recurrence: 2 feature(s) · scope: `api` · harmful: 0
+- features: auth-rbac, dashboard
+- evidence: C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api) (+1 more)
+- last seen: 2026-10-10T02:15:50Z
 
 ## Candidates (under observation - do NOT load as guidance yet)
 
@@ -120,12 +124,6 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
 - features: auth-rbac
 - evidence: C37 - apps/api/src/auth/auth.controller.ts:295 (N6) (api)
-- last seen: 2026-10-04T06:22:59Z
-
-### L-019 - When a criterion says a valid value, state the check on both bounds of validity, not on one sample value
-- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
-- features: auth-rbac
-- evidence: C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)
 - last seen: 2026-10-04T06:22:59Z
 
 ### L-020 - Prove an image crop on a source whose colour differs between the expected region and any shifted region, not on halves that agree at the sampled points

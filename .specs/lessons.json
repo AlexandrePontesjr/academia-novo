@@ -335,17 +335,19 @@
       "text": "When a criterion says a valid value, state the check on both bounds of validity, not on one sample value",
       "signal": "spec_precision_gap",
       "scope": "api",
-      "status": "candidate",
+      "status": "confirmed",
       "features": [
-        "auth-rbac"
+        "auth-rbac",
+        "dashboard"
       ],
-      "recurrence": 1,
+      "recurrence": 2,
       "harmful": 0,
       "evidence": [
-        "C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)"
+        "C60, C10 - .specs/features/auth-rbac/checks.md:222 (N5) (api)",
+        "C46 - packages/contracts/test/dashboard.test.ts:82 (api)"
       ],
       "created": "2026-10-04T06:22:59Z",
-      "last_seen": "2026-10-04T06:22:59Z"
+      "last_seen": "2026-10-10T02:15:50Z"
     },
     {
       "id": "L-020",
