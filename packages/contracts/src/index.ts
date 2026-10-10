@@ -1,6 +1,7 @@
 export * from './audit.ts';
 export * from './auth.ts';
 export * from './consents.ts';
+export * from './dashboard.ts';
 export * from './health.ts';
 export * from './payments.ts';
 export * from './photos.ts';
