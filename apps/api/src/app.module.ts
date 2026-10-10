@@ -11,6 +11,8 @@ import { ConsentsController } from './consents/consents.controller.ts';
 import { ConsentTermsController } from './consents/consent-terms.controller.ts';
 import { ConsentsService } from './consents/consents.service.ts';
 import { ColumnCipher } from './crypto.ts';
+import { DashboardController } from './dashboard/dashboard.controller.ts';
+import { DashboardService } from './dashboard/dashboard.service.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
 import { OpenApiController } from './openapi.controller.ts';
@@ -60,6 +62,7 @@ export class AppModule implements OnApplicationShutdown {
         StudentEnrollmentsController,
         StudentPaymentsController,
         PaymentsController,
+        DashboardController,
         OpenApiController,
       ],
       providers: [
@@ -112,6 +115,11 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: StudentPaymentsService,
           useFactory: (database: Database) => new StudentPaymentsService(database.db),
+          inject: [DATABASE],
+        },
+        {
+          provide: DashboardService,
+          useFactory: (database: Database) => new DashboardService(database.db),
           inject: [DATABASE],
         },
         {

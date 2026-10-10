@@ -349,3 +349,16 @@ test('payment_paths_and_status_query_parameter_come_from_contract_schema', async
     expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
   }
 });
+
+test('dashboard_path_declared_as_get_without_parameters_or_body', async () => {
+  const { paths } = await document();
+
+  // uma rota só, e só de leitura
+  expect(Object.keys(paths['/api/dashboard'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths).filter((path) => path.includes('/dashboard'))).toEqual(['/api/dashboard']);
+
+  const operation = paths['/api/dashboard']!.get!;
+  expect(operation.parameters ?? []).toEqual([]);
+  expect(operation.requestBody).toBeUndefined();
+  expect(Object.keys((operation as unknown as { responses: Record<string, unknown> }).responses)).toEqual(['200']);
+});

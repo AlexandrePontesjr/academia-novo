@@ -91,6 +91,7 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'POST /api/students/:id/payments',
       'DELETE /api/students/:id/payments/:paymentId',
       'GET /api/payments',
+      'GET /api/dashboard',
       'GET /api/openapi.json',
     ].sort(),
   );
