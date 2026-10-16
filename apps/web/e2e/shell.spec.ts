@@ -118,6 +118,44 @@ test('payments_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
   }
 });
 
+test('check_in_link_only_for_admin_and_reception', async ({ page, api }) => {
+  const visible: Record<Role, boolean> = {
+    admin: true,
+    reception: true,
+    hr_finance: false,
+    instructor: false,
+  };
+
+  for (const [role, expected] of Object.entries(visible) as Array<[Role, boolean]>) {
+    api.session = sessionOf(role);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    const link = page.getByRole('navigation').getByRole('link', { name: 'Check-in', exact: true });
+    await expect(link, role).toHaveCount(expected ? 1 : 0);
+    if (expected) await expect(link, role).toHaveAttribute('href', '/check-in');
+  }
+});
+
+test('check_ins_link_only_for_admin_and_reception', async ({ page, api }) => {
+  const visible: Record<Role, boolean> = {
+    admin: true,
+    reception: true,
+    hr_finance: false,
+    instructor: false,
+  };
+
+  for (const [role, expected] of Object.entries(visible) as Array<[Role, boolean]>) {
+    api.session = sessionOf(role);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    const link = page.getByRole('navigation').getByRole('link', { name: 'Presenças', exact: true });
+    await expect(link, role).toHaveCount(expected ? 1 : 0);
+    if (expected) await expect(link, role).toHaveAttribute('href', '/check-ins');
+  }
+});
+
 test('sign_out_calls_logout_and_goes_to_login', async ({ page, api }) => {
   api.session = sessionOf('reception');
   api.on('POST', '/api/auth/logout', () => {

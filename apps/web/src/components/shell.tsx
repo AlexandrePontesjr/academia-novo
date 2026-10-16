@@ -1,6 +1,7 @@
 import type { SessionResponse } from '@academia/contracts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { canCheckIn } from '../lib/check-ins.ts';
 import { canReadPayments } from '../lib/payments.ts';
 import { canReadPlans } from '../lib/plans.ts';
 import { ROLE_LABELS } from '../lib/roles.ts';
@@ -22,6 +23,16 @@ export function Shell({ session, children }: { session: SessionResponse; childre
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/">Início</Link>
           <Link href="/students">Alunos</Link>
+          {canCheckIn(user.role) && (
+            <Link href="/check-in" prefetch={false}>
+              Check-in
+            </Link>
+          )}
+          {canCheckIn(user.role) && (
+            <Link href="/check-ins" prefetch={false}>
+              Presenças
+            </Link>
+          )}
           {canReadPlans(user.role) && (
             <Link href="/plans" prefetch={false}>
               Planos
