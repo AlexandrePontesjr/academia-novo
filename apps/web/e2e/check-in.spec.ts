@@ -330,6 +330,7 @@ test('student_and_plan_markup_shown_as_literal_text_in_list_and_card', async ({ 
   await page.goto('/check-in');
   await searchFor(page, 'Ana');
 
+  await expect(results(page)).toHaveCount(2);
   expect(await results(page).locator('span.flex-1').allTextContents()).toEqual(['<b>Ana</b>', 'Bruno']);
   await expect(page.getByRole('main').locator('b')).toHaveCount(0);
 
