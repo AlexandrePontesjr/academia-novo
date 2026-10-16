@@ -1,5 +1,6 @@
 export * from './audit.ts';
 export * from './auth.ts';
+export * from './check-ins.ts';
 export * from './consents.ts';
 export * from './dashboard.ts';
 export * from './health.ts';
