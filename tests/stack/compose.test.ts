@@ -921,7 +921,7 @@ describe('stack de pé', () => {
     const studentName = 'Aluna Pagante na Stack';
     const student = await post('/api/students', reception, {
       name: studentName,
-      cpf: '529.982.247-25',
+      cpf: '935.411.347-80',
       birthDate: '2000-01-01',
       phone: '(11) 91234-5678',
     });
