@@ -336,8 +336,9 @@ test('consents_load_failure_shows_retry_without_hiding_ficha', async ({ page, ap
   api.session = sessionOf('reception');
   api.on('GET', `/api/students/${student.id}`, { status: 200, body: student });
   api.on('GET', `/api/students/${student.id}/consents`, { status: 500 });
-  // a ficha também pede as matrículas: respondidas, o único bloco em erro é o de consentimentos
+  // a ficha também pede as matrículas e as presenças: respondidas, o único bloco em erro é o de consentimentos
   api.on('GET', `/api/students/${student.id}/enrollments`, { status: 200, body: { items: [] } });
+  api.on('GET', `/api/students/${student.id}/check-ins`, { status: 200, body: { items: [], nextCursor: null } });
   await page.goto(`/students/${student.id}`);
 
   await expect(page.getByText('Não foi possível carregar os consentimentos.', { exact: true })).toBeVisible();

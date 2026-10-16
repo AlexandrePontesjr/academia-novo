@@ -4,6 +4,8 @@ import {
   isMinor,
   saoPauloToday,
   type Student,
+  type StudentCheckInsResponse,
+  studentCheckInsResponseSchema,
   type StudentConsentsResponse,
   type StudentPayment,
   studentConsentsResponseSchema,
@@ -15,12 +17,15 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
+import { canCheckIn } from '../../../lib/check-ins.ts';
 import { loadPlans } from '../../../lib/plans-server.ts';
 import { canReadPayments } from '../../../lib/payments.ts';
 import { canReadPlans, canWritePlans } from '../../../lib/plans.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
+import { CheckInsBlock } from './check-ins-block.tsx';
+import { CheckInsLoadError } from './check-ins-load-error.tsx';
 import { ConsentsBlock } from './consents-block.tsx';
 import { ConsentsLoadError } from './consents-load-error.tsx';
 import { EnrollmentsBlock } from './enrollments-block.tsx';
@@ -76,6 +81,17 @@ async function loadPayments(id: string): Promise<StudentPayment[] | 'failed'> {
   }
 }
 
+/** A primeira página do histórico de presença, na ordem da API, ou `failed`; só se pede ao balcão. */
+async function loadCheckIns(id: string): Promise<StudentCheckInsResponse | 'failed'> {
+  try {
+    const response = await fetchApi(`/api/students/${encodeURIComponent(id)}/check-ins`, await headers());
+    if (response.status !== 200) return 'failed';
+    return studentCheckInsResponseSchema.parse(await response.json());
+  } catch {
+    return 'failed';
+  }
+}
+
 export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
@@ -91,6 +107,8 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       : [];
   // o que o aluno deve é do Financeiro: os outros perfis nem chegam a pedir
   const payments = typeof student === 'object' && canReadPayments(role) ? await loadPayments(id) : undefined;
+  // a presença é do balcão: o Financeiro e o Instrutor nem chegam a pedir
+  const checkIns = typeof student === 'object' && canCheckIn(role) ? await loadCheckIns(id) : undefined;
 
   return (
     <Shell session={session}>
@@ -153,6 +171,8 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
           {payments && payments !== 'failed' && (
             <PaymentsBlock studentId={student.id} studentName={student.name} items={payments} />
           )}
+          {checkIns === 'failed' && <CheckInsLoadError />}
+          {checkIns && checkIns !== 'failed' && <CheckInsBlock studentId={student.id} initial={checkIns} />}
         </>
       )}
     </Shell>
