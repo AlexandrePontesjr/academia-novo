@@ -6,8 +6,15 @@ export { spaced, textsOf } from './plans.ts';
 
 export const ALL_ROLES: Role[] = ['admin', 'hr_finance', 'reception', 'instructor'];
 
-/** Os títulos dos cinco cards, na ordem da tela. */
-export const CARD_TITLES = ['Alunos', 'Matrículas', 'Vencimentos nos próximos 7 dias', 'Pagamentos', 'Matrículas ativas por plano'];
+/** Os títulos dos seis cards, na ordem da tela. */
+export const CARD_TITLES = [
+  'Alunos',
+  'Check-ins de hoje',
+  'Matrículas',
+  'Vencimentos nos próximos 7 dias',
+  'Pagamentos',
+  'Matrículas ativas por plano',
+];
 
 const id = (group: string, n: number) => `018f0000-0000-7000-8000-000000000${group}${String(n).padStart(2, '0')}`;
 
@@ -29,7 +36,7 @@ export function expiringOf(overrides: Partial<ExpiringEnrollment> = {}): Expirin
 type Enrollments = NonNullable<DashboardResponse['enrollments']>;
 
 /**
- * A resposta de quatro chaves, com números que não coincidem entre si nem com o que a máquina
+ * A resposta de cinco chaves, com números que não coincidem entre si nem com o que a máquina
  * calcularia das listas: a tela só mostra o que recebe.
  */
 export function dashboardOf(overrides: Partial<DashboardResponse> = {}, enrollments: Partial<Enrollments> = {}): DashboardResponse {
@@ -44,16 +51,18 @@ export function dashboardOf(overrides: Partial<DashboardResponse> = {}, enrollme
       ...enrollments,
     },
     payments: { pending: 9, overdue: 4 },
+    checkIns: { count: 12 },
     ...overrides,
   };
 }
 
 /** A mesma resposta cortada como a API a corta para o perfil: a chave do card que ele não lê não existe. */
 export function dashboardFor(role: Role, body: DashboardResponse = dashboardOf()): DashboardResponse {
-  const { today, students, enrollments, payments } = body;
+  const { today, students, enrollments, payments, checkIns } = body;
   if (role === 'instructor') return { today, students };
-  if (role === 'reception') return { today, students, enrollments };
-  return { today, students, enrollments, payments };
+  if (role === 'reception') return { today, students, enrollments, checkIns };
+  if (role === 'hr_finance') return { today, students, enrollments, payments };
+  return { today, students, enrollments, payments, checkIns };
 }
 
 /** Abre a sessão do perfil e faz `GET /api/dashboard` devolver exatamente `body`. */

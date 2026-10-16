@@ -18,6 +18,7 @@ import { expect, problem, sessionOf, test } from './support/fake-api.ts';
 
 const EXPIRING = 'Vencimentos nos próximos 7 dias';
 const BY_PLAN = 'Matrículas ativas por plano';
+const CHECK_INS = 'Check-ins de hoje';
 const LOAD_ERROR = 'Não foi possível carregar o painel.';
 const greeting = (page: Page) => page.getByText('Olá, Marina Duarte.', { exact: true });
 const painel = (page: Page) => page.getByRole('heading', { name: 'Painel', exact: true });
@@ -165,24 +166,10 @@ test('instructor_sees_only_the_students_card', async ({ page, api }) => {
 
   await expect(card(page, 'Alunos')).toBeVisible();
   expect(await cardTitles(page)).toEqual(['Alunos']);
-  for (const title of ['Matrículas', EXPIRING, 'Pagamentos', BY_PLAN]) {
+  for (const title of [CHECK_INS, 'Matrículas', EXPIRING, 'Pagamentos', BY_PLAN]) {
     await expect(page.getByRole('heading', { name: title, exact: true }), title).toHaveCount(0);
     await expect(card(page, title), title).toHaveCount(0);
   }
-});
-
-test('reception_sees_four_cards_without_payments', async ({ page, api }) => {
-  serveDashboard(api, 'reception');
-  expect(Object.keys(dashboardFor('reception'))).not.toContain('payments');
-
-  await page.goto('/');
-
-  for (const title of ['Alunos', 'Matrículas', EXPIRING, BY_PLAN]) await expect(card(page, title), title).toBeVisible();
-  expect(await cardTitles(page)).toEqual(['Alunos', 'Matrículas', EXPIRING, BY_PLAN]);
-  await expect(card(page, 'Pagamentos')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Pagamentos', exact: true })).toHaveCount(0);
-  // o link do menu também não existe para ela
-  await expect(page.getByRole('link', { name: 'Pagamentos', exact: true })).toHaveCount(0);
 });
 
 test('load_failure_500_and_403_shows_retry_keeps_greeting_and_menu_and_retry_shows_the_cards', async ({ page, api }) => {
@@ -226,32 +213,13 @@ test('anonymous_home_redirects_to_login_without_dashboard_request', async ({ pag
   expect(dashboardRequests(api)).toHaveLength(0);
 });
 
-test('admin_and_hr_finance_see_five_cards_in_order', async ({ page, api }) => {
-  for (const role of ['admin', 'hr_finance'] as const) {
-    serveDashboard(api, role);
-    expect(Object.keys(dashboardFor(role)).sort(), role).toEqual(['enrollments', 'payments', 'students', 'today']);
-
-    await page.goto('/');
-
-    await expect(card(page, 'Alunos'), role).toBeVisible();
-    expect(await cardTitles(page), role).toEqual([
-      'Alunos',
-      'Matrículas',
-      'Vencimentos nos próximos 7 dias',
-      'Pagamentos',
-      'Matrículas ativas por plano',
-    ]);
-    await expect(page.getByRole('region'), role).toHaveCount(5);
-  }
-});
-
 test('cards_follow_the_response_keys_not_the_session_role', async ({ page, api }) => {
-  // sessão de `admin`, resposta sem `payments`
+  // sessão de `admin`, resposta sem `payments` (a da Recepção, com `checkIns`)
   serveDashboard(api, 'admin', dashboardFor('reception'));
   await page.goto('/');
-  for (const title of ['Alunos', 'Matrículas', EXPIRING, BY_PLAN]) await expect(card(page, title), title).toBeVisible();
+  for (const title of ['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN]) await expect(card(page, title), title).toBeVisible();
   await expect(card(page, 'Pagamentos')).toHaveCount(0);
-  expect(await cardTitles(page)).toEqual(['Alunos', 'Matrículas', EXPIRING, BY_PLAN]);
+  expect(await cardTitles(page)).toEqual(['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN]);
 
   // sessão de `admin`, resposta sem `enrollments` e sem `payments`
   serveDashboard(api, 'admin', dashboardFor('instructor'));
@@ -291,9 +259,88 @@ test('home_requests_the_dashboard_once_and_no_other_data_route_for_four_roles', 
 
     const requests = dashboardRequests(api);
     expect(requests.map((request) => `${request.method} ${request.path}?${request.query}`), role).toEqual(['GET /api/dashboard?']);
-    for (const prefix of ['/api/payments', '/api/students', '/api/plans']) {
+    for (const prefix of ['/api/payments', '/api/students', '/api/plans', '/api/check-ins']) {
       expect(api.requests.filter((request) => request.path.startsWith(prefix)), `${role}: ${prefix}`).toHaveLength(0);
     }
   }
+  expect(ALL_ROLES).toHaveLength(4);
+});
+
+test('check_ins_card_count_zero_and_link_to_the_report', async ({ page, api }) => {
+  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: { count: 13 } })));
+
+  await page.goto('/');
+
+  const checkIns = card(page, CHECK_INS);
+  await expect(checkIns).toBeVisible();
+  await expect(checkIns.getByText('13', { exact: true })).toBeVisible();
+  await expect(checkIns.getByRole('link', { name: 'Ver presenças de hoje', exact: true })).toHaveAttribute('href', '/check-ins');
+  await expect(checkIns.getByRole('link')).toHaveCount(1);
+
+  // contagem zero é o número `0`, não um vazio
+  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: { count: 0 } })));
+  await page.goto('/');
+  await expect(card(page, CHECK_INS).getByText('0', { exact: true })).toBeVisible();
+  await expect(card(page, CHECK_INS).getByText('13', { exact: true })).toHaveCount(0);
+});
+
+test('six_cards_in_order_and_check_ins_card_follows_its_key', async ({ page, api }) => {
+  serveDashboard(api, 'admin', dashboardOf());
+  expect(Object.keys(dashboardOf()).sort()).toEqual(['checkIns', 'enrollments', 'payments', 'students', 'today']);
+
+  await page.goto('/');
+
+  await expect(card(page, 'Alunos')).toBeVisible();
+  expect(await cardTitles(page)).toEqual([
+    'Alunos',
+    'Check-ins de hoje',
+    'Matrículas',
+    'Vencimentos nos próximos 7 dias',
+    'Pagamentos',
+    'Matrículas ativas por plano',
+  ]);
+  await expect(page.getByRole('region')).toHaveCount(6);
+
+  // sem `checkIns`, o card some e os outros mantêm a ordem
+  const withoutCheckIns = dashboardOf();
+  delete withoutCheckIns.checkIns;
+  serveDashboard(api, 'admin', withoutCheckIns);
+  await page.goto('/');
+  await expect(card(page, 'Alunos')).toBeVisible();
+  expect(await cardTitles(page)).toEqual(['Alunos', 'Matrículas', EXPIRING, 'Pagamentos', BY_PLAN]);
+  await expect(card(page, CHECK_INS)).toHaveCount(0);
+
+  // a chave decide, não o perfil da sessão: `hr_finance` com `checkIns` na resposta vê o card
+  serveDashboard(api, 'hr_finance', dashboardOf());
+  await page.goto('/');
+  await expect(card(page, CHECK_INS)).toBeVisible();
+});
+
+test('cards_by_role_six_five_five_one', async ({ page, api }) => {
+  const expected: Record<string, string[]> = {
+    admin: CARD_TITLES,
+    reception: ['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN],
+    hr_finance: ['Alunos', 'Matrículas', EXPIRING, 'Pagamentos', BY_PLAN],
+    instructor: ['Alunos'],
+  };
+
+  for (const role of ALL_ROLES) {
+    serveDashboard(api, role);
+
+    await page.goto('/');
+
+    await expect(card(page, 'Alunos'), role).toBeVisible();
+    expect(await cardTitles(page), role).toEqual(expected[role]);
+    await expect(page.getByRole('region'), role).toHaveCount(expected[role]!.length);
+    for (const title of CARD_TITLES.filter((title) => !expected[role]!.includes(title))) {
+      await expect(card(page, title), `${role}: ${title}`).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: title, exact: true }), `${role}: ${title}`).toHaveCount(0);
+    }
+  }
+  // a Recepção não tem o link "Pagamentos" no menu
+  serveDashboard(api, 'reception');
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Pagamentos', exact: true })).toHaveCount(0);
+  expect(Object.values(expected).map((titles) => titles.length)).toEqual([6, 5, 5, 1]);
   expect(ALL_ROLES).toHaveLength(4);
 });

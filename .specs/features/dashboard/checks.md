@@ -298,6 +298,16 @@ Uma linha para a rota da `Surface`, com os status como membros; depois a door, o
 - Decisões que o plano deixa fora de AC e que nenhum check afirma: o que a tela faz com um `200` fora do contrato; a leitura única do relógio dentro de uma resposta (decisão 2 da Intent); o `403 forbidden`, que não tem quem o provoque (decisão 3); o que a rota responde a uma query desconhecida (não há entrada a validar, e o repositório ignora o que não declara); quantas consultas o módulo faz ao banco
 - No other check claims more than the cases its proof exercises
 
+> **Nota da `check-in` (#11), 2026-10-16.** A door 4 de lá (AD-074) dá a chave `checkIns` a `admin` e `reception`, e seis checks daqui deixam de valer como escritos. Nenhum é editado; cada um passa a ser provado pelo check de `features/check-in/checks.md` que o substitui:
+> - C2, a parte de `admin` (quatro chaves): C42 de lá, cinco chaves. A parte de `hr_finance` segue valendo como está.
+> - C3 (`reception` com três chaves): C43 de lá, quatro chaves, com `checkIns` e sem `payments`.
+> - C42 (`reception` com quatro cards): C76 de lá, cinco cards, sem "Pagamentos".
+> - C46, o membro `checkIns` como chave a mais no topo: C83 e C101 de lá; `checkIns` passa a ser aceita e a chave a mais do topo é `attendance`. As outras recusas seguem.
+> - C52 (cinco cards de `admin` e `hr_finance`, na ordem): C75 e C76 de lá, seis cards para `admin` com "Check-ins de hoje" em segundo, cinco para `hr_finance`.
+> - C58, a parte que lista as chaves do `reception`: C105 de lá. O resto do caso segue.
+>
+> C4 e a parte de `hr_finance` da C2 seguem valendo. Os testes `reception_sees_four_cards_without_payments` e `admin_and_hr_finance_see_five_cards_in_order` de `dashboard.spec.ts` saíram, trocados por `cards_by_role_six_five_five_one` e `six_cards_in_order_and_check_ins_card_follows_its_key`; o primeiro leva junto a ausência do link "Pagamentos" no menu da Recepção.
+
 ## Test policy
 
 As linhas de `features/auth-rbac/checks.md`, `alunos`, `planos-matriculas` e `pagamentos` seguem valendo e respondem as duas perguntas para o que esta feature reaproveita: a rota que decide, alcançada por HTTP, com o corte por perfil (como `ficha_instructor_three_keys_only`); a conta pura com a prova na fronteira; o valor que depende do dia, nos dois lados da virada; o filtro e a ordem por um valor calculado, com a comparação entre duas rotas; a tela contra a `FakeApi`; a stack lida por `psql`. Uma situação nova fica sem resposta e ganha linha:

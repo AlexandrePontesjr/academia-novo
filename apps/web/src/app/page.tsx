@@ -53,7 +53,7 @@ const planLabel = (plan: Plan) => `${plan.name} · ${PERIOD_LABELS[plan.period]}
 
 /** Os cards seguem as chaves da resposta, não o perfil da sessão: quem corta é a API (door 1). */
 function Cards({ dashboard }: { dashboard: DashboardResponse }) {
-  const { students, enrollments, payments } = dashboard;
+  const { students, enrollments, payments, checkIns } = dashboard;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Card id="card-students" title="Alunos">
@@ -68,6 +68,14 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
           Ver alunos
         </Link>
       </Card>
+      {checkIns && (
+        <Card id="card-check-ins" title="Check-ins de hoje">
+          <p className="text-2xl font-semibold">{checkIns.count}</p>
+          <Link href="/check-ins" prefetch={false} className={`${LINK} text-sm`}>
+            Ver presenças de hoje
+          </Link>
+        </Card>
+      )}
       {enrollments && (
         <Card id="card-enrollments" title="Matrículas">
           <Counts
