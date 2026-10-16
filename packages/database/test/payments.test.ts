@@ -156,13 +156,15 @@ test('payments_one_alive_idx_is_the_only_unique_index_besides_the_key_and_is_par
 });
 
 test('migration_0009_adds_only_payments_rewritten_in_place_without_a_0010_and_keeps_rows_and_extensions', async () => {
-  // a `0009` é a décima entrada do diário e não há `0010`
+  // a `0009` é a décima entrada do diário, e nenhuma migração depois dela toca `payments` (a `0010`
+  // da check-in, AD-071, cria só `check_ins`): a reescrita no lugar não tem correção que a desfaça
   const migrations = join(repoRoot, 'packages/database/migrations');
   const journal = JSON.parse(readFileSync(join(migrations, 'meta/_journal.json'), 'utf8')) as { entries: Array<{ idx: number; tag: string }> };
-  expect(journal.entries).toHaveLength(10);
   expect(journal.entries[9]).toMatchObject({ idx: 9, tag: '0009_payments' });
-  expect(readdirSync(migrations).filter((name) => name.startsWith('0010'))).toEqual([]);
-  expect(existsSync(join(migrations, 'meta/0010_snapshot.json'))).toBe(false);
+  const later = journal.entries.filter((entry) => entry.idx > 9);
+  expect(later.map((entry) => entry.tag)).toEqual(readdirSync(migrations).filter((name) => /^\d{4}_/.test(name) && name > '0009_payments.sql').map((name) => name.replace(/\.sql$/, '')));
+  for (const entry of later) expect(readFileSync(join(migrations, `${entry.tag}.sql`), 'utf8'), entry.tag).not.toMatch(/payments/i);
+  expect(existsSync(join(migrations, 'meta/0009_snapshot.json'))).toBe(true);
 
   // uma pasta de migrações que para na `0008`, num banco à parte do mesmo servidor
   const until0008 = mkdtempSync(join(tmpdir(), 'migrations-0008-'));
@@ -170,7 +172,7 @@ test('migration_0009_adds_only_payments_rewritten_in_place_without_a_0010_and_ke
   const journalPath = join(until0008, 'meta/_journal.json');
   const fullJournal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: Array<{ idx: number; tag: string }> };
   const dropped = fullJournal.entries.filter((entry) => entry.idx > 8);
-  expect(dropped.map((entry) => entry.tag)).toEqual(['0009_payments']);
+  expect(dropped.map((entry) => entry.tag)).toContain('0009_payments');
   for (const entry of dropped) rmSync(join(until0008, `${entry.tag}.sql`));
   writeFileSync(journalPath, JSON.stringify({ ...fullJournal, entries: fullJournal.entries.filter((entry) => entry.idx <= 8) }));
 
@@ -226,10 +228,13 @@ test('migration_0009_adds_only_payments_rewritten_in_place_without_a_0010_and_ke
       expect(await columnsOfTables(tablesBefore)).toEqual(columnsBefore);
       expect({ students: await rowsOf('students'), plans: await rowsOf('plans'), enrollments: await rowsOf('enrollments') }).toEqual(before);
     };
-    migrate(url.toString());
+    // só até a `0009`: as migrações seguintes não são o que este teste mede
+    writeFileSync(journalPath, JSON.stringify({ ...fullJournal, entries: fullJournal.entries.filter((entry) => entry.idx <= 9) }));
+    cpSync(join(migrations, '0009_payments.sql'), join(until0008, '0009_payments.sql'));
+    migrate(url.toString(), until0008);
     await onlyPaymentsAdded();
     // uma segunda execução não muda nada
-    migrate(url.toString());
+    migrate(url.toString(), until0008);
     await onlyPaymentsAdded();
   } finally {
     await other.end().catch(() => undefined);

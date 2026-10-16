@@ -370,3 +370,23 @@ export const payments = pgTable(
   },
   (table) => [uniqueIndex('payments_one_alive_idx').on(table.enrollmentId).where(sql`${table.voidedAt} is null`)],
 );
+
+// Presenças (check-in, door 1): a chegada de um aluno num dia de `America/Sao_Paulo`, registrada por
+// um usuário. `day` é gravado pela API a partir de `saoPauloToday()`, nunca derivado de
+// `checked_in_at` pelo banco. Nenhuma rota edita nem apaga uma linha; as chaves estrangeiras não
+// cascateiam, e uma presença por aluno por dia é do índice único.
+export const checkIns = pgTable(
+  'check_ins',
+  {
+    id: id(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id),
+    day: date('day', { mode: 'string' }).notNull(),
+    checkedInAt: instant('checked_in_at').notNull().defaultNow(),
+    checkedInBy: uuid('checked_in_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [uniqueIndex('check_ins_one_per_day_idx').on(table.studentId, table.day)],
+);

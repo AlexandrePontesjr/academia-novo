@@ -214,7 +214,7 @@ test('migration_0005_adds_only_photos_without_tenant_or_owner_columns', async ()
     'users',
     'verifications',
   ];
-  expect(tables.map((row) => row.table_name)).toEqual([...before, 'enrollments', 'payments', 'photos', 'plans', 'staff'].sort());
+  expect(tables.map((row) => row.table_name)).toEqual([...before, 'check_ins', 'enrollments', 'payments', 'photos', 'plans', 'staff'].sort());
 
   const columns = await rows<{ column_name: string }>(
     `select column_name from information_schema.columns where table_schema = 'public' and table_name = 'photos'`,
