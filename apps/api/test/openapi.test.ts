@@ -1,5 +1,7 @@
 import {
   auditLogsQuerySchema,
+  checkInsReportQuerySchema,
+  studentCheckInsQuerySchema,
   changePasswordRequestSchema,
   createEnrollmentRequestSchema,
   createPaymentRequestSchema,
@@ -361,4 +363,51 @@ test('dashboard_path_declared_as_get_without_parameters_or_body', async () => {
   expect(operation.parameters ?? []).toEqual([]);
   expect(operation.requestBody).toBeUndefined();
   expect(Object.keys((operation as unknown as { responses: Record<string, unknown> }).responses)).toEqual(['200']);
+});
+
+test('check_in_paths_and_report_query_parameters_come_from_contract_schema', async () => {
+  const { paths } = await document();
+  const propertiesOf = (schema: z.ZodType) =>
+    JSON.parse(JSON.stringify(z.toJSONSchema(schema).properties)) as Record<string, unknown>;
+
+  // as quatro rotas, e nenhuma outra, sob os dois prefixos
+  expect(Object.keys(paths['/api/students/{id}/check-in-status'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths['/api/students/{id}/check-ins'] ?? {}).sort()).toEqual(['get', 'post']);
+  expect(Object.keys(paths['/api/check-ins'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths).filter((path) => path.includes('check-in')).sort()).toEqual(
+    ['/api/check-ins', '/api/students/{id}/check-in-status', '/api/students/{id}/check-ins'].sort(),
+  );
+
+  // nenhuma recebe corpo: o `POST` também não
+  for (const [method, path] of [
+    ['get', '/api/students/{id}/check-in-status'],
+    ['post', '/api/students/{id}/check-ins'],
+    ['get', '/api/students/{id}/check-ins'],
+    ['get', '/api/check-ins'],
+  ] as const) {
+    expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
+  }
+
+  // a situação e o `POST` não têm parâmetro de query
+  for (const [method, path] of [
+    ['get', '/api/students/{id}/check-in-status'],
+    ['post', '/api/students/{id}/check-ins'],
+  ] as const) {
+    expect((paths[path]?.[method]?.parameters ?? []).filter((parameter) => parameter.in === 'query'), `${method} ${path}`).toEqual([]);
+  }
+
+  // o histórico tem `cursor`, e o relatório `from`, `to` e `cursor`, opcionais e do contrato
+  for (const [path, schema, names] of [
+    ['/api/students/{id}/check-ins', studentCheckInsQuerySchema, ['cursor']],
+    ['/api/check-ins', checkInsReportQuerySchema, ['from', 'to', 'cursor']],
+  ] as const) {
+    const properties = propertiesOf(schema);
+    expect(Object.keys(properties).sort(), path).toEqual([...names].sort());
+    const parameters = (paths[path]?.get?.parameters ?? []).filter((parameter) => parameter.in === 'query');
+    expect(parameters.map((parameter) => parameter.name).sort(), path).toEqual([...names].sort());
+    for (const parameter of parameters) {
+      expect(parameter.required, `${path} ${parameter.name}`).not.toBe(true);
+      expect(parameter.schema, `${path} ${parameter.name}`).toEqual(properties[parameter.name]);
+    }
+  }
 });

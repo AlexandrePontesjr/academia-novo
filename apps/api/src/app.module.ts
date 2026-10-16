@@ -5,6 +5,8 @@ import { AccessDeclarations, AccessGuard } from './access.ts';
 import { AuditLogsController } from './audit/audit-logs.controller.ts';
 import { AuditLogsService } from './audit/audit-logs.service.ts';
 import { createAuth } from './auth.ts';
+import { CheckInsController, StudentCheckInsController } from './check-ins/check-ins.controller.ts';
+import { CheckInsService } from './check-ins/check-ins.service.ts';
 import { AuthController } from './auth/auth.controller.ts';
 import { LoginThrottle } from './auth/throttle.ts';
 import { ConsentsController } from './consents/consents.controller.ts';
@@ -63,6 +65,8 @@ export class AppModule implements OnApplicationShutdown {
         StudentPaymentsController,
         PaymentsController,
         DashboardController,
+        StudentCheckInsController,
+        CheckInsController,
         OpenApiController,
       ],
       providers: [
@@ -116,6 +120,11 @@ export class AppModule implements OnApplicationShutdown {
           provide: StudentPaymentsService,
           useFactory: (database: Database) => new StudentPaymentsService(database.db),
           inject: [DATABASE],
+        },
+        {
+          provide: CheckInsService,
+          useFactory: (database: Database, photos: PhotosService) => new CheckInsService(database.db, photos),
+          inject: [DATABASE, PhotosService],
         },
         {
           provide: DashboardService,
