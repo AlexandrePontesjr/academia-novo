@@ -1098,7 +1098,7 @@ describe('stack de pé', () => {
     expect(third.enrollments.active).toBe(second.enrollments.active);
 
     // a recepção não recebe `payments`, e o instrutor só `today` e `students`
-    expect(Object.keys(await dashboard(reception)).sort()).toEqual(['enrollments', 'students', 'today']);
+    expect(Object.keys(await dashboard(reception)).sort()).toEqual(['checkIns', 'enrollments', 'students', 'today']);
     expect(Object.keys(await dashboard(instructor)).sort()).toEqual(['students', 'today']);
     const anonymous = await fetch(`${stack.webOrigin}/api/dashboard`, { headers: { Origin: stack.webOrigin } });
     expect(anonymous.status).toBe(401);
@@ -1116,6 +1116,142 @@ describe('stack de pé', () => {
 
     // nenhuma leitura e nenhuma abertura de página deixou linha na trilha
     expect(auditRows()).toBe(afterWrites);
+  }, 300_000);
+
+  test('check_in_through_web_by_reception_with_duplicate_refused_history_report_and_dashboard_count_without_audit_rows', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** Um usuário do perfil dado, criado pela CLI da stack, e a sessão dele pela origem do web. */
+    const account = async (role: 'hr_finance' | 'reception' | 'instructor', email: string, password: string) => {
+      const created = stack.compose(
+        `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name ${role}`,
+      );
+      expect(created.status, created.output).toBe(0);
+      // a CLI cria `admin`, e `admin` sem 2FA só alcança as rotas de cadastro do 2FA
+      psql(`update users set role = '${role}' where email = '${email}'`);
+      const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      return login.headers
+        .getSetCookie()
+        .map((setCookie) => setCookie.split(';')[0])
+        .join('; ');
+    };
+    const headersOf = (cookie: string, body = false) => ({
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      ...(body && { 'Content-Type': 'application/json' }),
+    });
+    const post = (path: string, cookie: string, body?: unknown) =>
+      fetch(`${stack.webOrigin}${path}`, {
+        method: 'POST',
+        headers: headersOf(cookie, body !== undefined),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    const get = (path: string, cookie: string) => fetch(`${stack.webOrigin}${path}`, { headers: headersOf(cookie) });
+    const read = async <T>(path: string, cookie: string) => {
+      const response = await get(path, cookie);
+      expect(response.status, path).toBe(200);
+      return (await response.json()) as T;
+    };
+    const open = async (path: string, cookie: string) => {
+      const page = await get(path, cookie);
+      expect(page.status, path).toBe(200);
+      return page.text();
+    };
+    const auditRows = () => psql('select count(*) from audit_logs');
+    const saoPauloDay = () => psql(`select (now() at time zone 'America/Sao_Paulo')::date`);
+    interface Report {
+      total: number;
+      items: Array<{ id: string }>;
+    }
+
+    // a migração 0010 foi aplicada ao subir, pelo papel do `compose.yaml`: a tabela, o índice único e nenhuma extensão nova
+    expect(
+      psql(
+        `select string_agg(column_name, ',' order by column_name) from information_schema.columns where table_schema = 'public' and table_name = 'check_ins'`,
+      ),
+    ).toBe('checked_in_at,checked_in_by,day,id,student_id');
+    expect(psql(`select indexdef from pg_indexes where tablename = 'check_ins' and indexname = 'check_ins_one_per_day_idx'`)).toMatch(
+      /CREATE UNIQUE INDEX check_ins_one_per_day_idx ON public\.check_ins USING btree \(student_id, day\)/,
+    );
+    expect(psql(`select string_agg(extname, ',' order by extname) from pg_extension`)).toBe('btree_gist,pg_trgm,plpgsql');
+
+    const receptionEmail = 'recepcao.do.check-in@exemplo.com';
+    const hr = await account('hr_finance', 'financeiro.do.check-in@exemplo.com', 'senha-da-stack-fin-5');
+    const reception = await account('reception', receptionEmail, 'senha-da-stack-rec-6');
+    const instructor = await account('instructor', 'instrutor.do.check-in@exemplo.com', 'senha-da-stack-ins-5');
+
+    // um aluno matriculado a partir de hoje, em `America/Sao_Paulo`
+    const student = await post('/api/students', reception, {
+      name: 'Aluno do Balcão na Stack',
+      cpf: '987.654.321-00',
+      birthDate: '2000-01-01',
+      phone: '(11) 91234-5678',
+    });
+    expect(student.status, await student.clone().text()).toBe(201);
+    const studentId = ((await student.json()) as { id: string }).id;
+    const createdPlan = await post('/api/plans', hr, { name: 'Mensal do Balcão', period: 'monthly', priceCents: 9990 });
+    expect(createdPlan.status, await createdPlan.clone().text()).toBe(201);
+    const planId = ((await createdPlan.json()) as { id: string }).id;
+    const enrolled = await post(`/api/students/${studentId}/enrollments`, hr, { planId, startsAt: saoPauloDay() });
+    expect(enrolled.status, await enrolled.clone().text()).toBe(201);
+
+    // daqui em diante nada grava na trilha: nem a presença, nem as leituras, nem as páginas
+    const beforeCheckIn = auditRows();
+    const reportBefore = await read<Report>('/api/check-ins', reception);
+    const countBefore = (await read<{ checkIns: { count: number } }>('/api/dashboard', reception)).checkIns.count;
+
+    const status = await read<{ access: string; blockReasons: string[] }>(`/api/students/${studentId}/check-in-status`, reception);
+    expect(status.access).toBe('allowed');
+    expect(status.blockReasons).toEqual([]);
+
+    const dayBefore = saoPauloDay();
+    const registered = await post(`/api/students/${studentId}/check-ins`, reception);
+    const dayAfter = saoPauloDay();
+    expect(registered.status, await registered.clone().text()).toBe(201);
+    const checkIn = (await registered.json()) as { id: string; day: string; checkedInAt: string };
+    expect(Object.keys(checkIn).sort()).toEqual(['checkedInAt', 'day', 'id']);
+    const repeated = await post(`/api/students/${studentId}/check-ins`, reception);
+    expect(repeated.status).toBe(409);
+    expect(((await repeated.json()) as { code: string }).code).toBe('already_checked_in');
+
+    // a linha lida do banco da stack: o dia de São Paulo e o autor da sessão
+    expect(psql(`select count(*) from check_ins where student_id = '${studentId}'`)).toBe('1');
+    const [day, author] = psql(`select day || ',' || checked_in_by from check_ins where id = '${checkIn.id}'`).split(',');
+    expect([dayBefore, dayAfter]).toContain(day);
+    expect(checkIn.day).toBe(day);
+    expect(author).toBe(psql(`select id from users where email = '${receptionEmail}'`));
+
+    // o histórico, o relatório e o painel trazem a presença
+    const history = await read<{ items: Array<{ id: string }> }>(`/api/students/${studentId}/check-ins`, reception);
+    expect(history.items.map((item) => item.id)).toEqual([checkIn.id]);
+    const reportAfter = await read<Report>('/api/check-ins', reception);
+    expect(reportAfter.items.map((item) => item.id)).toContain(checkIn.id);
+    expect(reportAfter.total).toBe(reportBefore.total + 1);
+    expect((await read<{ checkIns: { count: number } }>('/api/dashboard', reception)).checkIns.count).toBe(countBefore + 1);
+
+    // o instrutor não vê a situação
+    const denied = await get(`/api/students/${studentId}/check-in-status`, instructor);
+    expect(denied.status).toBe(403);
+    expect(((await denied.json()) as { code: string }).code).toBe('forbidden');
+
+    // a página do balcão pela origem do web
+    const desk = await open('/check-in', reception);
+    expect(desk).toMatch(/<h2[^>]*>Check-in<\/h2>/);
+    expect(desk).toContain('Nome ou CPF');
+    const refused = await open('/check-in', instructor);
+    expect(refused).toContain('Você não tem permissão para acessar esta página.');
+    expect(refused).not.toContain('Nome ou CPF');
+
+    expect(auditRows()).toBe(beforeCheckIn);
   }, 300_000);
 
   test('health_storage_up_then_down_when_storage_stops', async () => {
