@@ -48,8 +48,12 @@ export type DashboardEnrollments = z.infer<typeof dashboardEnrollmentsSchema>;
 export const dashboardPaymentsSchema = z.strictObject({ pending: countSchema, overdue: countSchema });
 export type DashboardPayments = z.infer<typeof dashboardPaymentsSchema>;
 
+/** O card "Check-ins de hoje" (check-in, door 4): as presenças de `day` igual ao `today` da resposta. */
+export const dashboardCheckInsSchema = z.strictObject({ count: countSchema });
+export type DashboardCheckIns = z.infer<typeof dashboardCheckInsSchema>;
+
 /**
- * A resposta de `GET /api/dashboard` (door 1): uma chave por card. `enrollments` e `payments` só
+ * A resposta de `GET /api/dashboard` (door 1): uma chave por card. `enrollments`, `payments` e `checkIns` só
  * existem para o perfil que os lê - a chave sai do objeto, nunca vira `null` (AD-033). Card novo é
  * chave nova, declarada aqui.
  */
@@ -58,5 +62,6 @@ export const dashboardResponseSchema = z.strictObject({
   students: dashboardStudentsSchema,
   enrollments: dashboardEnrollmentsSchema.optional(),
   payments: dashboardPaymentsSchema.optional(),
+  checkIns: dashboardCheckInsSchema.optional(),
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;

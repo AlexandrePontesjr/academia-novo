@@ -120,7 +120,7 @@ test('dashboard_schema_accepts_three_profile_shapes_and_refuses_each_missing_key
 
   // uma chave a mais em cada objeto
   const extra: Array<[object: Path, key: string]> = [
-    [[], 'checkIns'],
+    [[], 'attendance'],
     [['students'], 'total'],
     [['enrollments'], 'expired'],
     [['enrollments', 'expiringSoon'], 'total'],
@@ -166,5 +166,32 @@ test('dashboard_schema_accepts_three_profile_shapes_and_refuses_each_missing_key
       target[key] = bad;
       expect(accepts(body), `${path.join('.')}.${key} igual a ${JSON.stringify(bad)}`).toBe(false);
     }
+  }
+});
+
+test('dashboard_schema_accepts_check_ins_for_admin_and_reception_shapes_and_refuses_bad_check_ins', () => {
+  const { today, students, enrollments, payments } = full();
+  const checkIns = { count: 13 };
+
+  // as quatro formas por perfil
+  expect(accepts({ today, students, enrollments, payments, checkIns }), 'admin, cinco chaves').toBe(true);
+  expect(accepts({ today, students, enrollments, payments }), 'hr_finance, quatro chaves').toBe(true);
+  expect(accepts({ today, students, enrollments, checkIns }), 'reception, quatro chaves com checkIns e sem payments').toBe(true);
+  expect(accepts({ today, students }), 'instructor, duas chaves').toBe(true);
+
+  // `count` igual a zero
+  expect(accepts({ today, students, enrollments, checkIns: { count: 0 } }), 'count 0').toBe(true);
+
+  // `null`, sem `count`, chave a mais e contagens que não são inteiros não negativos
+  const refused: Array<[label: string, value: unknown]> = [
+    ['null', null],
+    ['sem count', {}],
+    ['chave a mais', { count: 1, distinct: 1 }],
+    ['count -1', { count: -1 }],
+    ['count 1.5', { count: 1.5 }],
+    ['count "3"', { count: '3' }],
+  ];
+  for (const [label, value] of refused) {
+    expect(accepts({ today, students, enrollments, checkIns: value }), label).toBe(false);
   }
 });

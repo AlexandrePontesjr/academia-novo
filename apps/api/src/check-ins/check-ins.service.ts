@@ -174,15 +174,6 @@ export class CheckInsService {
     return { from, to, total, ...pageOf(rows, (row) => ({ ...row, checkedInAt: row.checkedInAt.toISOString() })) };
   }
 
-  /** As presenças de `day` igual a `today`: o card do painel (door 4). */
-  async countOn(today: string): Promise<number> {
-    const [{ count }] = (await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(checkIns)
-      .where(eq(checkIns.day, today))) as [{ count: number }];
-    return count;
-  }
-
   /** Os períodos não cancelados do aluno, com o plano de agora. */
   private periodsOf(db: Pick<Database['db'], 'select'>, studentId: string) {
     return db

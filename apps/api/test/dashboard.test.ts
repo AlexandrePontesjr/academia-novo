@@ -1,6 +1,7 @@
-import { type DashboardResponse, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role } from '@academia/contracts';
+import { type CheckInsReport, type DashboardResponse, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role } from '@academia/contracts';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { auditCount } from './support/audit.ts';
+import { insertCheckIn } from './support/check-ins.ts';
 import type { Client } from './support/client.ts';
 import { insertPayment } from './support/payments.ts';
 import { NOON, clockAt, insertEnrollment, insertPlan, listEnrollments } from './support/plans.ts';
@@ -17,6 +18,8 @@ let stack: Stack;
 let sessions: Record<Role, Client>;
 /** O "Mensal" de cada caso. */
 let mensal: string;
+/** O autor das presenças postas por SQL. */
+let authorId: string;
 let counter = 12_000;
 const next = () => (counter += 1);
 
@@ -26,6 +29,7 @@ beforeAll(async () => {
   clockAt(NOON);
   sessions = {} as Record<Role, Client>;
   for (const role of ROLES) sessions[role] = (await stack.session(role)).client;
+  authorId = (await stack.seed({ role: 'reception' })).id;
 }, 180_000);
 
 // cada caso parte do banco sem alunos, períodos, pagamentos nem planos, em 7 de outubro de 2026
@@ -42,6 +46,7 @@ afterAll(async () => {
 
 /** As contagens são do banco inteiro: nenhum caso herda linha de outro. */
 async function emptyTheGym() {
+  await stack.query('delete from check_ins');
   await stack.query('delete from payments');
   await stack.query('delete from enrollments');
   await stack.query('delete from students');
@@ -108,6 +113,9 @@ const enrollmentsCard = async (client: Client = sessions.reception) => (await da
 /** `payments` como o financeiro o lê. */
 const paymentsCard = async (client: Client = sessions.hr_finance) => (await dashboard(client)).payments!;
 
+/** Uma presença de um aluno novo naquele dia, por SQL. */
+const checkInOn = async (day: string) => insertCheckIn(stack, { studentId: await newStudent(), day, checkedInBy: authorId });
+
 const ids = (items: Array<{ enrollmentId: string }>) => items.map((item) => item.enrollmentId);
 const sumOf = (byPlan: Array<{ active: number }>) => byPlan.reduce((sum, item) => sum + item.active, 0);
 
@@ -159,9 +167,9 @@ test('four_roles_200_with_today_in_sao_paulo', async () => {
 test('top_level_keys_exactly_by_role_four_roles', async () => {
   await newPeriod();
   const expected: Record<Role, string[]> = {
-    admin: ['enrollments', 'payments', 'students', 'today'],
+    admin: ['checkIns', 'enrollments', 'payments', 'students', 'today'],
     hr_finance: ['enrollments', 'payments', 'students', 'today'],
-    reception: ['enrollments', 'students', 'today'],
+    reception: ['checkIns', 'enrollments', 'students', 'today'],
     instructor: ['students', 'today'],
   };
 
@@ -176,6 +184,10 @@ test('top_level_keys_exactly_by_role_four_roles', async () => {
   const instructor = (await dashboard(sessions.instructor)) as Record<string, unknown>;
   expect('enrollments' in instructor).toBe(false);
   expect('payments' in instructor).toBe(false);
+  // `checkIns` só para quem lê as rotas de presença
+  expect('checkIns' in instructor).toBe(false);
+  const hrFinance = (await dashboard(sessions.hr_finance)) as Record<string, unknown>;
+  expect('checkIns' in hrFinance).toBe(false);
 });
 
 test('anonymous_401_unauthorized', async () => {
@@ -709,7 +721,8 @@ test('reading_the_dashboard_changes_no_row_of_four_tables_across_the_turn', asyn
   for (const instant of [BEFORE_TURN, AFTER_TURN]) {
     for (const role of ROLES) clients.push([instant, role, await sessionAt(instant, role)]);
   }
-  const TABLES = ['students', 'enrollments', 'plans', 'payments'] as const;
+  await checkInOn('2026-10-07');
+  const TABLES = ['students', 'enrollments', 'plans', 'payments', 'check_ins'] as const;
   const snapshot = async () => {
     const rows: Record<string, string[]> = {};
     for (const table of TABLES) {
@@ -728,4 +741,47 @@ test('reading_the_dashboard_changes_no_row_of_four_tables_across_the_turn', asyn
 
   expect(todays).toEqual([...Array<string>(4).fill('2026-10-07'), ...Array<string>(4).fill('2026-10-08')]);
   expect(await snapshot()).toEqual(before);
+});
+
+test('check_ins_count_is_todays_rows_for_admin_and_reception_and_zero_when_none', async () => {
+  for (const role of ['admin', 'reception'] as const) {
+    expect((await dashboard(sessions[role])).checkIns, `${role} sem presença`).toEqual({ count: 0 });
+  }
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-06');
+  await checkInOn('2026-10-08');
+
+  for (const role of ['admin', 'reception'] as const) {
+    expect((await dashboard(sessions[role])).checkIns, role).toEqual({ count: 2 });
+  }
+});
+
+test('check_ins_count_turns_at_sao_paulo_midnight', async () => {
+  await checkInOn('2026-10-07');
+
+  const before = await dashboard(await sessionAt(BEFORE_TURN, 'reception'));
+  expect([before.today, before.checkIns]).toEqual(['2026-10-07', { count: 1 }]);
+
+  const after = await dashboard(await sessionAt(AFTER_TURN, 'reception'));
+  expect([after.today, after.checkIns]).toEqual(['2026-10-08', { count: 0 }]);
+});
+
+test('check_ins_count_and_report_total_agree_across_sao_paulo_midnight', async () => {
+  await checkInOn('2026-10-06');
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-08');
+
+  for (const instant of [NOON, BEFORE_TURN, AFTER_TURN]) {
+    for (const role of ['admin', 'reception'] as const) {
+      const client = await sessionAt(instant, role);
+      const { checkIns } = await dashboard(client);
+      const response = await client.get('/api/check-ins');
+      expect(response.status, `${instant}, ${role}`).toBe(200);
+      const { total } = (await response.json()) as CheckInsReport;
+
+      expect(checkIns!.count, `${instant}, ${role}`).toBe(total);
+    }
+  }
 });

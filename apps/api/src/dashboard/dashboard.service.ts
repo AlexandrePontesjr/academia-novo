@@ -12,13 +12,16 @@ import {
 } from '@academia/contracts';
 import { type Database, eq, isNull, schema, sql } from '@academia/database';
 
-const { enrollments, payments, plans, students } = schema;
+const { checkIns, enrollments, payments, plans, students } = schema;
 
 /** Quem lê o card de matrículas: quem já lê as matrículas da ficha (door 1). */
 export const readsEnrollments = (role: Role) => role !== 'instructor';
 
 /** Quem lê o card de pagamentos: quem já lê `GET /api/payments`. */
 export const readsPayments = (role: Role) => role === 'admin' || role === 'hr_finance';
+
+/** Quem lê o card de check-ins: quem já lê as rotas de presença (check-in, door 4). */
+export const readsCheckIns = (role: Role) => role === 'admin' || role === 'reception';
 
 /** O painel: a leitura agregada do dia, cortada pelo perfil. Só lê, e não grava na trilha (door 1). */
 export class DashboardService {
@@ -36,7 +39,14 @@ export class DashboardService {
     const periods = await this.periods();
     response.enrollments = enrollmentsOf(periods, today);
     if (readsPayments(role)) response.payments = paymentsOf(periods, await this.alive(), today);
+    if (readsCheckIns(role)) response.checkIns = { count: await this.checkInsOn(today) };
     return response;
+  }
+
+  /** As presenças de `day` igual ao `today` da resposta: o dia vem da API, não do relógio do banco. */
+  private async checkInsOn(today: string): Promise<number> {
+    const [row] = await this.db.select({ count: sql<number>`count(*)::int` }).from(checkIns).where(eq(checkIns.day, today));
+    return row!.count;
   }
 
   /** Alunos por `status`, que é guardado (AD-030); a situação sem aluno fica em `0`. */
