@@ -210,6 +210,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: Swept AD-020 (api)
 - last seen: 2026-10-09T21:04:18Z
 
+### L-034 - When a destructive operation removes objects from storage before its transaction commits, state what the bucket holds after a mid-way failure instead of asking for it to stay identical, and prove the retry on every failure point
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: privacidade
+- evidence: C21, C34 - .specs/features/privacidade/checks.md (Test policy, operação destrutiva) (api)
+- last seen: 2026-10-17T18:05:16Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

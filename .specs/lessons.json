@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 34,
+  "next_id": 35,
   "lessons": [
     {
       "id": "L-001",
@@ -600,6 +600,24 @@
       ],
       "created": "2026-10-09T21:04:18Z",
       "last_seen": "2026-10-09T21:04:18Z"
+    },
+    {
+      "id": "L-034",
+      "key": "spec_precision_gap::when a destructive operation removes objects from storage before its transaction commits state what the bucket holds after a mid way failure instead of asking for it to stay identical and prove the retry on every failure point",
+      "text": "When a destructive operation removes objects from storage before its transaction commits, state what the bucket holds after a mid-way failure instead of asking for it to stay identical, and prove the retry on every failure point",
+      "signal": "spec_precision_gap",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "privacidade"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C21, C34 - .specs/features/privacidade/checks.md (Test policy, operação destrutiva) (api)"
+      ],
+      "created": "2026-10-17T18:05:16Z",
+      "last_seen": "2026-10-17T18:05:16Z"
     }
   ]
 }
