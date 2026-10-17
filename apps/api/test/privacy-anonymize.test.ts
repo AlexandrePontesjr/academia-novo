@@ -1,4 +1,4 @@
-import type { PhotoUrlResponse, Role } from '@academia/contracts';
+import { type PhotoUrlResponse, problemSchema, type Role } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { startApi } from './support/app.ts';
 import { auditCount, written } from './support/audit.ts';
@@ -15,6 +15,7 @@ import {
   subjectRows,
 } from './support/privacy.ts';
 import { problem } from './support/stack.ts';
+import { insertStaff } from './support/staff.ts';
 import { cpfOf, insertStudents, releasedTogether, studentRow, unknownId } from './support/students.ts';
 
 let env: PhotoStack;
@@ -394,4 +395,28 @@ test('signed_photo_url_issued_before_is_404_after', async () => {
   // a URL ainda está dentro do `exp`, mas a foto não existe mais
   expect((await fetch(`${env.stack.api.url}${url}`)).status).toBe(404);
   expect(await auditCount(env.stack)).toBe(before + 1);
+});
+
+test('three_new_codes_are_problem_json_409', async () => {
+  const active = await bareStudent('active');
+  const open = await bareStudent();
+  await period(open, { startsAt: '2026-08-01', endsAt: '2026-08-31' });
+  const linkedUser = await env.stack.seed({ role: 'instructor' });
+  const [linkedStaff] = await insertStaff(env.stack, [
+    { name: `Funcionário Vinculado ${next()}`, cpf: cpfOf(counter), status: 'inactive', userId: linkedUser.id },
+  ]);
+
+  const cases: Array<[code: string, send: () => Promise<Response>]> = [
+    ['subject_not_inactive', () => anonymize(active)],
+    ['subject_has_open_periods', () => anonymizeAtNoon(open)],
+    ['staff_user_linked', () => admin.client.post(`/api/staff/${linkedStaff}/anonymization`)],
+  ];
+  for (const [code, send] of cases) {
+    const response = await send();
+    expect(response.status, code).toBe(409);
+    expect(response.headers.get('content-type'), code).toMatch(/^application\/problem\+json/);
+    const body = await response.json();
+    expect(problemSchema.safeParse(body).success, code).toBe(true);
+    expect(body, code).toMatchObject({ status: 409, code });
+  }
 });
