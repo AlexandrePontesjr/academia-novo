@@ -447,13 +447,13 @@ describe('stack de pé', () => {
 
   test('photo_replaced_through_web_then_expired_version_purged_on_api_restart', async () => {
     const env = readDotenv(join(stack.dir, '.env'));
-    // a stack sobe sem a variável de retenção: vale o padrão de 30 dias
-    expect(env.PHOTO_VERSION_RETENTION_DAYS).toBeUndefined();
     const psql = (sql: string) => {
       const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
       expect(result.status, result.output).toBe(0);
       return result.output.trim();
     };
+    // os 30 dias vêm da linha de `privacy_settings` que a migração `0011` criou (privacidade, door 4)
+    expect(psql('select photo_version_retention_days from privacy_settings')).toBe('30');
     /** As chaves do bucket da stack sob o prefixo do aluno, relativas a ele. */
     const keysOf = (studentId: string) => {
       const listed = stack.compose(
@@ -546,6 +546,119 @@ describe('stack de pé', () => {
         `select count(*) filter (where user_id is null) || '|' || count(*) from audit_logs where action = 'student.photo_version_purged' and entity_id = '${id}'`,
       ),
     ).toBe('1|1');
+  }, 300_000);
+
+  test('student_exported_and_anonymized_through_web_with_cpf_reused_settings_saved_and_audit_rows', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    /** Todas as chaves do bucket da stack: o bucket sempre existe, então a listagem não falha por prefixo vazio. */
+    const bucketKeys = () => {
+      const listed = stack.compose(
+        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/"`,
+      );
+      expect(listed.status, listed.output).toBe(0);
+      return listed.output.split(/\r?\n/).flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? []);
+    };
+    const keysUnder = (studentId: string) => bucketKeys().filter((key) => key.startsWith(`photos/main/${studentId}/`));
+
+    // a `0011` foi aplicada ao subir, com a configuração inicial, e o container `api` não tem a variável
+    expect(
+      psql(`select coalesce(inactive_student_retention_years::text, 'null') || '|' || photo_version_retention_days from privacy_settings`),
+    ).toBe('null|30');
+    const apiEnv = stack.compose('exec -T api env');
+    expect(apiEnv.status, apiEnv.output).toBe(0);
+    expect(apiEnv.output).not.toContain('PHOTO_VERSION_RETENTION_DAYS');
+
+    // um `admin` com 2FA, pela origem do container `web`
+    const email = 'admin.da.privacidade@exemplo.com';
+    const password = 'senha-da-stack-priv-1';
+    const createdAdmin = stack.compose(`exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${email} --name Privacidade`);
+    expect(createdAdmin.status, createdAdmin.output).toBe(0);
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    // a stack não tem gerador de TOTP: o 2FA do `admin` é posto depois de entrar, como as suítes da API fazem
+    psql(`update users set two_factor_enabled = true where email = '${email}'`);
+    const adminId = psql(`select id from users where email = '${email}'`);
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+    const headers = { Origin: stack.webOrigin, Cookie: cookie, 'User-Agent': 'teste-privacidade/1.0', 'X-Forwarded-For': '203.0.113.51' };
+    const json = { ...headers, 'Content-Type': 'application/json' };
+
+    // cria um aluno com foto e o inativa
+    const cpf = '468.135.792-82';
+    const created = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: json,
+      body: JSON.stringify({ name: 'Aluna da Privacidade', cpf, birthDate: '1995-04-12', phone: '(11) 91234-5678' }),
+    });
+    expect(created.status, await created.clone().text()).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const jpeg = await sharp({ create: { width: 800, height: 1000, channels: 3, background: '#33aa55' } }).jpeg().toBuffer();
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }), 'foto.jpg');
+    const photo = await fetch(`${stack.webOrigin}/api/students/${id}/photo`, { method: 'POST', headers, body: form });
+    expect(photo.status, await photo.clone().text()).toBe(201);
+    expect(keysUnder(id)).toHaveLength(3);
+    const inactivated = await fetch(`${stack.webOrigin}/api/students/${id}`, { method: 'DELETE', headers });
+    expect(inactivated.status).toBe(204);
+
+    // exporta: anexo, e a foto dentro do arquivo
+    const exported = await fetch(`${stack.webOrigin}/api/students/${id}/data-export`, { headers });
+    expect(exported.status, await exported.clone().text()).toBe(200);
+    expect(exported.headers.get('content-disposition')).toBe(`attachment; filename="aluno-${id}.json"`);
+    const body = (await exported.json()) as { photos: Array<{ image: string }> };
+    expect(body.photos).toHaveLength(1);
+    expect(body.photos[0]!.image.startsWith('data:image/webp;base64,')).toBe(true);
+    const image = Buffer.from(body.photos[0]!.image.slice('data:image/webp;base64,'.length), 'base64');
+    expect(image.subarray(0, 4).toString('latin1')).toBe('RIFF');
+    expect(image.subarray(8, 12).toString('latin1')).toBe('WEBP');
+
+    // anonimiza: a linha limpa e o bucket sem chave do aluno, lidos da stack
+    const anonymized = await fetch(`${stack.webOrigin}/api/students/${id}/anonymization`, { method: 'POST', headers });
+    expect(anonymized.status, await anonymized.clone().text()).toBe(204);
+    expect(psql(`select name || '|' || coalesce(cpf, 'null') from students where id = '${id}'`)).toBe('Titular anonimizado|null');
+    expect(keysUnder(id)).toEqual([]);
+
+    // o mesmo CPF entra de novo
+    const again = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: json,
+      body: JSON.stringify({ name: 'Outra Aluna', cpf, birthDate: '1995-04-12', phone: '(11) 91234-5678' }),
+    });
+    expect(again.status, await again.clone().text()).toBe(201);
+
+    // a configuração é gravada
+    const saved = await fetch(`${stack.webOrigin}/api/privacy-settings`, {
+      method: 'PUT',
+      headers: json,
+      body: JSON.stringify({ inactiveStudentRetentionYears: null, photoVersionRetentionDays: 7 }),
+    });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    expect(await saved.json()).toEqual({ inactiveStudentRetentionYears: null, photoVersionRetentionDays: 7 });
+    // a stack segue com o padrão para os testes que vêm depois
+    psql('update privacy_settings set photo_version_retention_days = 30');
+
+    // as três linhas da trilha, com o `admin`
+    expect(
+      psql(
+        `select action from audit_logs where user_id = '${adminId}' and action in ('student.exported', 'student.anonymized', 'privacy.settings_updated') order by created_at`,
+      ).split(/\r?\n/),
+    ).toEqual(['student.exported', 'student.anonymized', 'privacy.settings_updated']);
+
+    // a página de privacidade, com a sessão do `admin`
+    const page = await fetch(`${stack.webOrigin}/privacy`, { headers: { Cookie: cookie } });
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('Guardar versões de foto por');
   }, 300_000);
 
   test('staff_registered_through_web_pages_audited_photo_replaced_and_expired_version_purged', async () => {
