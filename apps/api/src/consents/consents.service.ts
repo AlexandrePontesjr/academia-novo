@@ -72,7 +72,7 @@ export class ConsentsService {
           .where(eq(guardians.studentId, studentId))
           .orderBy(desc(guardians.id))
           .limit(1);
-        if (input.grantedBy === 'student' && isMinor(student.birthDate, saoPauloToday())) {
+        if (input.grantedBy === 'student' && isMinor(student.birthDate!, saoPauloToday())) {
           return {
             outcome: 'invalid',
             path: 'grantedBy',

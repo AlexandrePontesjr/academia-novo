@@ -137,6 +137,9 @@ test('students_keeps_the_columns_of_0003_and_gains_no_foreign_key', async () => 
     'status',
     'created_at',
     'updated_at',
+    // as duas da `0011` (privacidade, doors 1 e 3)
+    'anonymized_at',
+    'inactivated_at',
   ]);
   expect(await columnsOf('students')).not.toContain('guardian_id');
   expect(await rows("select conname from pg_constraint where conrelid = 'students'::regclass and contype = 'f'")).toEqual(

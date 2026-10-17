@@ -69,8 +69,12 @@ export async function studentRowText(stack: Stack, id: string) {
 export const studentCount = async (stack: Stack) =>
   Number((await stack.query<{ n: string }>('select count(*) as n from students'))[0]!.n);
 
+/** Muda a situação por SQL, com o instante da inativação que a door 3 da privacidade exige. */
 export async function setStatus(stack: Stack, id: string, status: string) {
-  await stack.query('update students set status = $2 where id = $1', [id, status]);
+  await stack.query(
+    `update students set status = $2, inactivated_at = case when $2 = 'inactive' then now() end where id = $1`,
+    [id, status],
+  );
 }
 
 /** Insere alunos direto no banco (mais rápido que pela API quando o teste só precisa deles). */
@@ -81,7 +85,8 @@ export async function insertStudents(
   const ids: string[] = [];
   for (const row of rows) {
     const [inserted] = await stack.query<{ id: string }>(
-      `insert into students (name, cpf, birth_date, phone, status) values ($1, $2, '2000-01-01', $3, $4) returning id`,
+      `insert into students (name, cpf, birth_date, phone, status, inactivated_at)
+       values ($1, $2, '2000-01-01', $3, $4, case when $4 = 'inactive' then now() end) returning id`,
       [row.name, row.cpf, row.phone ?? '11912345678', row.status ?? 'active'],
     );
     ids.push(inserted!.id);

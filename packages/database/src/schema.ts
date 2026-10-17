@@ -140,16 +140,21 @@ export const STUDENT_STATUSES = ['active', 'inactive', 'suspended'] as const;
 // quem volta é reativado. As observações de saúde só existem cifradas (door 2), no formato
 // `v1.<iv>.<texto cifrado>.<tag>`. `students_fold` tira caixa e acentos: a busca e a ordem por nome
 // usam o mesmo texto que o índice trigram.
+//
+// Anonimizar (privacidade, door 1) é limpar a ficha no lugar: com `anonymized_at` preenchido, o nome é
+// `Titular anonimizado`, a situação é `inactive` e todo campo pessoal é nulo; sem ele, `cpf`,
+// `birth_date` e `phone` são obrigatórios. Campo pessoal novo entra nos dois `CHECK`. `inactivated_at`
+// é o instante em que o aluno ficou `inactive`, presente se e somente se ele está (door 3).
 export const students = pgTable(
   'students',
   {
     id: id(),
     name: text('name').notNull(),
-    cpf: text('cpf').notNull().unique(),
-    birthDate: date('birth_date', { mode: 'string' }).notNull(),
+    cpf: text('cpf').unique(),
+    birthDate: date('birth_date', { mode: 'string' }),
     sex: text('sex'),
     email: text('email'),
-    phone: text('phone').notNull(),
+    phone: text('phone'),
     address: text('address'),
     emergencyContactName: text('emergency_contact_name'),
     emergencyContactPhone: text('emergency_contact_phone'),
@@ -157,9 +162,20 @@ export const students = pgTable(
     status: text('status', { enum: STUDENT_STATUSES }).notNull().default('active'),
     createdAt: instant('created_at').notNull().defaultNow(),
     updatedAt: instant('updated_at').notNull().defaultNow(),
+    anonymizedAt: instant('anonymized_at'),
+    inactivatedAt: instant('inactivated_at'),
   },
   (table) => [
     check('students_status_valid', sql`${table.status} in ('active', 'inactive', 'suspended')`),
+    check(
+      'students_anonymized_clean',
+      sql`${table.anonymizedAt} IS NULL OR (${table.name} = 'Titular anonimizado' AND ${table.status} = 'inactive' AND ${table.cpf} IS NULL AND ${table.birthDate} IS NULL AND ${table.sex} IS NULL AND ${table.email} IS NULL AND ${table.phone} IS NULL AND ${table.address} IS NULL AND ${table.emergencyContactName} IS NULL AND ${table.emergencyContactPhone} IS NULL AND ${table.healthNotesEnc} IS NULL AND ${table.inactivatedAt} IS NOT NULL)`,
+    ),
+    check(
+      'students_identified_complete',
+      sql`${table.anonymizedAt} IS NOT NULL OR (${table.cpf} IS NOT NULL AND ${table.birthDate} IS NOT NULL AND ${table.phone} IS NOT NULL)`,
+    ),
+    check('students_inactivated_at_matches', sql`(${table.status} = 'inactive') = (${table.inactivatedAt} IS NOT NULL)`),
     index('students_name_fold_trgm_idx').using('gin', sql`students_fold(${table.name}) gin_trgm_ops`),
   ],
 );
@@ -249,17 +265,18 @@ export const STAFF_STATUSES = ['active', 'inactive'] as const;
 // Funcionários (funcionarios, door 1). Sem coluna de perfil: o "perfil de acesso ao sistema" é o `role`
 // do usuário vinculado, lido na hora (AD-018). O CPF fica em 11 dígitos, único entre todas as situações
 // - quem volta é reativado. `user_id` é o acesso da pessoa: único, anulável e sem `ON DELETE`, então um
-// usuário vinculado não é apagado por SQL sem desvincular antes.
+// usuário vinculado não é apagado por SQL sem desvincular antes. A anonimização (privacidade, door 2)
+// limpa a ficha no lugar, como a do aluno, e exige o usuário já desvinculado.
 export const staff = pgTable(
   'staff',
   {
     id: id(),
     name: text('name').notNull(),
-    cpf: text('cpf').notNull().unique(),
-    position: text('position').notNull(),
+    cpf: text('cpf').unique(),
+    position: text('position'),
     department: text('department'),
-    hiredAt: date('hired_at', { mode: 'string' }).notNull(),
-    phone: text('phone').notNull(),
+    hiredAt: date('hired_at', { mode: 'string' }),
+    phone: text('phone'),
     email: text('email'),
     status: text('status', { enum: STAFF_STATUSES }).notNull().default('active'),
     userId: uuid('user_id')
@@ -267,8 +284,19 @@ export const staff = pgTable(
       .references(() => users.id),
     createdAt: instant('created_at').notNull().defaultNow(),
     updatedAt: instant('updated_at').notNull().defaultNow(),
+    anonymizedAt: instant('anonymized_at'),
   },
-  (table) => [check('staff_status_valid', sql`${table.status} in ('active', 'inactive')`)],
+  (table) => [
+    check('staff_status_valid', sql`${table.status} in ('active', 'inactive')`),
+    check(
+      'staff_anonymized_clean',
+      sql`${table.anonymizedAt} IS NULL OR (${table.name} = 'Titular anonimizado' AND ${table.status} = 'inactive' AND ${table.userId} IS NULL AND ${table.cpf} IS NULL AND ${table.position} IS NULL AND ${table.department} IS NULL AND ${table.hiredAt} IS NULL AND ${table.phone} IS NULL AND ${table.email} IS NULL)`,
+    ),
+    check(
+      'staff_identified_complete',
+      sql`${table.anonymizedAt} IS NOT NULL OR (${table.cpf} IS NOT NULL AND ${table.position} IS NOT NULL AND ${table.hiredAt} IS NOT NULL AND ${table.phone} IS NOT NULL)`,
+    ),
+  ],
 );
 
 // Fotos (foto-pipeline, door 1; funcionarios, door 2). Cada foto tem exatamente um dono, aluno ou
@@ -389,4 +417,22 @@ export const checkIns = pgTable(
       .references(() => users.id),
   },
   (table) => [uniqueIndex('check_ins_one_per_day_idx').on(table.studentId, table.day)],
+);
+
+// Configuração de privacidade (privacidade, door 4): uma linha só, criada pela migração `0011` e nunca
+// apagada. Nulo em `inactive_student_retention_years` é a anonimização automática desligada, e é o
+// valor inicial. Configuração nova de privacidade é coluna nova aqui.
+export const privacySettings = pgTable(
+  'privacy_settings',
+  {
+    id: boolean('id').primaryKey().default(true),
+    inactiveStudentRetentionYears: integer('inactive_student_retention_years'),
+    photoVersionRetentionDays: integer('photo_version_retention_days').notNull().default(30),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('privacy_settings_single_row', sql`${table.id}`),
+    check('privacy_settings_years_range', sql`${table.inactiveStudentRetentionYears} BETWEEN 1 AND 20`),
+    check('privacy_settings_days_range', sql`${table.photoVersionRetentionDays} BETWEEN 1 AND 365`),
+  ],
 );

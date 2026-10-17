@@ -78,6 +78,13 @@
       "when": 1792189983330,
       "tag": "0010_check_ins",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792245498199,
+      "tag": "0011_privacy",
+      "breakpoints": true
     }
   ]
 }

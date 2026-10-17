@@ -38,11 +38,26 @@ let cpfs = 0;
 /** Um CPF só para a linha de teste: a tabela não valida o dígito verificador, é a API que valida. */
 const nextCpf = () => String(10_000_000_000 + ++cpfs);
 
-/** Insere um aluno só com os campos obrigatórios. */
+/** Insere um aluno só com os campos obrigatórios; o inativo, com o instante da inativação (privacidade, door 3). */
 async function insertStudent(overrides: { cpf?: string; status?: string } = {}) {
   const cpf = overrides.cpf ?? nextCpf();
-  const columns = ['name', 'cpf', 'birth_date', 'phone', ...(overrides.status !== undefined ? ['status'] : [])];
-  const values = ['Aluna de Teste', cpf, '2000-01-01', '11912345678', ...(overrides.status !== undefined ? [overrides.status] : [])];
+  const inactive = overrides.status === 'inactive';
+  const columns = [
+    'name',
+    'cpf',
+    'birth_date',
+    'phone',
+    ...(overrides.status !== undefined ? ['status'] : []),
+    ...(inactive ? ['inactivated_at'] : []),
+  ];
+  const values = [
+    'Aluna de Teste',
+    cpf,
+    '2000-01-01',
+    '11912345678',
+    ...(overrides.status !== undefined ? [overrides.status] : []),
+    ...(inactive ? ['2026-10-01T12:00:00Z'] : []),
+  ];
   const marks = columns.map((_, index) => `$${index + 1}`).join(', ');
   const [row] = await rows<{ id: string }>(
     `insert into students (${columns.join(', ')}) values (${marks}) returning id`,

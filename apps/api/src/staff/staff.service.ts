@@ -219,7 +219,7 @@ export class StaffService {
         .from(staff)
         .orderBy(sql`students_fold(${staff.name}) collate "C"`, staff.id);
       await audit.record(tx, { actor, action: 'staff.list_viewed', entity: 'staff', entityId: null });
-      return rows;
+      return rows.map((row) => ({ ...row, position: row.position! }));
     });
   }
 }
@@ -234,13 +234,14 @@ async function userOf(tx: Tx, userId: string | null): Promise<StaffRecord['user'
   return user ?? null;
 }
 
+// a ficha lida aqui é sempre identificada: `cpf`, `position`, `hiredAt` e `phone` existem (door 2 da privacidade)
 const fieldsOf = (row: Row): Fields => ({
   name: row.name,
-  cpf: row.cpf,
-  position: row.position,
+  cpf: row.cpf!,
+  position: row.position!,
   department: row.department,
-  hiredAt: row.hiredAt,
-  phone: row.phone,
+  hiredAt: row.hiredAt!,
+  phone: row.phone!,
   email: row.email,
   status: row.status,
 });
@@ -250,11 +251,11 @@ const toRecord = (row: Row, user: StaffRecord['user']): StaffRecord => ({
   id: row.id,
   name: row.name,
   status: row.status,
-  cpf: row.cpf,
-  position: row.position,
+  cpf: row.cpf!,
+  position: row.position!,
   department: row.department,
-  hiredAt: row.hiredAt,
-  phone: row.phone,
+  hiredAt: row.hiredAt!,
+  phone: row.phone!,
   email: row.email,
   user,
 });
