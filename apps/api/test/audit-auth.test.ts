@@ -316,6 +316,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await stack.query(`update photos set expires_at = now() - interval '1 second' where student_id = $1 and not is_current`, [studentId]);
   await stack.api.purge(); // student.photo_version_purged
   await admin.delete(`/api/students/${studentId}/photo`); // student.photo_removed
+  await admin.get(`/api/students/${studentId}/data-export`); // student.exported
+  // inativo e sem período: a anonimização é a última ação sobre este aluno
+  await admin.post(`/api/students/${studentId}/anonymization`); // student.anonymized
   const staffMember = await admin.post('/api/staff', {
     name: 'Funcionária Percorre',
     cpf: '529.982.247-25',
@@ -353,7 +356,7 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(38);
+  expect(auditActionSchema.options).toHaveLength(40);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);

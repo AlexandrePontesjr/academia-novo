@@ -5,8 +5,8 @@ import {
   type PhotoUrlResponse,
   type PhotoVariant,
 } from '@academia/contracts';
-import { and, type Database, eq, inArray, lte, schema, sql } from '@academia/database';
-import { Injectable } from '@nestjs/common';
+import { and, type Database, eq, inArray, isNull, lte, schema, sql } from '@academia/database';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { audit, type AuditActor, NO_ACTOR } from '../audit/audit.ts';
 import { isUniqueViolation } from '../db-errors.ts';
 import { ProblemException } from '../problem.filter.ts';
@@ -96,7 +96,11 @@ export class PhotosService {
   private async find(owner: PhotoOwner, id: string): Promise<PhotoTarget | undefined> {
     if (!UUID.test(id)) return undefined;
     const { table } = OWNERS[owner];
-    const [row] = await this.db.select({ id: table.id }).from(table).where(eq(table.id, id));
+    // o titular anonimizado não existe para as rotas de foto (privacidade, doors 1 e 2)
+    const [row] = await this.db
+      .select({ id: table.id })
+      .from(table)
+      .where(and(eq(table.id, id), isNull(table.anonymizedAt)));
     return row && { owner, id: row.id };
   }
 
@@ -115,10 +119,16 @@ export class PhotosService {
     return this.store(target, file, actor, true);
   }
 
-  /** Trava a linha do dono: envio, troca e remoção do mesmo dono entram um de cada vez. */
-  private async lockOwner(tx: Tx, target: PhotoTarget) {
+  /**
+   * Trava a linha do dono: envio, troca, remoção e anonimização do mesmo dono entram um de cada vez.
+   * `false` quando o dono foi anonimizado enquanto a requisição esperava (privacidade, decisão 7).
+   */
+  private async lockOwner(tx: Tx, target: PhotoTarget): Promise<boolean> {
     const { table } = OWNERS[target.owner];
-    await tx.execute(sql`select 1 from ${table} where ${table.id} = ${target.id} for update`);
+    const locked = await tx.execute(
+      sql`select 1 from ${table} where ${table.id} = ${target.id} and ${table.anonymizedAt} is null for update`,
+    );
+    return locked.rows.length > 0;
   }
 
   /**
@@ -149,7 +159,8 @@ export class PhotosService {
 
     try {
       return await this.db.transaction(async (tx) => {
-        await this.lockOwner(tx, target);
+        // quem perde para a anonimização responde `404`, e o `catch` remove os objetos gravados
+        if (!(await this.lockOwner(tx, target))) throw new NotFoundException();
         const previous = replacing
           ? await tx
               .update(photos)

@@ -25,6 +25,8 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
+import { StudentPrivacyController } from './privacy/privacy.controller.ts';
+import { PrivacyService } from './privacy/privacy.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StaffController } from './staff/staff.controller.ts';
 import { StaffService } from './staff/staff.service.ts';
@@ -67,6 +69,7 @@ export class AppModule implements OnApplicationShutdown {
         DashboardController,
         StudentCheckInsController,
         CheckInsController,
+        StudentPrivacyController,
         OpenApiController,
       ],
       providers: [
@@ -135,6 +138,12 @@ export class AppModule implements OnApplicationShutdown {
           provide: ConsentsService,
           useFactory: (database: Database) => new ConsentsService(database.db),
           inject: [DATABASE],
+        },
+        {
+          provide: PrivacyService,
+          useFactory: (database: Database, storage: PhotoStorage) =>
+            new PrivacyService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY), storage),
+          inject: [DATABASE, PhotoStorage],
         },
         {
           provide: AuditLogsService,

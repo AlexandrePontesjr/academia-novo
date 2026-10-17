@@ -1,0 +1,258 @@
+import {
+  enrollmentStatus,
+  EXPORT_FORMAT_VERSION,
+  PHOTO_VARIANTS,
+  paymentStatus,
+  saoPauloToday,
+  type StudentExport,
+} from '@academia/contracts';
+import { and, asc, type Database, eq, isNull, schema, sql } from '@academia/database';
+import { audit, type AuditActor } from '../audit/audit.ts';
+import type { ColumnCipher } from '../crypto.ts';
+import { photoKey } from '../photos/photo-keys.ts';
+import { type PhotoStorage, StorageUnavailable } from '../photos/photo-storage.ts';
+import { ProblemException } from '../problem.filter.ts';
+
+const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, students } = schema;
+
+const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+/** O nome que a ficha anonimizada guarda no lugar do nome da pessoa (door 1). */
+export const ANONYMIZED_NAME = 'Titular anonimizado';
+
+type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+
+export type AnonymizeOutcome = 'anonymized' | 'not_found' | 'not_inactive' | 'open_periods';
+
+const iso = (instant: Date) => instant.toISOString();
+const isoOrNull = (instant: Date | null) => (instant === null ? null : instant.toISOString());
+
+const storageUnavailable = () => new ProblemException(503, 'storage_unavailable');
+
+/**
+ * Os direitos do titular (privacidade): a exportação dos dados de um aluno e a anonimização dele. As
+ * duas travam ou leem a linha numa transação, e a trilha entra na mesma transação (AD-057, door 7).
+ */
+export class PrivacyService {
+  constructor(
+    private readonly db: Database['db'],
+    private readonly cipher: ColumnCipher,
+    private readonly storage: PhotoStorage,
+  ) {}
+
+  /**
+   * Tudo o que o sistema guarda do aluno, no formato da door 5, e a linha `student.exported`. A trilha
+   * só é gravada depois de o bucket entregar cada foto: armazenamento fora responde `503` sem linha.
+   */
+  async exportStudent(id: string, actor: AuditActor): Promise<StudentExport | undefined> {
+    if (!UUID.test(id)) return undefined;
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(students)
+        .where(and(eq(students.id, id), isNull(students.anonymizedAt)));
+      if (!row) return undefined;
+
+      const guardianRows = await tx
+        .select({
+          id: guardians.id,
+          name: guardians.name,
+          cpf: guardians.cpf,
+          phone: guardians.phone,
+          relationship: guardians.relationship,
+          createdAt: guardians.createdAt,
+        })
+        .from(guardians)
+        .where(eq(guardians.studentId, row.id))
+        .orderBy(asc(guardians.id));
+      const consentRows = await tx
+        .select({
+          purpose: consents.purpose,
+          termVersion: consents.termVersion,
+          termText: consentTerms.text,
+          grantedBy: consents.grantedBy,
+          grantedAt: consents.grantedAt,
+          revokedAt: consents.revokedAt,
+        })
+        .from(consents)
+        .innerJoin(
+          consentTerms,
+          and(eq(consentTerms.purpose, consents.purpose), eq(consentTerms.version, consents.termVersion)),
+        )
+        .where(eq(consents.studentId, row.id))
+        .orderBy(asc(consents.grantedAt), asc(consents.id));
+      const enrollmentRows = await tx
+        .select({
+          id: enrollments.id,
+          planName: plans.name,
+          startsAt: enrollments.startsAt,
+          endsAt: enrollments.endsAt,
+          priceCents: enrollments.priceCents,
+          cancelledAt: enrollments.cancelledAt,
+        })
+        .from(enrollments)
+        .innerJoin(plans, eq(plans.id, enrollments.planId))
+        .where(eq(enrollments.studentId, row.id))
+        .orderBy(asc(enrollments.startsAt), asc(enrollments.id));
+      const paymentRows = await tx
+        .select({ startsAt: enrollments.startsAt, createdAt: payments.createdAt, voidedAt: payments.voidedAt })
+        .from(payments)
+        .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+        .where(eq(enrollments.studentId, row.id))
+        .orderBy(asc(payments.createdAt), asc(payments.id));
+      const checkInRows = await tx
+        .select({ day: checkIns.day, checkedInAt: checkIns.checkedInAt })
+        .from(checkIns)
+        .where(eq(checkIns.studentId, row.id))
+        .orderBy(asc(checkIns.day));
+      const photoRows = await tx
+        .select({
+          id: photos.id,
+          version: photos.version,
+          isCurrent: photos.isCurrent,
+          createdAt: photos.createdAt,
+          expiresAt: photos.expiresAt,
+        })
+        .from(photos)
+        .where(eq(photos.studentId, row.id))
+        .orderBy(asc(photos.version));
+
+      const exportedPhotos: StudentExport['photos'] = [];
+      for (const photo of photoRows) {
+        const bytes = await this.storage.get(photoKey(row.id, photo.id, 'large')).catch((error: unknown) => {
+          if (error instanceof StorageUnavailable) throw storageUnavailable();
+          throw error;
+        });
+        if (!bytes) throw storageUnavailable();
+        exportedPhotos.push({
+          version: photo.version,
+          isCurrent: photo.isCurrent,
+          createdAt: iso(photo.createdAt),
+          expiresAt: isoOrNull(photo.expiresAt),
+          image: `data:image/webp;base64,${bytes.toString('base64')}`,
+        });
+      }
+
+      const exported: StudentExport = {
+        formatVersion: EXPORT_FORMAT_VERSION,
+        exportedAt: new Date().toISOString(),
+        subject: 'student',
+        student: {
+          id: row.id,
+          name: row.name,
+          cpf: row.cpf!,
+          birthDate: row.birthDate!,
+          sex: row.sex as StudentExport['student']['sex'],
+          email: row.email,
+          phone: row.phone!,
+          address: row.address,
+          emergencyContactName: row.emergencyContactName,
+          emergencyContactPhone: row.emergencyContactPhone,
+          healthNotes: row.healthNotesEnc === null ? null : this.cipher.decrypt(row.healthNotesEnc, row.id),
+          status: row.status,
+          createdAt: iso(row.createdAt),
+          inactivatedAt: isoOrNull(row.inactivatedAt),
+        },
+        guardians: guardianRows.map((guardian) => ({ ...guardian, createdAt: iso(guardian.createdAt) })),
+        consents: consentRows.map((consent) => ({
+          ...consent,
+          grantedAt: iso(consent.grantedAt),
+          revokedAt: isoOrNull(consent.revokedAt),
+        })),
+        enrollments: enrollmentRows.map((enrollment) => ({ ...enrollment, cancelledAt: isoOrNull(enrollment.cancelledAt) })),
+        payments: paymentRows.map((payment) => ({
+          startsAt: payment.startsAt,
+          createdAt: iso(payment.createdAt),
+          voidedAt: isoOrNull(payment.voidedAt),
+        })),
+        checkIns: checkInRows.map((checkIn) => ({ day: checkIn.day, checkedInAt: iso(checkIn.checkedInAt) })),
+        photos: exportedPhotos,
+      };
+      await audit.record(tx, { actor, action: 'student.exported', entity: 'student', entityId: row.id });
+      return exported;
+    });
+  }
+
+  /**
+   * Anonimiza o aluno a pedido (door 7): trava a linha, confere as condições, remove os objetos de cada
+   * foto, apaga fotos, consentimentos e responsáveis, limpa a ficha e grava a trilha, tudo numa
+   * transação. Armazenamento que recusa uma remoção desfaz tudo e responde `503`; repetir termina.
+   */
+  async anonymizeStudent(id: string, actor: AuditActor): Promise<AnonymizeOutcome> {
+    if (!UUID.test(id)) return 'not_found';
+    return this.db.transaction(async (tx) => {
+      // a mesma trava que a foto, a matrícula e o check-in usam; quem esperava vê a marca e não acha a linha
+      const [row] = await tx
+        .select({ id: students.id, status: students.status })
+        .from(students)
+        .where(and(eq(students.id, id), isNull(students.anonymizedAt)))
+        .for('update');
+      if (!row) return 'not_found';
+      if (row.status !== 'inactive') return 'not_inactive';
+      if (await this.hasOpenPeriods(tx, row.id)) return 'open_periods';
+
+      const photoRows = await tx.select({ id: photos.id }).from(photos).where(eq(photos.studentId, row.id));
+      const removed = await Promise.allSettled(
+        photoRows.flatMap((photo) => PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(row.id, photo.id, variant)))),
+      );
+      if (removed.some((result) => result.status === 'rejected')) throw storageUnavailable();
+
+      await tx.delete(photos).where(eq(photos.studentId, row.id));
+      // o consentimento aponta para o responsável que o concedeu: sai antes dele
+      await tx.delete(consents).where(eq(consents.studentId, row.id));
+      await tx.delete(guardians).where(eq(guardians.studentId, row.id));
+      await tx
+        .update(students)
+        .set({
+          name: ANONYMIZED_NAME,
+          cpf: null,
+          birthDate: null,
+          sex: null,
+          email: null,
+          phone: null,
+          address: null,
+          emergencyContactName: null,
+          emergencyContactPhone: null,
+          healthNotesEnc: null,
+          anonymizedAt: sql`now()`,
+          updatedAt: new Date(),
+        })
+        .where(eq(students.id, row.id));
+      await audit.record(tx, { actor, action: 'student.anonymized', entity: 'student', entityId: row.id });
+      return 'anonymized';
+    });
+  }
+
+  /**
+   * Período em aberto: não cancelado e `active` ou `scheduled` (AD-061), ou `pending` ou `overdue`
+   * (AD-068), com o dia de hoje em `America/Sao_Paulo` lido uma vez.
+   */
+  private async hasOpenPeriods(tx: Tx, studentId: string): Promise<boolean> {
+    const today = saoPauloToday();
+    const periods = await tx
+      .select({
+        id: enrollments.id,
+        startsAt: enrollments.startsAt,
+        endsAt: enrollments.endsAt,
+        cancelledAt: enrollments.cancelledAt,
+      })
+      .from(enrollments)
+      .where(and(eq(enrollments.studentId, studentId), isNull(enrollments.cancelledAt)));
+    if (periods.length === 0) return false;
+    const confirmations = await tx
+      .select({ enrollmentId: payments.enrollmentId, voidedAt: payments.voidedAt })
+      .from(payments)
+      .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+      .where(eq(enrollments.studentId, studentId));
+    return periods.some((period) => {
+      const situation = enrollmentStatus(period, today);
+      if (situation === 'active' || situation === 'scheduled') return true;
+      const paid = paymentStatus(
+        period,
+        confirmations.filter((confirmation) => confirmation.enrollmentId === period.id),
+        today,
+      ).status;
+      return paid === 'pending' || paid === 'overdue';
+    });
+  }
+}
