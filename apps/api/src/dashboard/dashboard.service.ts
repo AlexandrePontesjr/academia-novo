@@ -51,7 +51,7 @@ export class DashboardService {
 
   /** Alunos por `status`, que é guardado (AD-030); a situação sem aluno fica em `0`. */
   private async students(): Promise<DashboardStudents> {
-    const rows = await this.db.select({ status: students.status, total: sql<number>`count(*)::int` }).from(students).groupBy(students.status);
+    const rows = await this.db.select({ status: students.status, total: sql<number>`count(*)::int` }).from(students).where(isNull(students.anonymizedAt)).groupBy(students.status);
     const totals: DashboardStudents = { active: 0, inactive: 0, suspended: 0 };
     for (const row of rows) totals[row.status] = row.total;
     return totals;

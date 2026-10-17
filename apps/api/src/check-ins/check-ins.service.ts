@@ -50,7 +50,7 @@ export class CheckInsService {
     const [student] = await this.db
       .select({ id: students.id, name: students.name, status: students.status })
       .from(students)
-      .where(eq(students.id, studentId));
+      .where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
     if (!student) return undefined;
 
     const periods = await this.periodsOf(this.db, studentId);
@@ -89,7 +89,7 @@ export class CheckInsService {
         const [student] = await tx
           .select({ status: students.status })
           .from(students)
-          .where(eq(students.id, studentId))
+          .where(and(eq(students.id, studentId), isNull(students.anonymizedAt)))
           .for('update');
         if (!student) return { outcome: 'not_found' };
 
@@ -119,7 +119,7 @@ export class CheckInsService {
    */
   async history(studentId: string, cursor?: string): Promise<{ items: StudentCheckIn[]; nextCursor: string | null } | null | undefined> {
     if (!UUID.test(studentId)) return undefined;
-    const [student] = await this.db.select({ id: students.id }).from(students).where(eq(students.id, studentId));
+    const [student] = await this.db.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
     if (!student) return undefined;
     if (cursor && !(await this.exists(cursor, studentId))) return null;
 

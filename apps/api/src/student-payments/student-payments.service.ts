@@ -44,7 +44,7 @@ export class StudentPaymentsService {
   async confirm(studentId: string, input: CreatePaymentRequest, actor: AuditActor): Promise<ConfirmOutcome> {
     if (!UUID.test(studentId)) return { outcome: 'not_found' };
     return this.db.transaction(async (tx): Promise<ConfirmOutcome> => {
-      const [student] = await tx.select({ id: students.id }).from(students).where(eq(students.id, studentId));
+      const [student] = await tx.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
       if (!student) return { outcome: 'not_found' };
 
       const [period] = await tx
@@ -85,7 +85,7 @@ export class StudentPaymentsService {
    */
   async list(studentId: string): Promise<StudentPayment[] | undefined> {
     if (!UUID.test(studentId)) return undefined;
-    const [student] = await this.db.select({ id: students.id }).from(students).where(eq(students.id, studentId));
+    const [student] = await this.db.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
     if (!student) return undefined;
 
     const periods = await this.db
@@ -171,6 +171,9 @@ export class StudentPaymentsService {
   async undo(studentId: string, paymentId: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(studentId) || !UUID.test(paymentId)) return false;
     return this.db.transaction(async (tx) => {
+      // o titular anonimizado não existe para as rotas do aluno (privacidade, door 1)
+      const [student] = await tx.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
+      if (!student) return false;
       const [found] = await tx
         .select({ payment: payments, period: enrollments })
         .from(payments)

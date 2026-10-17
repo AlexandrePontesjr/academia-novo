@@ -62,7 +62,7 @@ export class ConsentsService {
         const [student] = await tx
           .select({ birthDate: students.birthDate })
           .from(students)
-          .where(eq(students.id, studentId))
+          .where(and(eq(students.id, studentId), isNull(students.anonymizedAt)))
           .for('update');
         if (!student) return { outcome: 'not_found' };
 
@@ -142,7 +142,7 @@ export class ConsentsService {
    */
   async ficha(studentId: string): Promise<StudentConsentsResponse | undefined> {
     if (!UUID.test(studentId)) return undefined;
-    const [student] = await this.db.select({ id: students.id }).from(students).where(eq(students.id, studentId));
+    const [student] = await this.db.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
     if (!student) return undefined;
 
     const [current] = await this.db
@@ -187,6 +187,9 @@ export class ConsentsService {
   async revoke(studentId: string, consentId: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(studentId) || !UUID.test(consentId)) return false;
     return this.db.transaction(async (tx) => {
+      // o titular anonimizado não existe para as rotas do aluno (privacidade, door 1)
+      const [student] = await tx.select({ id: students.id }).from(students).where(and(eq(students.id, studentId), isNull(students.anonymizedAt)));
+      if (!student) return false;
       const [row] = await tx
         .select()
         .from(consents)
