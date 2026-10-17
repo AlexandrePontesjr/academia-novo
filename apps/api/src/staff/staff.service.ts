@@ -1,5 +1,5 @@
 import type { CreateStaffRequest, Staff, StaffListItem, UpdateStaffRequest } from '@academia/contracts';
-import { type Database, eq, schema, sql } from '@academia/database';
+import { and, type Database, eq, isNull, schema, sql } from '@academia/database';
 import { audit, type AuditActor, diffOf } from '../audit/audit.ts';
 import { isUniqueViolation } from '../db-errors.ts';
 
@@ -36,6 +36,9 @@ export type StaffRecord = Omit<Staff, 'photoUrl'>;
 export type StaffListRecord = Omit<StaffListItem, 'photoUrl'>;
 
 type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+
+/** O funcionário pelo id, se não foi anonimizado: o anonimizado não existe para estas rotas (privacidade, door 2). */
+const identified = (id: string) => and(eq(staff.id, id), isNull(staff.anonymizedAt));
 
 export type StaffChange = { outcome: 'ok'; staff: StaffRecord } | { outcome: 'not_found' } | { outcome: 'cpf_taken' };
 
@@ -89,7 +92,7 @@ export class StaffService {
     if (!UUID.test(id)) return { outcome: 'not_found' };
     try {
       return await this.db.transaction(async (tx): Promise<StaffChange> => {
-        const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+        const [row] = await tx.select().from(staff).where(identified(id)).for('update');
         if (!row) return { outcome: 'not_found' };
 
         const before = fieldsOf(row);
@@ -120,7 +123,7 @@ export class StaffService {
   async inactivate(id: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(id)) return false;
     return this.db.transaction(async (tx) => {
-      const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+      const [row] = await tx.select().from(staff).where(identified(id)).for('update');
       if (!row) return false;
       if (row.status === 'inactive') return true;
 
@@ -145,7 +148,7 @@ export class StaffService {
     if (!UUID.test(id)) return 'not_found';
     try {
       return await this.db.transaction(async (tx): Promise<LinkOutcome> => {
-        const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+        const [row] = await tx.select().from(staff).where(identified(id)).for('update');
         if (!row) return 'not_found';
         const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId));
         if (!user) return 'user_unknown';
@@ -171,7 +174,7 @@ export class StaffService {
   async unlink(id: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(id)) return false;
     return this.db.transaction(async (tx) => {
-      const [row] = await tx.select().from(staff).where(eq(staff.id, id)).for('update');
+      const [row] = await tx.select().from(staff).where(identified(id)).for('update');
       if (!row) return false;
       if (row.userId === null) return true;
 
@@ -194,7 +197,7 @@ export class StaffService {
   async find(id: string, actor: AuditActor): Promise<StaffRecord | undefined> {
     if (!UUID.test(id)) return undefined;
     return this.db.transaction(async (tx) => {
-      const [row] = await tx.select().from(staff).where(eq(staff.id, id));
+      const [row] = await tx.select().from(staff).where(identified(id));
       if (!row) return undefined;
       const user = await userOf(tx, row.userId);
       await audit.record(tx, { actor, action: 'staff.viewed', entity: 'staff', entityId: row.id });
@@ -217,6 +220,7 @@ export class StaffService {
           status: staff.status,
         })
         .from(staff)
+        .where(isNull(staff.anonymizedAt))
         .orderBy(sql`students_fold(${staff.name}) collate "C"`, staff.id);
       await audit.record(tx, { actor, action: 'staff.list_viewed', entity: 'staff', entityId: null });
       return rows.map((row) => ({ ...row, position: row.position! }));

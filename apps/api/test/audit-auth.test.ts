@@ -339,6 +339,9 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await stack.api.purge(); // staff.photo_version_purged
   await admin.delete(`/api/staff/${staffId}/photo`); // staff.photo_removed
   await admin.delete(`/api/staff/${staffId}`); // staff.inactivated
+  await admin.get(`/api/staff/${staffId}/data-export`); // staff.exported
+  // inativo e sem usuário vinculado: a anonimização é a última ação sobre este funcionário
+  await admin.post(`/api/staff/${staffId}/anonymization`); // staff.anonymized
   const plan = await admin.post('/api/plans', { name: 'Plano Percorre', period: 'monthly', priceCents: 9990 }); // plan.created
   const { id: planId } = (await plan.json()) as { id: string };
   await admin.patch(`/api/plans/${planId}`, { priceCents: 10990 }); // plan.updated
@@ -356,14 +359,14 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(40);
+  expect(auditActionSchema.options).toHaveLength(42);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter((row) => !['user', 'student', 'staff', 'plan'].includes(row.entity))).toEqual([]);
-  // `entity` igual a `staff` nas onze ações novas, e só nelas
+  // `entity` igual a `staff` nas onze ações de funcionário e nas duas de privacidade, e só nelas
   const staffActions = auditActionSchema.options.filter((action) => action.startsWith('staff.'));
-  expect(staffActions).toHaveLength(11);
+  expect(staffActions).toHaveLength(13);
   for (const action of staffActions) {
     const ofAction = rows.filter((row) => row.action === action);
     expect(ofAction.length, action).toBeGreaterThan(0);

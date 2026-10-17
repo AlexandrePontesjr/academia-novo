@@ -247,7 +247,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
@@ -288,7 +288,7 @@ test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
     'student.photo_version_purged',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect([...AUDIT_ACTIONS].slice(0, 31)).toEqual([
     ...before,
     'staff.created',
@@ -504,7 +504,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -524,7 +524,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -548,7 +548,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -967,7 +967,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
   ];
   expect(before).toHaveLength(31);
 
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   expect([...AUDIT_ACTIONS].slice(0, 36)).toEqual([
     ...before,
     'plan.created',
@@ -980,7 +980,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_payment_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(40);
+  expect(AUDIT_ACTIONS).toHaveLength(42);
   // as trinta e seis de antes, na ordem de antes (a última é a de matrícula cancelada)
   expect(AUDIT_ACTIONS[0]).toBe('auth.login_succeeded');
   expect(AUDIT_ACTIONS[35]).toBe('student.enrollment_cancelled');

@@ -25,7 +25,7 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
-import { StudentPrivacyController } from './privacy/privacy.controller.ts';
+import { StaffPrivacyController, StudentPrivacyController } from './privacy/privacy.controller.ts';
 import { PrivacyService } from './privacy/privacy.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StaffController } from './staff/staff.controller.ts';
@@ -70,6 +70,7 @@ export class AppModule implements OnApplicationShutdown {
         StudentCheckInsController,
         CheckInsController,
         StudentPrivacyController,
+        StaffPrivacyController,
         OpenApiController,
       ],
       providers: [

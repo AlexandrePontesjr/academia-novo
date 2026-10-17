@@ -4,6 +4,7 @@ import {
   PHOTO_VARIANTS,
   paymentStatus,
   saoPauloToday,
+  type StaffExport,
   type StudentExport,
 } from '@academia/contracts';
 import { and, asc, type Database, eq, isNull, schema, sql } from '@academia/database';
@@ -13,7 +14,7 @@ import { photoKey } from '../photos/photo-keys.ts';
 import { type PhotoStorage, StorageUnavailable } from '../photos/photo-storage.ts';
 import { ProblemException } from '../problem.filter.ts';
 
-const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, students } = schema;
+const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, staff, students, users } = schema;
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
@@ -23,6 +24,10 @@ export const ANONYMIZED_NAME = 'Titular anonimizado';
 type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 
 export type AnonymizeOutcome = 'anonymized' | 'not_found' | 'not_inactive' | 'open_periods';
+
+export type AnonymizeStaffOutcome = 'anonymized' | 'not_found' | 'not_inactive' | 'user_linked';
+
+type PhotoOwnerColumn = typeof photos.studentId | typeof photos.staffId;
 
 const iso = (instant: Date) => instant.toISOString();
 const isoOrNull = (instant: Date | null) => (instant === null ? null : instant.toISOString());
@@ -105,33 +110,7 @@ export class PrivacyService {
         .from(checkIns)
         .where(eq(checkIns.studentId, row.id))
         .orderBy(asc(checkIns.day));
-      const photoRows = await tx
-        .select({
-          id: photos.id,
-          version: photos.version,
-          isCurrent: photos.isCurrent,
-          createdAt: photos.createdAt,
-          expiresAt: photos.expiresAt,
-        })
-        .from(photos)
-        .where(eq(photos.studentId, row.id))
-        .orderBy(asc(photos.version));
-
-      const exportedPhotos: StudentExport['photos'] = [];
-      for (const photo of photoRows) {
-        const bytes = await this.storage.get(photoKey(row.id, photo.id, 'large')).catch((error: unknown) => {
-          if (error instanceof StorageUnavailable) throw storageUnavailable();
-          throw error;
-        });
-        if (!bytes) throw storageUnavailable();
-        exportedPhotos.push({
-          version: photo.version,
-          isCurrent: photo.isCurrent,
-          createdAt: iso(photo.createdAt),
-          expiresAt: isoOrNull(photo.expiresAt),
-          image: `data:image/webp;base64,${bytes.toString('base64')}`,
-        });
-      }
+      const exportedPhotos = await this.exportedPhotos(tx, photos.studentId, row.id);
 
       const exported: StudentExport = {
         formatVersion: EXPORT_FORMAT_VERSION,
@@ -191,12 +170,7 @@ export class PrivacyService {
       if (row.status !== 'inactive') return 'not_inactive';
       if (await this.hasOpenPeriods(tx, row.id)) return 'open_periods';
 
-      const photoRows = await tx.select({ id: photos.id }).from(photos).where(eq(photos.studentId, row.id));
-      const removed = await Promise.allSettled(
-        photoRows.flatMap((photo) => PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(row.id, photo.id, variant)))),
-      );
-      if (removed.some((result) => result.status === 'rejected')) throw storageUnavailable();
-
+      await this.removePhotos(tx, photos.studentId, row.id);
       await tx.delete(photos).where(eq(photos.studentId, row.id));
       // o consentimento aponta para o responsável que o concedeu: sai antes dele
       await tx.delete(consents).where(eq(consents.studentId, row.id));
@@ -221,6 +195,123 @@ export class PrivacyService {
       await audit.record(tx, { actor, action: 'student.anonymized', entity: 'student', entityId: row.id });
       return 'anonymized';
     });
+  }
+
+  /** Tudo o que o sistema guarda do funcionário (door 5): a ficha, o usuário vinculado e as fotos. */
+  async exportStaff(id: string, actor: AuditActor): Promise<StaffExport | undefined> {
+    if (!UUID.test(id)) return undefined;
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(staff)
+        .where(and(eq(staff.id, id), isNull(staff.anonymizedAt)));
+      if (!row) return undefined;
+      const [user] =
+        row.userId === null
+          ? []
+          : await tx.select({ email: users.email, role: users.role }).from(users).where(eq(users.id, row.userId));
+      const exportedPhotos = await this.exportedPhotos(tx, photos.staffId, row.id);
+
+      const exported: StaffExport = {
+        formatVersion: EXPORT_FORMAT_VERSION,
+        exportedAt: new Date().toISOString(),
+        subject: 'staff',
+        staff: {
+          id: row.id,
+          name: row.name,
+          cpf: row.cpf!,
+          position: row.position!,
+          department: row.department,
+          hiredAt: row.hiredAt!,
+          phone: row.phone!,
+          email: row.email,
+          status: row.status,
+          createdAt: iso(row.createdAt),
+        },
+        user: user ?? null,
+        photos: exportedPhotos,
+      };
+      await audit.record(tx, { actor, action: 'staff.exported', entity: 'staff', entityId: row.id });
+      return exported;
+    });
+  }
+
+  /**
+   * Anonimiza o funcionário a pedido, na ordem da door 7: trava, confere que está `inactive` e sem
+   * usuário vinculado (door 2), remove os objetos, apaga as fotos, limpa a ficha e grava a trilha.
+   */
+  async anonymizeStaff(id: string, actor: AuditActor): Promise<AnonymizeStaffOutcome> {
+    if (!UUID.test(id)) return 'not_found';
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ id: staff.id, status: staff.status, userId: staff.userId })
+        .from(staff)
+        .where(and(eq(staff.id, id), isNull(staff.anonymizedAt)))
+        .for('update');
+      if (!row) return 'not_found';
+      if (row.status !== 'inactive') return 'not_inactive';
+      if (row.userId !== null) return 'user_linked';
+
+      await this.removePhotos(tx, photos.staffId, row.id);
+      await tx.delete(photos).where(eq(photos.staffId, row.id));
+      await tx
+        .update(staff)
+        .set({
+          name: ANONYMIZED_NAME,
+          cpf: null,
+          position: null,
+          department: null,
+          hiredAt: null,
+          phone: null,
+          email: null,
+          anonymizedAt: sql`now()`,
+          updatedAt: new Date(),
+        })
+        .where(eq(staff.id, row.id));
+      await audit.record(tx, { actor, action: 'staff.anonymized', entity: 'staff', entityId: row.id });
+      return 'anonymized';
+    });
+  }
+
+  /** As fotos do dono por versão, cada uma com a variante `large` lida do bucket; fora do ar, `503`. */
+  private async exportedPhotos(tx: Tx, column: PhotoOwnerColumn, ownerId: string): Promise<StudentExport['photos']> {
+    const photoRows = await tx
+      .select({
+        id: photos.id,
+        version: photos.version,
+        isCurrent: photos.isCurrent,
+        createdAt: photos.createdAt,
+        expiresAt: photos.expiresAt,
+      })
+      .from(photos)
+      .where(eq(column, ownerId))
+      .orderBy(asc(photos.version));
+
+    const exportedPhotos: StudentExport['photos'] = [];
+    for (const photo of photoRows) {
+      const bytes = await this.storage.get(photoKey(ownerId, photo.id, 'large')).catch((error: unknown) => {
+        if (error instanceof StorageUnavailable) throw storageUnavailable();
+        throw error;
+      });
+      if (!bytes) throw storageUnavailable();
+      exportedPhotos.push({
+        version: photo.version,
+        isCurrent: photo.isCurrent,
+        createdAt: iso(photo.createdAt),
+        expiresAt: isoOrNull(photo.expiresAt),
+        image: `data:image/webp;base64,${bytes.toString('base64')}`,
+      });
+    }
+    return exportedPhotos;
+  }
+
+  /** Remove os três objetos de cada foto do dono; uma remoção recusada responde `503` e desfaz a transação. */
+  private async removePhotos(tx: Tx, column: PhotoOwnerColumn, ownerId: string) {
+    const photoRows = await tx.select({ id: photos.id }).from(photos).where(eq(column, ownerId));
+    const removed = await Promise.allSettled(
+      photoRows.flatMap((photo) => PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(ownerId, photo.id, variant)))),
+    );
+    if (removed.some((result) => result.status === 'rejected')) throw storageUnavailable();
   }
 
   /**

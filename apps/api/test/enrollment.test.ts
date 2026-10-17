@@ -98,6 +98,8 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'GET /api/check-ins',
       'GET /api/students/:id/data-export',
       'POST /api/students/:id/anonymization',
+      'GET /api/staff/:id/data-export',
+      'POST /api/staff/:id/anonymization',
       'GET /api/openapi.json',
     ].sort(),
   );
