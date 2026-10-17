@@ -16,6 +16,7 @@ import {
   openPaymentsQuerySchema,
   photoFileQuerySchema,
   photoQuerySchema,
+  privacySettingsSchema,
   passwordConfirmationRequestSchema,
   resetPasswordRequestSchema,
   studentsQuerySchema,
@@ -144,8 +145,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['patch', '/api/plans/{id}', updatePlanRequestSchema],
     ['post', '/api/students/{id}/enrollments', createEnrollmentRequestSchema],
     ['post', '/api/students/{id}/payments', createPaymentRequestSchema],
+    ['put', '/api/privacy-settings', privacySettingsSchema],
   ];
-  expect(contracts).toHaveLength(19);
+  expect(contracts).toHaveLength(20);
 
   const { paths } = await document();
 
@@ -410,4 +412,40 @@ test('check_in_paths_and_report_query_parameters_come_from_contract_schema', asy
       expect(parameter.schema, `${path} ${parameter.name}`).toEqual(properties[parameter.name]);
     }
   }
+});
+
+test('privacy_paths_declared_with_settings_body_from_contract', async () => {
+  const { paths } = await document();
+
+  // as seis rotas, e nenhuma outra, com `data-export`, `anonymization` ou `privacy` no caminho
+  expect(Object.keys(paths['/api/students/{id}/data-export'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths['/api/students/{id}/anonymization'] ?? {})).toEqual(['post']);
+  expect(Object.keys(paths['/api/staff/{id}/data-export'] ?? {})).toEqual(['get']);
+  expect(Object.keys(paths['/api/staff/{id}/anonymization'] ?? {})).toEqual(['post']);
+  expect(Object.keys(paths['/api/privacy-settings'] ?? {}).sort()).toEqual(['get', 'put']);
+  expect(Object.keys(paths).filter((path) => /data-export|anonymization|privacy/.test(path)).sort()).toEqual(
+    [
+      '/api/privacy-settings',
+      '/api/staff/{id}/anonymization',
+      '/api/staff/{id}/data-export',
+      '/api/students/{id}/anonymization',
+      '/api/students/{id}/data-export',
+    ].sort(),
+  );
+
+  // as duas exportações e as duas anonimizações não recebem corpo, e o `GET` da configuração também não
+  for (const [method, path] of [
+    ['get', '/api/students/{id}/data-export'],
+    ['post', '/api/students/{id}/anonymization'],
+    ['get', '/api/staff/{id}/data-export'],
+    ['post', '/api/staff/{id}/anonymization'],
+    ['get', '/api/privacy-settings'],
+  ] as const) {
+    expect(paths[path]?.[method]?.requestBody, `${method} ${path}`).toBeUndefined();
+  }
+
+  // o `PUT` declara o corpo vindo do schema do contrato, e só em JSON
+  const content = paths['/api/privacy-settings']?.put?.requestBody?.content ?? {};
+  expect(Object.keys(content)).toEqual(['application/json']);
+  expect(content['application/json']?.schema).toEqual(JSON.parse(JSON.stringify(z.toJSONSchema(privacySettingsSchema))));
 });

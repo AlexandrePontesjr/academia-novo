@@ -444,6 +444,16 @@ que `Relations` acrescenta e os conjuntos enumerados nos critérios, nas `Assump
   nova é achado do `docker compose up --build` da C65, e o diálogo é provado sobre o `next build` do Playwright
 - No other check claims more than the cases its proof exercises
 
+> **Nota da `privacidade` (#13), 2026-10-17.** A door 4 de lá (AD-078, que supersede a AD-051) tira `PHOTO_VERSION_RETENTION_DAYS` do ambiente: os dias de guarda da foto trocada passam a vir da linha única de `privacy_settings`, lidos na hora da troca, com o padrão `30`. Seis checks daqui deixam de valer como escritos, no todo ou em parte. Nenhum é editado; cada um passa a ser provado pelo check de `features/privacidade/checks.md` que o substitui:
+> - C4 (o schema de ambiente lê a variável, com padrão e limites): C44 de lá, o schema não tem a chave.
+> - C6, a parte "numa API sem `PHOTO_VERSION_RETENTION_DAYS`": C107 de lá; o padrão de 30 dias vem de `privacy_settings`. O resto do caso segue.
+> - C28 (a API montada com 7, 1 e 365 dias pela variável): C43 e C107 de lá, os mesmos prazos postos em `privacy_settings`, com a mesma asserção.
+> - C29 (a API recusa a variável inválida ao subir): C44 de lá, a API sobe com a variável em `0` e a ignora.
+> - C64 (`.env.example` traz a linha comentada): C44 de lá, `.env.example` e `compose.yaml` não mencionam a variável.
+> - C65, a parte "sem `PHOTO_VERSION_RETENTION_DAYS` no ambiente": C106 de lá. O resto do caso segue.
+>
+> Os testes `retention_days_default_30_bounds_1_and_365_and_five_rejected_values` (`env.test.ts`), `retention_days_rejected_exits_1_naming_var_without_values` (`boot.test.ts`) e `env_example_documents_optional_retention_days_commented_with_default` (`tests/repo`) saíram, trocados por `env_schema_has_no_retention_days_key`, `retention_days_in_environment_is_ignored_and_api_starts` e `env_example_and_compose_do_not_mention_retention_days`; `retention_days_7_1_and_365_set_expiry_only_for_later_replaces` (`photos-purge.test.ts`) fica com o nome e a asserção e passa a pôr os dias em `privacy_settings`.
+
 ## Test policy
 
 As linhas de `features/auth-rbac/checks.md`, `features/auditoria/checks.md`, `features/alunos/checks.md`,

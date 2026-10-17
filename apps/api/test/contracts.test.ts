@@ -247,7 +247,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
@@ -288,7 +288,7 @@ test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
     'student.photo_version_purged',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect([...AUDIT_ACTIONS].slice(0, 31)).toEqual([
     ...before,
     'staff.created',
@@ -504,7 +504,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -524,7 +524,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -548,7 +548,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -967,7 +967,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
   ];
   expect(before).toHaveLength(31);
 
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   expect([...AUDIT_ACTIONS].slice(0, 36)).toEqual([
     ...before,
     'plan.created',
@@ -980,7 +980,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_payment_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(42);
+  expect(AUDIT_ACTIONS).toHaveLength(43);
   // as trinta e seis de antes, na ordem de antes (a última é a de matrícula cancelada)
   expect(AUDIT_ACTIONS[0]).toBe('auth.login_succeeded');
   expect(AUDIT_ACTIONS[35]).toBe('student.enrollment_cancelled');
@@ -992,6 +992,62 @@ test('audit_actions_end_with_two_payment_actions_in_order', () => {
     'student.enrollment_cancelled',
   ]);
   expect(AUDIT_ACTIONS.slice(36, 38)).toEqual(['student.payment_confirmed', 'student.payment_undone']);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('audit_actions_end_with_five_privacy_actions_in_order', () => {
+  // as trinta e oito de antes, na ordem de antes
+  const before = [
+    'auth.login_succeeded',
+    'auth.login_failed',
+    'auth.logout',
+    'auth.password_changed',
+    'auth.two_factor_enabled',
+    'auth.two_factor_disabled',
+    'user.created',
+    'user.updated',
+    'user.password_reset',
+    'user.two_factor_reset',
+    'student.created',
+    'student.updated',
+    'student.inactivated',
+    'student.guardian_saved',
+    'student.consent_granted',
+    'student.consent_revoked',
+    'student.photo_uploaded',
+    'student.photo_removed',
+    'student.photo_replaced',
+    'student.photo_version_purged',
+    'staff.created',
+    'staff.updated',
+    'staff.inactivated',
+    'staff.viewed',
+    'staff.list_viewed',
+    'staff.user_linked',
+    'staff.user_unlinked',
+    'staff.photo_uploaded',
+    'staff.photo_removed',
+    'staff.photo_replaced',
+    'staff.photo_version_purged',
+    'plan.created',
+    'plan.updated',
+    'plan.inactivated',
+    'student.enrollment_created',
+    'student.enrollment_cancelled',
+    'student.payment_confirmed',
+    'student.payment_undone',
+  ];
+  expect(before).toHaveLength(38);
+
+  expect(AUDIT_ACTIONS).toHaveLength(43);
+  expect(AUDIT_ACTIONS.slice(0, 38)).toEqual(before);
+  expect(AUDIT_ACTIONS.slice(38)).toEqual([
+    'student.exported',
+    'student.anonymized',
+    'staff.exported',
+    'staff.anonymized',
+    'privacy.settings_updated',
+  ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 

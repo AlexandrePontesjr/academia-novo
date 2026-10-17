@@ -344,36 +344,27 @@ test('real_process_survives_purge_failure_with_database_down', async () => {
   }
 }, 60_000);
 
-test('retention_days_rejected_exits_1_naming_var_without_values', async () => {
-  const KEY = 'PHOTO_VERSION_RETENTION_DAYS';
-  for (const value of ['0', '366', '1.5', 'abc']) {
-    const { status, output } = startApiProcess({ ...validEnv, [KEY]: value });
-
-    expect(status, value).toBe(1);
-    expect(output, value).toContain(KEY);
+test('retention_days_in_environment_is_ignored_and_api_starts', async () => {
+  const postgres = await startPostgres();
+  const minio = await startMinio();
+  const port = await freePort();
+  // um valor que a variável de antes recusava: ela não existe mais, e a API sobe
+  const { child } = spawnApi({
+    ...validEnv,
+    ...minio.env,
+    DATABASE_URL: postgres.url,
+    PORT: String(port),
+    PHOTO_VERSION_RETENTION_DAYS: '0',
+  });
+  try {
+    await vi.waitFor(async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(200), {
+      timeout: 30_000,
+      interval: 200,
+    });
+    expect(child.exitCode).toBeNull();
+  } finally {
+    child.kill();
+    await minio.stop();
+    await postgres.stop();
   }
-
-  for (const value of ['36600077', 'valor-secreto-da-retencao']) {
-    const env = { ...validEnv, [KEY]: value };
-
-    const { status, output } = startApiProcess(env);
-
-    expect(status, value).toBe(1);
-    expect(output, value).toContain(KEY);
-    for (const [key, other] of Object.entries(env)) expect(output, `${value}: valor de ${key}`).not.toContain(other);
-  }
-
-  // nas duas bordas a API sobe e responde: o banco recusa conexão, e o /health diz 503
-  for (const value of ['1', '365']) {
-    const port = await freePort();
-    const { child } = spawnApi({ ...validEnv, [KEY]: value, DATABASE_URL: await refusingDatabaseUrl(), PORT: String(port) });
-    try {
-      await vi.waitFor(
-        async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status, value).toBe(503),
-        { timeout: 20_000, interval: 200 },
-      );
-    } finally {
-      child.kill();
-    }
-  }
-}, 120_000);
+}, 240_000);

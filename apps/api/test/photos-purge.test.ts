@@ -303,38 +303,37 @@ test('one_log_line_with_count_per_run_that_removed_and_none_otherwise', async ()
 });
 
 test('retention_days_7_1_and_365_set_expiry_only_for_later_replaces', async () => {
-  for (const days of [7, 1, 365]) {
-    const custom = await apiWith(env.stack, env.minio.env, { PHOTO_VERSION_RETENTION_DAYS: String(days) });
-    try {
+  // os dias vêm de `privacy_settings`, lidos na hora da troca (privacidade, door 4)
+  const retentionDays = (days: number) => env.stack.query('update privacy_settings set photo_version_retention_days = $1', [days]);
+  try {
+    for (const days of [7, 1, 365]) {
+      await retentionDays(days);
       const studentId = await newStudent();
-      const first = await uploaded(await uploadPhoto(custom.client, studentId, await jpegBytes()));
+      const first = await uploaded(await uploadPhoto(reception, studentId, await jpegBytes()));
 
       const t0 = await databaseNow(env.stack);
-      await uploaded(await replacePhoto(custom.client, studentId, await jpegBytes()));
+      await uploaded(await replacePhoto(reception, studentId, await jpegBytes()));
       const t1 = await databaseNow(env.stack);
 
       const [stored] = await versionRows(env.stack, studentId, t0, t1, days);
       expect(stored, `${days} dias`).toMatchObject({ id: first.id, is_current: false, in_window: true });
       // e não cai na janela de 30 dias do padrão
       expect((await versionRows(env.stack, studentId, t0, t1, 30))[0]!.in_window, `${days} dias`).toBe(false);
-    } finally {
-      await custom.api.close();
     }
-  }
 
-  // a retenção nova vale só para as trocas seguintes
-  const studentId = await newStudent();
-  await uploaded(await uploadPhoto(reception, studentId, await jpegBytes()));
-  const t0 = await databaseNow(env.stack);
-  await uploaded(await replacePhoto(reception, studentId, await jpegBytes()));
-  const t1 = await databaseNow(env.stack);
-  const [by30] = await versionRows(env.stack, studentId, t0, t1, 30);
-  expect(by30).toMatchObject({ version: 1, in_window: true });
+    // a retenção nova vale só para as trocas seguintes
+    await retentionDays(30);
+    const studentId = await newStudent();
+    await uploaded(await uploadPhoto(reception, studentId, await jpegBytes()));
+    const t0 = await databaseNow(env.stack);
+    await uploaded(await replacePhoto(reception, studentId, await jpegBytes()));
+    const t1 = await databaseNow(env.stack);
+    const [by30] = await versionRows(env.stack, studentId, t0, t1, 30);
+    expect(by30).toMatchObject({ version: 1, in_window: true });
 
-  const seven = await apiWith(env.stack, env.minio.env, { PHOTO_VERSION_RETENTION_DAYS: '7' });
-  try {
+    await retentionDays(7);
     const t2 = await databaseNow(env.stack);
-    await uploaded(await replacePhoto(seven.client, studentId, await jpegBytes()));
+    await uploaded(await replacePhoto(reception, studentId, await jpegBytes()));
     const t3 = await databaseNow(env.stack);
 
     const rows = await versionRows(env.stack, studentId, t2, t3, 7);
@@ -343,6 +342,6 @@ test('retention_days_7_1_and_365_set_expiry_only_for_later_replaces', async () =
     expect(rows[1]).toMatchObject({ version: 2, is_current: false, in_window: true });
     expect(await photoRowsText(env.stack, studentId)).toHaveLength(3);
   } finally {
-    await seven.api.close();
+    await retentionDays(30);
   }
 });

@@ -64,17 +64,11 @@ test('env_example_documents_photo_variables_and_secret_command', () => {
   expect(4 * Math.ceil(Number(command![1]) / 3)).toBeGreaterThanOrEqual(32);
 });
 
-test('env_example_documents_optional_retention_days_commented_with_default', () => {
-  const lines = readFileSync(join(repoRoot, '.env.example'), 'utf8').split(/\r?\n/);
-
-  expect(lines).toContain('# PHOTO_VERSION_RETENTION_DAYS=30');
-  // comentada: nenhuma linha a define
-  expect(lines.filter((line) => /^\s*PHOTO_VERSION_RETENTION_DAYS\s*=/.test(line))).toEqual([]);
-
-  // a variável existe no schema da API e não está entre as obrigatórias
-  expect(Object.keys(apiEnvSchema.shape)).toContain('PHOTO_VERSION_RETENTION_DAYS');
-  expect(requiredKeys(apiEnvSchema).length).toBeGreaterThan(0);
-  expect(requiredKeys(apiEnvSchema)).not.toContain('PHOTO_VERSION_RETENTION_DAYS');
+test('env_example_and_compose_do_not_mention_retention_days', () => {
+  // os dias de guarda da foto trocada vêm de `privacy_settings` (privacidade, door 4): a variável saiu
+  expect(readFileSync(join(repoRoot, '.env.example'), 'utf8')).not.toContain('PHOTO_VERSION_RETENTION_DAYS');
+  expect(readFileSync(join(repoRoot, 'compose.yaml'), 'utf8')).not.toContain('PHOTO_VERSION_RETENTION_DAYS');
+  expect(Object.keys(apiEnvSchema.shape)).not.toContain('PHOTO_VERSION_RETENTION_DAYS');
 });
 
 test('dotenv_is_git_ignored', () => {

@@ -25,7 +25,7 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
-import { StaffPrivacyController, StudentPrivacyController } from './privacy/privacy.controller.ts';
+import { PrivacySettingsController, StaffPrivacyController, StudentPrivacyController } from './privacy/privacy.controller.ts';
 import { PrivacyService } from './privacy/privacy.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
 import { StaffController } from './staff/staff.controller.ts';
@@ -71,6 +71,7 @@ export class AppModule implements OnApplicationShutdown {
         CheckInsController,
         StudentPrivacyController,
         StaffPrivacyController,
+        PrivacySettingsController,
         OpenApiController,
       ],
       providers: [
@@ -106,7 +107,7 @@ export class AppModule implements OnApplicationShutdown {
         {
           provide: PhotosService,
           useFactory: (database: Database, storage: PhotoStorage, signer: PhotoSigner) =>
-            new PhotosService(database.db, storage, signer, env.PHOTO_VERSION_RETENTION_DAYS),
+            new PhotosService(database.db, storage, signer),
           inject: [DATABASE, PhotoStorage, PhotoSigner],
         },
         PhotoPurge,

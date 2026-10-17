@@ -15,7 +15,7 @@ import { photoKey } from './photo-keys.ts';
 import type { PhotoSigner } from './photo-signer.ts';
 import { type PhotoStorage, StorageUnavailable } from './photo-storage.ts';
 
-const { photos, staff, students } = schema;
+const { photos, privacySettings, staff, students } = schema;
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
@@ -79,8 +79,6 @@ export class PhotosService {
     private readonly db: Database['db'],
     private readonly storage: PhotoStorage,
     private readonly signer: PhotoSigner,
-    /** Dias que a foto trocada fica guardada (foto-captura, door 5). */
-    private readonly retentionDays: number,
   ) {}
 
   /** O `id` do aluno como o banco o guarda (minúsculo), ou `undefined` se `id` não é de aluno nenhum. */
@@ -164,7 +162,11 @@ export class PhotosService {
         const previous = replacing
           ? await tx
               .update(photos)
-              .set({ isCurrent: false, expiresAt: sql`now() + make_interval(days => ${this.retentionDays}::int)` })
+              // os dias lidos da configuração na hora da troca; o que já foi guardado mantém o prazo (privacidade, door 4)
+              .set({
+                isCurrent: false,
+                expiresAt: sql`now() + make_interval(days => (select ${privacySettings.photoVersionRetentionDays} from ${privacySettings}))`,
+              })
               .where(and(eq(owner.column, target.id), eq(photos.isCurrent, true)))
               .returning({ id: photos.id })
           : [];

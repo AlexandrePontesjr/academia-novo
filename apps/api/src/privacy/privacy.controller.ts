@@ -1,10 +1,17 @@
-import { type StaffExport, staffExportSchema, type StudentExport, studentExportSchema } from '@academia/contracts';
-import { Controller, Get, Header, Inject, NotFoundException, Param, Post, Res } from '@nestjs/common';
+import {
+  type PrivacySettings,
+  privacySettingsSchema,
+  type StaffExport,
+  staffExportSchema,
+  type StudentExport,
+  studentExportSchema,
+} from '@academia/contracts';
+import { Body, Controller, Get, Header, Inject, NotFoundException, Param, Post, Put, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import { ProblemException } from '../problem.filter.ts';
-import { Output } from '../validation.ts';
+import { Input, Output } from '../validation.ts';
 import { PrivacyService } from './privacy.service.ts';
 
 /**
@@ -67,5 +74,25 @@ export class StaffPrivacyController {
     if (outcome === 'not_found') throw new NotFoundException();
     if (outcome === 'not_inactive') throw new ProblemException(409, 'subject_not_inactive');
     if (outcome === 'user_linked') throw new ProblemException(409, 'staff_user_linked');
+  }
+}
+
+/** Os dois prazos de retenção: só `admin` lê e muda (privacidade, door 4). */
+@Controller('api/privacy-settings')
+@Roles('admin')
+export class PrivacySettingsController {
+  constructor(@Inject(PrivacyService) private readonly privacy: PrivacyService) {}
+
+  @Get()
+  @Output(200, privacySettingsSchema)
+  read(): Promise<PrivacySettings> {
+    return this.privacy.settings();
+  }
+
+  @Put()
+  @Input(privacySettingsSchema)
+  @Output(200, privacySettingsSchema)
+  update(@Body() body: PrivacySettings, @Actor() actor: AuditActor): Promise<PrivacySettings> {
+    return this.privacy.updateSettings(body, actor);
   }
 }

@@ -47,6 +47,7 @@ export const AUDIT_ACTIONS = [
   'student.anonymized',
   'staff.exported',
   'staff.anonymized',
+  'privacy.settings_updated',
 ] as const;
 export const auditActionSchema = z.enum(AUDIT_ACTIONS, 'Escolha uma ação válida.');
 export type AuditAction = z.infer<typeof auditActionSchema>;

@@ -3,18 +3,23 @@ import {
   EXPORT_FORMAT_VERSION,
   PHOTO_VARIANTS,
   paymentStatus,
+  type PrivacySettings,
   saoPauloToday,
   type StaffExport,
   type StudentExport,
 } from '@academia/contracts';
 import { and, asc, type Database, eq, isNull, schema, sql } from '@academia/database';
-import { audit, type AuditActor } from '../audit/audit.ts';
+import { audit, type AuditActor, diffOf } from '../audit/audit.ts';
 import type { ColumnCipher } from '../crypto.ts';
 import { photoKey } from '../photos/photo-keys.ts';
 import { type PhotoStorage, StorageUnavailable } from '../photos/photo-storage.ts';
 import { ProblemException } from '../problem.filter.ts';
 
-const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, staff, students, users } = schema;
+const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, privacySettings, staff, students, users } =
+  schema;
+
+/** Os dois campos da configuração, na ordem da trilha; os dois guardam o valor (door 6). */
+const SETTINGS_FIELDS = ['inactiveStudentRetentionYears', 'photoVersionRetentionDays'] as const;
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
@@ -312,6 +317,43 @@ export class PrivacyService {
       photoRows.flatMap((photo) => PHOTO_VARIANTS.map((variant) => this.storage.remove(photoKey(ownerId, photo.id, variant)))),
     );
     if (removed.some((result) => result.status === 'rejected')) throw storageUnavailable();
+  }
+
+  /** A linha única da configuração de privacidade (door 4). */
+  async settings(): Promise<PrivacySettings> {
+    const [row] = await this.db
+      .select({
+        inactiveStudentRetentionYears: privacySettings.inactiveStudentRetentionYears,
+        photoVersionRetentionDays: privacySettings.photoVersionRetentionDays,
+      })
+      .from(privacySettings);
+    return row!;
+  }
+
+  /**
+   * Grava os dois valores, com a linha travada, e `privacy.settings_updated` só com os campos que
+   * mudaram; sem mudança, nada é gravado (door 6).
+   */
+  async updateSettings(input: PrivacySettings, actor: AuditActor): Promise<PrivacySettings> {
+    return this.db.transaction(async (tx) => {
+      const [before] = await tx
+        .select({
+          inactiveStudentRetentionYears: privacySettings.inactiveStudentRetentionYears,
+          photoVersionRetentionDays: privacySettings.photoVersionRetentionDays,
+        })
+        .from(privacySettings)
+        .for('update');
+      const after: PrivacySettings = {
+        inactiveStudentRetentionYears: input.inactiveStudentRetentionYears,
+        photoVersionRetentionDays: input.photoVersionRetentionDays,
+      };
+      const diff = diffOf(before!, after, SETTINGS_FIELDS, SETTINGS_FIELDS);
+      if (!diff) return after;
+
+      await tx.update(privacySettings).set({ ...after, updatedAt: new Date() });
+      await audit.record(tx, { actor, action: 'privacy.settings_updated', entity: 'privacy_settings', entityId: null, diff });
+      return after;
+    });
   }
 
   /**

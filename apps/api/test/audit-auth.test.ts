@@ -355,15 +355,16 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await admin.delete(`/api/students/${enrolledId}/payments/${paymentId}`); // student.payment_undone
   await admin.delete(`/api/students/${enrolledId}/enrollments/${enrollmentId}`); // student.enrollment_cancelled
   await admin.delete(`/api/plans/${planId}`); // plan.inactivated
+  await admin.put('/api/privacy-settings', { inactiveStudentRetentionYears: 5, photoVersionRetentionDays: 30 }); // privacy.settings_updated
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
 
-  expect(auditActionSchema.options).toHaveLength(42);
+  expect(auditActionSchema.options).toHaveLength(43);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
-  expect(rows.filter((row) => !['user', 'student', 'staff', 'plan'].includes(row.entity))).toEqual([]);
+  expect(rows.filter((row) => !['user', 'student', 'staff', 'plan', 'privacy_settings'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações de funcionário e nas duas de privacidade, e só nelas
   const staffActions = auditActionSchema.options.filter((action) => action.startsWith('staff.'));
   expect(staffActions).toHaveLength(13);

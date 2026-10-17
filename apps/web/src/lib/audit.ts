@@ -67,6 +67,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'student.anonymized': 'Aluno anonimizado',
   'staff.exported': 'Dados de funcionário exportados',
   'staff.anonymized': 'Funcionário anonimizado',
+  'privacy.settings_updated': 'Configuração de privacidade alterada',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;
