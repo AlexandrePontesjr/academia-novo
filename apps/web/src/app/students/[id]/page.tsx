@@ -16,11 +16,13 @@ import { Button } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
+import { PrivacyBlock } from '../../../components/privacy/privacy-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
 import { canCheckIn } from '../../../lib/check-ins.ts';
 import { loadPlans } from '../../../lib/plans-server.ts';
 import { canReadPayments } from '../../../lib/payments.ts';
 import { canReadPlans, canWritePlans } from '../../../lib/plans.ts';
+import { canUsePrivacy } from '../../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
@@ -173,6 +175,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
           )}
           {checkIns === 'failed' && <CheckInsLoadError />}
           {checkIns && checkIns !== 'failed' && <CheckInsBlock studentId={student.id} initial={checkIns} />}
+          {canUsePrivacy(role) && <PrivacyBlock subject="student" id={student.id} name={student.name} />}
         </>
       )}
     </Shell>

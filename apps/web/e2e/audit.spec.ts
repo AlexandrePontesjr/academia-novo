@@ -962,3 +962,48 @@ test('payment_undone_row_shows_inicio_and_valor_with_dash_on_the_right', async (
 
   expect(await detailsOf(page, 1)).toEqual(['Início: 07/10/2026 → —', 'Valor: R$ 99,90 → —']);
 });
+
+const PRIVACY_LABELS = [
+  'Dados de aluno exportados',
+  'Aluno anonimizado',
+  'Dados de funcionário exportados',
+  'Funcionário anonimizado',
+  'Configuração de privacidade alterada',
+];
+const PRIVACY_ACTIONS = [
+  'student.exported',
+  'student.anonymized',
+  'staff.exported',
+  'staff.anonymized',
+  'privacy.settings_updated',
+] as const;
+
+test('five_privacy_action_labels', async ({ page, api }) => {
+  expect(PRIVACY_ACTIONS).toHaveLength(5);
+  serve(
+    api,
+    PRIVACY_ACTIONS.map((action) =>
+      action === 'privacy.settings_updated'
+        ? logOf({
+            action,
+            entity: 'privacy_settings',
+            entityId: null,
+            diff: { fields: ['inactiveStudentRetentionYears'], values: { inactiveStudentRetentionYears: { from: null, to: 5 } } },
+          })
+        : logOf({ action, entity: action.startsWith('staff.') ? 'staff' : 'student', entityId: ENROLLED_ID }),
+    ),
+  );
+
+  await page.goto('/audit');
+
+  // a coluna "Ação"
+  await expect(page.locator('tbody tr')).toHaveCount(5);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PRIVACY_LABELS);
+
+  // o filtro "Ação": as cinco por último, nessa ordem, depois das 38 de antes com o texto de antes
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options).toHaveLength(43);
+  expect(options.slice(0, 38)).toEqual(LABELS.slice(0, 38));
+  expect(options.slice(38)).toEqual(PRIVACY_LABELS);
+  expect(AUDIT_ACTIONS.slice(38)).toEqual(PRIVACY_ACTIONS);
+});

@@ -177,3 +177,22 @@ test('signed_in_user_leaves_login', async ({ page, api }) => {
 
   await expect(page).toHaveURL('/');
 });
+
+test('privacy_link_only_for_admin', async ({ page, api }) => {
+  const visible: Record<Role, boolean> = {
+    admin: true,
+    reception: false,
+    hr_finance: false,
+    instructor: false,
+  };
+
+  for (const [role, expected] of Object.entries(visible) as Array<[Role, boolean]>) {
+    api.session = sessionOf(role);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    const link = page.getByRole('link', { name: 'Privacidade', exact: true });
+    await expect(link, role).toHaveCount(expected ? 1 : 0);
+    if (expected) await expect(link, role).toHaveAttribute('href', '/privacy');
+  }
+});

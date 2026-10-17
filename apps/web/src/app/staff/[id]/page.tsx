@@ -3,8 +3,10 @@ import { Alert, Button } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
+import { PrivacyBlock } from '../../../components/privacy/privacy-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
 import { ROLE_LABELS } from '../../../lib/roles.ts';
+import { canUsePrivacy } from '../../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
 import { canAccessStaff, canLinkStaffUser } from '../../../lib/staff.ts';
 import { formatBirthDate, formatCpf, formatPhone, STATUS_LABELS } from '../../../lib/students.ts';
@@ -137,6 +139,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
               <UserLink key={staff.user?.id ?? 'none'} staffId={staff.id} current={staff.user?.id ?? null} users={users} />
             )}
           </section>
+          {canUsePrivacy(session.user.role) && <PrivacyBlock subject="staff" id={staff.id} name={staff.name} />}
         </>
       )}
     </Shell>

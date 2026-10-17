@@ -1,9 +1,10 @@
 import { type StaffListResponse, staffListResponseSchema } from '@academia/contracts';
-import { Button, Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, Table, TableCell, TableHead, TableRow } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
 import { Shell } from '../../components/shell.tsx';
+import { ANONYMIZED_NOTICE } from '../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { canAccessStaff } from '../../lib/staff.ts';
 import { STATUS_LABELS } from '../../lib/students.ts';
@@ -22,8 +23,10 @@ async function load(): Promise<StaffListResponse | undefined> {
   }
 }
 
-export default async function StaffPage() {
+export default async function StaffPage({ searchParams }: { searchParams: Promise<{ anonymized?: string | string[] }> }) {
   const session = await requireSession();
+  // a ficha anonimizada leva de volta à lista com o aviso (privacidade)
+  const anonymized = (await searchParams).anonymized === '1';
   // quem não acessa não chega a pedir a lista; a API recusaria de qualquer forma
   const allowed = canAccessStaff(session.user.role);
   const list = allowed ? await load() : undefined;
@@ -38,6 +41,7 @@ export default async function StaffPage() {
           </Button>
         )}
       </div>
+      {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
       {!allowed ? (
         <p>Você não tem permissão para acessar esta página.</p>
       ) : !list ? (

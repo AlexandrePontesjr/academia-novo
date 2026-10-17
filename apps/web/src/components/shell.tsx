@@ -51,6 +51,11 @@ export function Shell({ session, children }: { session: SessionResponse; childre
           )}
           {user.role === 'admin' && <Link href="/users">Usuários</Link>}
           {user.role === 'admin' && <Link href="/audit">Auditoria</Link>}
+          {user.role === 'admin' && (
+            <Link href="/privacy" prefetch={false}>
+              Privacidade
+            </Link>
+          )}
           <Link href="/account">Minha conta</Link>
           <SignOutButton />
         </nav>
