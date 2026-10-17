@@ -15,7 +15,7 @@ import {
 } from './support/photos.ts';
 import { problem } from './support/stack.ts';
 import { insertStaff, postStaffPhoto, putStaffPhoto } from './support/staff.ts';
-import { cpfOf, createStudent, studentBody } from './support/students.ts';
+import { cpfOf, createStudent, insertStudents, studentBody, studentRow } from './support/students.ts';
 
 let env: PhotoStack;
 let admin: Awaited<ReturnType<PhotoStack['stack']['session']>>;
@@ -256,4 +256,32 @@ test('settings_survive_api_restart', async () => {
   } finally {
     await api.close();
   }
+});
+
+test('six_privacy_routes_and_retention_task_mounted_in_the_test_harness', async () => {
+  const n = next();
+  const [studentId] = await insertStudents(env.stack, [{ name: `Aluno Montado ${n}`, cpf: cpfOf(n), status: 'inactive' }]);
+  const [staffId] = await insertStaff(env.stack, [{ name: `Funcionário Montado ${n}`, cpf: cpfOf(n), status: 'inactive' }]);
+  await setSettings(null, 30);
+
+  // as seis rotas, no mesmo processo que o harness sobe
+  const calls: Array<[label: string, send: () => Promise<Response>, status: number]> = [
+    ['GET /api/students/:id/data-export', () => admin.client.get(`/api/students/${studentId}/data-export`), 200],
+    ['POST /api/students/:id/anonymization', () => admin.client.post(`/api/students/${studentId}/anonymization`), 204],
+    ['GET /api/staff/:id/data-export', () => admin.client.get(`/api/staff/${staffId}/data-export`), 200],
+    ['POST /api/staff/:id/anonymization', () => admin.client.post(`/api/staff/${staffId}/anonymization`), 204],
+    ['GET /api/privacy-settings', () => admin.client.get(PATH), 200],
+    ['PUT /api/privacy-settings', () => put({ inactiveStudentRetentionYears: 1, photoVersionRetentionDays: 30 }), 200],
+  ];
+  for (const [label, send, status] of calls) expect((await send()).status, label).toBe(status);
+  const registered = env.stack.api.routes().map(({ method, path }) => `${method} ${path}`);
+  for (const [label] of calls) expect(registered, label).toContain(label);
+
+  // a tarefa de retenção está registrada no mesmo módulo: uma execução anonimiza o vencido
+  const due = next();
+  const [dueId] = await insertStudents(env.stack, [{ name: `Vencido Montado ${due}`, cpf: cpfOf(due), status: 'inactive' }]);
+  await env.stack.query(`update students set inactivated_at = now() - interval '2 years' where id = $1`, [dueId]);
+  await expect(env.stack.api.retention()).resolves.toBeUndefined();
+  expect((await studentRow(env.stack, dueId!))!.anonymized_at).not.toBeNull();
+  await setSettings(null, 30);
 });

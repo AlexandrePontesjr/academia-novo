@@ -25,6 +25,7 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
+import { PrivacyRetention } from './privacy/privacy-retention.ts';
 import { PrivacySettingsController, StaffPrivacyController, StudentPrivacyController } from './privacy/privacy.controller.ts';
 import { PrivacyService } from './privacy/privacy.service.ts';
 import { ProblemFilter } from './problem.filter.ts';
@@ -147,6 +148,7 @@ export class AppModule implements OnApplicationShutdown {
             new PrivacyService(database.db, new ColumnCipher(env.DATA_ENCRYPTION_KEY), storage),
           inject: [DATABASE, PhotoStorage],
         },
+        PrivacyRetention,
         {
           provide: AuditLogsService,
           useFactory: (database: Database) => new AuditLogsService(database.db),

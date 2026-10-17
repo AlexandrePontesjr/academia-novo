@@ -7,6 +7,7 @@ import { AppModule } from '../../src/app.module.ts';
 import { configureApp } from '../../src/configure-app.ts';
 import { loadEnv } from '../../src/env.ts';
 import { PhotoPurge } from '../../src/photos/photo-purge.ts';
+import { PrivacyRetention } from '../../src/privacy/privacy-retention.ts';
 
 export const BOOM_MESSAGE = 'segredo-da-excecao-42';
 export const WEB_ORIGIN = 'http://localhost:3000';
@@ -83,5 +84,7 @@ export async function startApi(
   };
   /** Uma execução do expurgo, esperada até o fim: a mesma função que o temporizador da API chama. */
   const purge = () => app.get(PhotoPurge).run();
-  return { url: `http://127.0.0.1:${port}`, server, routes, purge, close: () => app.close() };
+  /** Uma execução da retenção de inativos, esperada até o fim: a mesma que o temporizador chama. */
+  const retention = () => app.get(PrivacyRetention).run();
+  return { url: `http://127.0.0.1:${port}`, server, routes, purge, retention, close: () => app.close() };
 }

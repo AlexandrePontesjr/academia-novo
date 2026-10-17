@@ -321,6 +321,8 @@ export interface FlakyStorage {
   failDeletes: boolean;
   /** Responde `500` só à remoção do objeto dessa variante, ou de nenhuma (`null`). */
   failDeleteOf: Variant | null;
+  /** Responde `500` à remoção de todo objeto cujo caminho contém o texto (o id de um dono), ou de nenhum (`null`). */
+  failDeleteUnder: string | null;
   /** Fora do ar: toda conexão é derrubada sem resposta. */
   down: boolean;
   stop(): Promise<void>;
@@ -332,16 +334,18 @@ export interface FlakyStorage {
  */
 export async function flakyStorage(target: string): Promise<FlakyStorage> {
   const upstream = new URL(target);
-  const state: Pick<FlakyStorage, 'failWriteOf' | 'failDeletes' | 'failDeleteOf' | 'down'> = {
+  const state: Pick<FlakyStorage, 'failWriteOf' | 'failDeletes' | 'failDeleteOf' | 'failDeleteUnder' | 'down'> = {
     failWriteOf: null,
     failDeletes: false,
     failDeleteOf: null,
+    failDeleteUnder: null,
     down: false,
   };
   const fails = (request: IncomingMessage) => {
     const path = (request.url ?? '').split('?')[0]!;
     if (request.method === 'DELETE') {
       if (state.failDeleteOf !== null && path.endsWith(`/${state.failDeleteOf}.webp`)) return true;
+      if (state.failDeleteUnder !== null && path.includes(state.failDeleteUnder)) return true;
       return state.failDeletes && path.endsWith('.webp');
     }
     return request.method === 'PUT' && state.failWriteOf !== null && path.endsWith(`/${state.failWriteOf}.webp`);
