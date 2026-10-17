@@ -63,6 +63,8 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'student.enrollment_cancelled': 'Matrícula cancelada',
   'student.payment_confirmed': 'Pagamento confirmado',
   'student.payment_undone': 'Pagamento desfeito',
+  'student.exported': 'Dados de aluno exportados',
+  'student.anonymized': 'Aluno anonimizado',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;
