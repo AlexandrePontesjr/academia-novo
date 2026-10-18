@@ -201,3 +201,46 @@ test('is_minor_defined_once_in_contracts', () => {
   expect(found).toEqual(['packages/contracts/src/students.ts']);
   expect(readFileSync(join(repoRoot, 'packages/contracts/src/index.ts'), 'utf8')).toContain("export * from './students.ts';");
 });
+
+/** A imagem do servidor de objetos da door 1, como o plano a fixou: tag e digest. */
+const STORAGE_IMAGE =
+  'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
+
+/** O texto de um arquivo do repositório. */
+function read(path: string): string {
+  return readFileSync(join(repoRoot, path), 'utf8');
+}
+
+test('storage_helper_uses_the_rustfs_image_credentials_readiness_and_bucket', () => {
+  const source = read('apps/api/test/support/servers.ts');
+
+  // a constante da imagem é o literal da door 1, e é ela que sobe o container
+  expect(/export const STORAGE_IMAGE =\s*\n?\s*'([^']+)'/.exec(source)?.[1]).toBe(STORAGE_IMAGE);
+  expect(source).toMatch(/new GenericContainer\(STORAGE_IMAGE\)/);
+  // as duas credenciais que o RustFS lê, com os valores do teste
+  expect(source).toMatch(/RUSTFS_ACCESS_KEY: STORAGE_ACCESS_KEY/);
+  expect(source).toMatch(/RUSTFS_SECRET_KEY: STORAGE_SECRET_KEY/);
+  // espera `GET /health/ready` responder 200 antes de criar o bucket `photos-test` pelo cliente S3
+  const readinessAt = source.indexOf("Wait.forHttp('/health/ready', 9000).forStatusCode(200)");
+  const bucketAt = source.indexOf('new CreateBucketCommand');
+  expect(readinessAt, 'espera de prontidão').toBeGreaterThan(-1);
+  expect(bucketAt, 'criação do bucket').toBeGreaterThan(-1);
+  expect(readinessAt).toBeLessThan(bucketAt);
+  expect(source).toContain("const STORAGE_BUCKET = 'photos-test'");
+  // a forma do retorno: `{ endpoint, bucket, env, client, stop }`, com `env` no endpoint do container
+  expect(source).toMatch(/return \{ endpoint, bucket: STORAGE_BUCKET, env, client, stop:/);
+  expect(source).toMatch(/S3_ENDPOINT: endpoint/);
+  expect(source).toMatch(/S3_BUCKET: STORAGE_BUCKET/);
+});
+
+test('api_declares_testcontainers_and_the_minio_module_is_gone', () => {
+  const api = JSON.parse(read('apps/api/package.json')) as { devDependencies: Record<string, string> };
+
+  expect(api.devDependencies.testcontainers).toBe('^12.2.0');
+
+  const manifests = ['package.json', ...workspaceDirs().map((dir) => `${dir}/package.json`)];
+  for (const manifest of manifests) {
+    expect(read(manifest), manifest).not.toContain('@testcontainers/minio');
+  }
+  expect(read('pnpm-lock.yaml')).not.toContain('@testcontainers/minio');
+});

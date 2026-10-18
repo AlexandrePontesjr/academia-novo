@@ -1,11 +1,11 @@
 import { createServer, type Socket } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
-import { MinioContainer } from '@testcontainers/minio';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate as runMigrations } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { GenericContainer, Wait } from 'testcontainers';
 import type { StorageEnv } from './app.ts';
 
 /** Postgres real e já migrado, um por arquivo de teste que precisa dele. */
@@ -63,11 +63,12 @@ export async function startHangingDatabase() {
 }
 
 /**
- * A imagem oficial `minio/minio` (Docker Hub e quay.io) deixou de ser publicada. Fork da comunidade
- * mantido por pgsty (AGPLv3), fixado por tag e digest; o compose (S7) usa a mesma imagem.
+ * O servidor de objetos da stack e dos testes é o RustFS (Apache 2.0), fixado por tag e digest;
+ * o compose (S2) usa a mesma imagem (door 1). A imagem não traz o `mc`: o bucket é criado pelo
+ * cliente S3 daqui, depois de `/health/ready` responder 200 (door 4).
  */
-export const MINIO_IMAGE =
- 'pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372';
+export const STORAGE_IMAGE =
+ 'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
 
 export const STORAGE_BUCKET = 'photos-test';
 export const STORAGE_ACCESS_KEY = 'ak-minio-teste-7f3a';
@@ -78,13 +79,14 @@ export function s3Client(endpoint: string, accessKeyId = STORAGE_ACCESS_KEY, sec
   return new S3Client({ endpoint, region: 'us-east-1', forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } });
 }
 
-/** MinIO real, um por arquivo de teste (AD-012), com o bucket criado e privado. */
+/** RustFS real, um por arquivo de teste (AD-012), com o bucket criado e privado. */
 export async function startMinio() {
-  const container = await new MinioContainer(MINIO_IMAGE)
-    .withUsername(STORAGE_ACCESS_KEY)
-    .withPassword(STORAGE_SECRET_KEY)
+  const container = await new GenericContainer(STORAGE_IMAGE)
+    .withExposedPorts(9000)
+    .withEnvironment({ RUSTFS_ACCESS_KEY: STORAGE_ACCESS_KEY, RUSTFS_SECRET_KEY: STORAGE_SECRET_KEY })
+    .withWaitStrategy(Wait.forHttp('/health/ready', 9000).forStatusCode(200))
     .start();
-  const endpoint = container.getConnectionUrl();
+  const endpoint = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
   const client = s3Client(endpoint);
   await client.send(new CreateBucketCommand({ Bucket: STORAGE_BUCKET }));
   const env: StorageEnv = {
