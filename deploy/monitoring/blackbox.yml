@@ -1,0 +1,9 @@
+# A sonda HTTP do blackbox-exporter (door 6): sucesso é 200. O `web` e o `/health` da `api` são os
+# dois alvos, com os jobs `blackbox-web` e `blackbox-api` no prometheus.yml.
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]

@@ -1,0 +1,14 @@
+# Modelo do Alertmanager (door 6). O `deploy/render.sh` troca `ALERT_WEBHOOK_URL` pelo valor do
+# `.env` e grava `deploy/monitoring/alertmanager.yml`, que é o arquivo montado no container.
+route:
+  receiver: webhook
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: webhook
+    webhook_configs:
+      - url: '__ALERT_WEBHOOK_URL__'
+        send_resolved: false

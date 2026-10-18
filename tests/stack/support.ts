@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -106,3 +106,121 @@ export function breakBucketInit(cloneDir: string) {
   if (broken === compose) throw new Error('compose.yaml não tem a execução que cria o bucket');
   writeFileSync(path, broken);
 }
+
+/**
+ * O `bash` do PATH no Windows é o launcher do WSL, que pode não alcançar o Docker do host: a suíte
+ * usa o Git Bash quando ele existe (o mecanismo fica registrado no `## Handoff` da feature).
+ */
+export const BASH =
+  process.platform === 'win32' && existsSync('C:/Program Files/Git/bin/bash.exe')
+    ? 'C:/Program Files/Git/bin/bash.exe'
+    : 'bash';
+
+/** Roda um script `deploy/*.sh` no clone, com o ambiente da stack de produção. */
+export function runBash(argument: string, cwd: string, env: Record<string, string> = {}) {
+  return run(`"${BASH}" ${argument}`, cwd, env);
+}
+
+/** O `stdout` de um comando, sem o `stderr`: é dele que saem o JSON do Compose e o PEM da CA. */
+export function capture(command: string, cwd: string, env: Record<string, string> = {}): string {
+  const result = spawnSync(command, {
+    cwd,
+    shell: true,
+    encoding: 'utf8',
+    env: cleanEnv(env),
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  if (result.status !== 0) throw new Error(`${command} falhou: ${result.stderr}`);
+  return result.stdout;
+}
+
+/** O `stdout` binário de um comando (o conteúdo de um objeto do bucket, por exemplo). */
+export function captureBuffer(command: string, cwd: string, env: Record<string, string> = {}): Buffer {
+  const result = spawnSync(command, {
+    cwd,
+    shell: true,
+    env: cleanEnv(env),
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  if (result.status !== 0) throw new Error(`${command} falhou: ${String(result.stderr)}`);
+  return result.stdout as Buffer;
+}
+
+export interface ProductionPorts {
+  POSTGRES_PORT: string;
+  PORT: string;
+  WEB_PORT: string;
+  STORAGE_PORT: string;
+  CADDY_HTTP_PORT: string;
+  CADDY_HTTPS_PORT: string;
+  PROMETHEUS_PORT: string;
+  ALERTMANAGER_PORT: string;
+}
+
+export interface ProductionStack {
+  dir: string;
+  project: string;
+  webOrigin: string;
+  backupDir: string;
+  ports: ProductionPorts;
+  env: Record<string, string>;
+  compose(args: string, extraEnv?: Record<string, string>): { status: number | null; output: string };
+  containers(): Array<{ ID: string; Service: string; State: string; Health: string; ExitCode: number }>;
+  deploy(): { status: number | null; output: string };
+  ca(): string;
+  destroy(): void;
+}
+
+/** Uma stack de produção isolada: clone limpo, overlay do Compose, projeto e portas próprios. */
+export async function prepareProductionStack(
+  name: string,
+  options: { alertWebhookUrl?: string } = {},
+): Promise<ProductionStack> {
+  const dir = cleanClone();
+  copyFileSync(join(dir, '.env.example'), join(dir, '.env'));
+  const project = `academia-prod-${name}-${process.pid}`;
+  const ports: ProductionPorts = {
+    POSTGRES_PORT: String(await freePort()),
+    PORT: String(await freePort()),
+    WEB_PORT: String(await freePort()),
+    STORAGE_PORT: String(await freePort()),
+    CADDY_HTTP_PORT: String(await freePort()),
+    CADDY_HTTPS_PORT: String(await freePort()),
+    PROMETHEUS_PORT: String(await freePort()),
+    ALERTMANAGER_PORT: String(await freePort()),
+  };
+  const backupDir = mkdtempSync(join(tmpdir(), 'academia-backup-')).replaceAll('\\', '/');
+  const webOrigin = `https://localhost:${ports.CADDY_HTTPS_PORT}`;
+  const env = {
+    COMPOSE_PROJECT_NAME: project,
+    SITE_ADDRESS: 'localhost',
+    ACME_EMAIL: 'operacao@exemplo.invalid',
+    ALERT_WEBHOOK_URL: options.alertWebhookUrl ?? 'http://host.docker.internal:9/alert',
+    BACKUP_DIR: backupDir,
+    BACKUP_RETENTION_DAYS: '30',
+    WEB_ORIGIN: webOrigin,
+    ...ports,
+  };
+  return {
+    dir,
+    project,
+    webOrigin,
+    backupDir,
+    ports,
+    env,
+    compose: (args, extraEnv = {}) => run(`docker compose ${args}`, dir, { ...env, ...extraEnv }),
+    containers: () =>
+      (capture('docker compose ps --all --format json', dir, env) ?? '')
+        .split('\n')
+        .filter((line) => line.trim().startsWith('{'))
+        .map((line) => JSON.parse(line)),
+    deploy: () => runBash('deploy/deploy.sh', dir, env),
+    ca: () => capture('docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt', dir, env).trim(),
+    destroy: () => {
+      run('docker compose down --volumes --rmi local --remove-orphans', dir, env);
+      removeClone(dir);
+      rmSync(backupDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    },
+  };
+}
+

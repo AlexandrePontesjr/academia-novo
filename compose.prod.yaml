@@ -1,0 +1,115 @@
+# A stack de produção, como overlay do compose.yaml: a borda HTTPS, a observabilidade e os
+# artefatos de deploy. Sobe com `docker compose -f compose.yaml -f compose.prod.yaml up -d --wait`,
+# que é o comando do `deploy/deploy.sh`. O `.env` do servidor é o do `.env.example` (door 7).
+services:
+  caddy:
+    image: caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
+    ports:
+      - '${CADDY_HTTP_PORT:-80}:80'
+      - '${CADDY_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      # o endereço público do site e o e-mail do ACME vêm do `.env`; o caddy não lê o `.env`
+      SITE_ADDRESS: ${SITE_ADDRESS:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+      # o redirecionamento HTTP -> HTTPS precisa do porto externo, que o caddy não vê do host
+      CADDY_HTTPS_PORT: ${CADDY_HTTPS_PORT:-443}
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:2019/config/']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  prometheus:
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.listen-address=:9090
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./deploy/monitoring/alerts.test.yml:/etc/prometheus/alerts.test.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - '127.0.0.1:${PROMETHEUS_PORT:-9090}:9090'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:9090/-/ready']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    environment:
+      # o webhook é obrigatório: o `render.sh` o substitui no arquivo de configuração
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:?}
+    volumes:
+      # o arquivo é renderizado de `alertmanager.yml.tmpl` pelo `deploy/render.sh` antes da subida
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - '127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:9093/-/ready']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+    command:
+      - --path.rootfs=/host
+      # o `backup.prom` que o `deploy/backup.sh` grava é o textfile collector da door 5
+      - --collector.textfile.directory=/backup/metrics
+    volumes:
+      # o disco do host, para a regra DiskSpaceLow; em Docker Desktop o `rslave` não é aceito
+      - /:/host:ro
+      - ${BACKUP_DIR:?}:/backup:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9100/metrics']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.29.0@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea
+    volumes:
+      - ./deploy/monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9115/metrics']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Cliente do bucket para o backup e a restauração: roda sob demanda (`profile: backup`), montando
+  # o diretório do host em que os arquivos caem. É o mesmo `aws-cli` do `storage-init` (door 5).
+  aws-cli:
+    image: amazon/aws-cli:2.37.9@sha256:92de75724b6a746951f0e8b915d86bbccd7cb55aff96cd0cb4f7017272160780
+    profiles: ['backup']
+    environment:
+      AWS_ENDPOINT_URL: http://storage:9000
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:?}
+    volumes:
+      - '${BACKUP_DIR:?}:/backup'
+    depends_on:
+      storage:
+        condition: service_healthy
+
+volumes:
+  caddy-data:
+  caddy-config:
+  prometheus-data:
+  alertmanager-data:

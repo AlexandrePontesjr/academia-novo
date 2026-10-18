@@ -1,0 +1,24 @@
+# Prova das regras com `promtool test rules`: duas das seis, no nível em que o promtool as avalia.
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="caddy"}'
+        values: '1 0 0 0'
+      - series: 'probe_success{job="blackbox-web"}'
+        values: '1 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: CaddyDown
+        exp_alerts:
+          - exp_labels:
+              job: caddy
+      - eval_time: 3m
+        alertname: WebDown
+        exp_alerts:
+          - exp_labels:
+              job: blackbox-web

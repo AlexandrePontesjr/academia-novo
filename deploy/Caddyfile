@@ -1,0 +1,58 @@
+# A borda pública da homologação: termina TLS, fixa o IP do cliente (AD-028), aplica os
+# cabeçalhos de segurança e o limite de corpo, e repassa tudo ao `web` (AD-019). A `api` não é
+# alcançável pela internet: o `/api/*` continua saindo do `web`.
+{
+	http_port 80
+	https_port 443
+	email {$ACME_EMAIL}
+	metrics
+}
+
+# Métricas do caddy para o Prometheus, numa porta interna (door 6).
+:9180 {
+	metrics
+}
+
+# O redirecionamento HTTP -> HTTPS com o porto externo. O `http_port`/`https_port` globais são 80 e
+# 443 dentro do container, e o caddy não vê o porto publicado no host: sem esta rota ele responde
+# `Location: https://<host>/`, sem o porto que o navegador precisa alcançar.
+http://{$SITE_ADDRESS} {
+	redir https://{$SITE_ADDRESS}:{$CADDY_HTTPS_PORT}{uri} 308
+}
+
+{$SITE_ADDRESS} {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=()"
+		-Server
+		-X-Powered-By
+	}
+
+	# o limite da borda (door 1): 6 MB; o `problem+json` da AD-044 continua valendo abaixo disso
+	request_body {
+		max_size 6MB
+	}
+
+	# método de diagnóstico recusado na borda (AC 39)
+	@trace method TRACE
+	respond @trace 405
+
+	reverse_proxy web:3000
+
+	# log de acesso JSON, com `q`/`sig` apagados da query e as credenciais redigidas (door 1)
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete q
+					delete sig
+				}
+				request>headers>Cookie replace REDACTED
+				request>headers>Authorization replace REDACTED
+			}
+		}
+	}
+}
