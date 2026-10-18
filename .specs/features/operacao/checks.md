@@ -671,3 +671,65 @@ Notas para o builder:
   quiser mudar isso, é mudança de plano (door 1), não de check.
 - **o Verifier é disparado depois do último commit desta feature**, sobre `4fcc4ad..HEAD`, com os 56
   checks e `Profile: standard`.
+
+### Build (S1 a S5, um builder)
+
+Base `4fcc4ad`, mecanismo **um builder** (a soma deu ~114k, abaixo do orçamento de 150k), ordem
+S1 -> S2 -> S3 -> S4 -> S5. Os commits: `653f807` (estes checks e as decisões da revisão), `49d382c`
+(S1: a borda, o CSP e a stack de produção) e `ac50348` (S2 a S5: versionamento, backup, restauração,
+métricas/alertas, runbook e custódia). Sem push e sem Verifier, como a revisão pediu; o build para ao
+fim da S5.
+
+As duas decisões da revisão, aplicadas antes da S1: o literal do `caddy` na door 1/AD-083 e nesta C52
+é `sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af`; o `504` da `Surface`
+fica no nível do `web` (a C45 não muda).
+
+O que o build decidiu e o Verifier precisa saber:
+
+- **O `Caddyfile` ganhou um site explícito `http://{$SITE_ADDRESS}`** com
+  `redir https://{$SITE_ADDRESS}:{$CADDY_HTTPS_PORT}{uri} 308`. O redirecionamento automático do
+  `caddy:2.11.7` descarta o porto publicado (`Location: https://localhost/`, verificado no container
+  real) e a C3 fixa o `Location` com o porto; o site explícito é a forma de produzi-lo sem mudar o
+  `https_port 443` da door 1. A substância da door (um `caddy`, `web:3000`, sem `api:3001`, nenhuma
+  outra porta pública) não muda.
+- **A C6 prova o `/health` com sessão válida**: sem sessão o `proxy.ts` manda qualquer página para o
+  `/login`; com a sessão o `web` responde o 404 que a C6 fixa, e o `/health` da API continua fora da
+  borda.
+- **A C7 para a `api` durante o upload de 7 MB**: o healthcheck da `api` gravava linhas no log entre
+  as duas contagens; com a `api` parada a contagem fica estável e o 413 da borda prova que o corpo
+  não chegou à API. A linha de acesso do `caddy` registra o `413`.
+- **Os scripts rodam com o Git Bash** (`C:/Program Files/Git/bin/bash.exe`): no Windows o `bash` do
+  PATH é o launcher do WSL, que não alcança o Docker do host - o mecanismo que o item 9 do Intent
+  previu. No servidor Linux é o `bash` normal.
+- **C14 e C56 usam um bucket recém-criado** em vez de suspender o versionamento: o `RustFS` não tem o
+  estado `Suspended` no caminho da prova. O objeto anterior ao versionamento volta com `VersionId`
+  ausente ou `"null"`, como o S3 o representa.
+- **A C25 recupera a versão com `get-object --version-id`** (mesmo conteúdo do backup) e remove o
+  marcador de exclusão; o `GET` assinado volta a `200` com o mesmo conteúdo.
+- **A AC 41 fica provada no artefato** (item 4 do Intent): `git check-ignore .env` e os três modos
+  nos scripts e no README; o modo real é o drill do servidor.
+- **A door 4 mudou o `entrypoint` do `storage-init`**, e com ele a asserção de literal que a suíte
+  antiga fazia em `compose.test.ts`; a asserção foi atualizada para o `entrypoint` novo (não é
+  enfraquecimento: o claim novo é a door 4).
+- **A C13 exigiu um conserto de dado no `compose.test.ts`**: o caso de check-in cadastrava o CPF
+  `987.654.321-00`, que o caso de upload de foto já tinha cadastrado na mesma stack - o vermelho
+  pré-existente registrado no `## Handoff` de `features/privacidade/checks.md`. O CPF do caso de
+  check-in passou a `168.995.350-09` e a suíte inteira ficou verde.
+- **A S1 subiu antes do resto do `deploy/`** porque a C1 exige os quatro serviços de observabilidade
+  `healthy` e a C46 exige o `deploy.sh`: `deploy/monitoring/`, `deploy/deploy.sh` e `deploy/render.sh`
+  entraram no commit da S1, e a S4 fechou as provas C28 a C33 e C48.
+
+Provas (todas rodadas nesta máquina, com Docker e Chromium reais):
+
+- `production.test.ts` **19/19** (C1 a C9, C35 a C39, C43 a C45, C52)
+- `backup.test.ts` **17/17** (C14 a C27, C42, C47, C55, C56)
+- `monitoring.test.ts` **7/7** (C28 a C33, C48)
+- `apps/web/e2e/csp.spec.ts` **3/3** (C10 a C12), dentro do `pnpm verify`
+- `repo.test.ts` **28/28** (C19, C40 a C42, C46, C49, C51, C52, C53, C54)
+- `compose.test.ts` **30/30** (C13)
+- `pnpm audit --prod --audit-level high` sai `0` (C34); `git diff --name-only
+  4fcc4ad..HEAD -- apps/api/src packages/contracts packages/database/migrations pnpm-lock.yaml` sai
+  vazio (C50); `pnpm verify` verde (21 tarefas, web com 290 testes de tela).
+
+Nomes de arquivo e de caso: os que os checks escrevem, sem mudança; todas as provas rodam fora do
+`pnpm verify` exceto os três casos do Chromium, que entram por `apps/web/e2e/csp.spec.ts`.
