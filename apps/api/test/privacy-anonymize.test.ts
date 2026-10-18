@@ -239,24 +239,26 @@ test('open_period_ends_at_the_sao_paulo_turn', async () => {
 
 test('storage_failure_is_503_rolls_back_rows_and_retry_succeeds', async () => {
   const subject = await seedFullStudent(env.stack, env.minio);
+  expect(subject.keys).toHaveLength(6);
   const proxy = await flakyStorage(env.minio.endpoint);
   const api = await startApi(env.stack.postgres.url, [], { ...env.minio.env, S3_ENDPOINT: proxy.endpoint });
   try {
     const user = await env.stack.seed({ role: 'admin' });
     const client = await env.stack.signIn(user, createClient(api.url));
     await env.stack.query('update users set two_factor_enabled = true where id = $1', [user.id]);
-    const rowsOf = async () => {
-      const rows = await subjectRows(env.stack, subject.id);
-      return { students: rows.students, guardians: rows.guardians, consents: rows.consents, photos: rows.photos, audit: await auditTexts() };
-    };
-    const before = await rowsOf();
+    const before = await privacySnapshot(env.stack, env.minio);
     proxy.failDeleteOf = 'large';
 
     const failed = await client.post(anonymizationPath(subject.id));
 
     expect(failed.status).toBe(503);
     expect((await problem(failed)).code).toBe('storage_unavailable');
-    expect(await rowsOf()).toEqual(before);
+    // as nove tabelas voltam com a transação, mas o bucket não volta: a remoção não é transacional
+    const interrupted = await privacySnapshot(env.stack, env.minio);
+    expect(interrupted.tables).toEqual(before.tables);
+    expect(interrupted.audit).toBe(before.audit);
+    // saíram os quatro `thumb`/`medium` das duas fotos; ficaram os dois `large`, cuja remoção foi recusada
+    expect(interrupted.keys).toEqual(before.keys.filter((key) => !subject.keys.includes(key) || key.endsWith('/large.webp')));
 
     // com o armazenamento de volta, a mesma chamada termina
     proxy.failDeleteOf = null;

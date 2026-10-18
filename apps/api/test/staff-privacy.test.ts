@@ -206,27 +206,33 @@ test('staff_active_409_not_inactive_and_linked_user_409_staff_user_linked', asyn
 
 test('staff_storage_failure_is_503_and_rows_unchanged', async () => {
   const subject = await seedStaff();
+  const subjectKeys = await staffKeys(env.minio, subject.id);
+  expect(subjectKeys).toHaveLength(6);
   const proxy = await flakyStorage(env.minio.endpoint);
   const api = await startApi(env.stack.postgres.url, [], { ...env.minio.env, S3_ENDPOINT: proxy.endpoint });
   try {
     const user = await env.stack.seed({ role: 'admin' });
     const client = await env.stack.signIn(user, createClient(api.url));
     await env.stack.query('update users set two_factor_enabled = true where id = $1', [user.id]);
-    const auditTexts = async () =>
-      (await env.stack.query<{ row: string }>('select to_jsonb(a)::text as row from audit_logs a order by id')).map((row) => row.row);
-    const rowsOf = async () => ({
-      staff: await staffRowText(env.stack, subject.id),
-      photos: await staffPhotoRowsText(env.stack, subject.id),
-      audit: await auditTexts(),
-    });
-    const before = await rowsOf();
+    const before = await privacySnapshot(env.stack, env.minio);
     proxy.failDeleteOf = 'large';
 
     const response = await client.post(anonymizationPath(subject.id));
 
     expect(response.status).toBe(503);
     expect((await problem(response)).code).toBe('storage_unavailable');
-    expect(await rowsOf()).toEqual(before);
+    // as nove tabelas voltam com a transação, mas o bucket não volta: a remoção não é transacional
+    const interrupted = await privacySnapshot(env.stack, env.minio);
+    expect(interrupted.tables).toEqual(before.tables);
+    expect(interrupted.audit).toBe(before.audit);
+    // saíram os quatro `thumb`/`medium` das duas fotos; ficaram os dois `large`, cuja remoção foi recusada
+    expect(interrupted.keys).toEqual(before.keys.filter((key) => !subjectKeys.includes(key) || key.endsWith('/large.webp')));
+
+    // com o armazenamento de volta, a mesma chamada termina
+    proxy.failDeleteOf = null;
+    const retried = await client.post(anonymizationPath(subject.id));
+    expect(retried.status).toBe(204);
+    expect(await staffKeys(env.minio, subject.id)).toEqual([]);
   } finally {
     await api.close();
     await proxy.stop();
