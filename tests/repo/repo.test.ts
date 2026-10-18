@@ -260,9 +260,86 @@ test('storage_image_is_the_same_digest_in_compose_and_the_api_helper', () => {
   // o identificador antigo não existe em nenhum arquivo fora do histórico de `.specs/`
   // (montado em runtime para o próprio teste não ser um resultado do `git grep`)
   const legacyImage = ['MINIO', 'IMAGE'].join('_');
-  const grep = spawnSync('git', ['grep', '-n', legacyImage], { cwd: repoRoot, encoding: 'utf8' });
-  const outsideSpecs = (grep.stdout ?? '')
+  expect(grepOutsideSpecs(['-n', legacyImage])).toEqual([]);
+});
+
+/** As linhas de um `git grep` que não estão em `.specs/` (o histórico das features fica fora da varredura). */
+function grepOutsideSpecs(args: string[]): string[] {
+  const grep = spawnSync('git', ['grep', ...args], { cwd: repoRoot, encoding: 'utf8' });
+  return (grep.stdout ?? '')
     .split(/\r?\n/)
     .filter((line) => line !== '' && !line.startsWith('.specs/'));
-  expect(outsideSpecs).toEqual([]);
+}
+
+test('minio_identifiers_are_absent_outside_specs', () => {
+  // montado em runtime para o próprio teste não ser um resultado do `git grep`
+  const pattern = [
+    ['pgs', 'ty'].join(''),
+    ['Minio', 'Container'].join(''),
+    ['@testcontainers/', 'minio'].join(''),
+    ['MINIO', '_ROOT'].join(''),
+    ['minio', '/health'].join(''),
+  ].join('|');
+
+  expect(grepOutsideSpecs(['-i', '-E', pattern])).toEqual([]);
+});
+
+test('mc_commands_are_absent_outside_specs', () => {
+  // montado em runtime para o próprio teste não ser um resultado do `git grep`
+  const pattern = ['\\bmc', '(alias|mb|ls)\\b'].join(' ');
+
+  expect(grepOutsideSpecs(['-E', pattern])).toEqual([]);
+});
+
+test('env_example_describes_the_stack_storage_as_rustfs', () => {
+  const lines = read('.env.example').split(/\r?\n/);
+  for (const line of lines) {
+    expect(line, 'nenhuma linha de `.env.example` cita MinIO').not.toMatch(/minio/i);
+  }
+
+  const rustfsComments = lines.filter((line) => line.startsWith('#') && /RustFS/.test(line));
+  expect(rustfsComments.length, 'um comentário descreve o armazenamento como RustFS').toBeGreaterThan(0);
+  expect(rustfsComments.join('\n')).toMatch(/armazenamento|S3/i);
+});
+
+test('state_registers_the_rustfs_decision_and_supersedes_ad_042', () => {
+  const rows = read('.specs/STATE.md')
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith('| AD-'));
+  const rowOf = (decision: string) => rows.find((line) => line.startsWith(`| ${decision} |`));
+  const ad042 = rowOf('AD-042');
+  const ad082 = rowOf('AD-082');
+  expect(ad042, 'AD-042 no STATE.md').toBeDefined();
+  expect(ad082, 'AD-082 no STATE.md').toBeDefined();
+
+  // a AD-042 passa a `superseded by AD-082`
+  expect(ad042).toContain('superseded by AD-082');
+
+  // a AD-082 é `active` e repete a AD-042 inteira com o RustFS da door 1 e o `aws-cli` da door 2
+  const cells = ad082!.split('|').map((cell) => cell.trim());
+  expect(cells[1]).toBe('AD-082');
+  expect(cells.at(-3), 'status da AD-082').toBe('active');
+  for (const member of [
+    'S3_ENDPOINT',
+    'S3_BUCKET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'a API é a única que lê e grava',
+    '/health',
+    'storage',
+    'RustFS',
+    'aws-cli',
+  ]) {
+    expect(ad082, member).toContain(member);
+  }
+});
+
+test('state_branch_line_no_longer_names_the_minio_image', () => {
+  const branch = read('.specs/STATE.md')
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('**Branch**'));
+  expect(branch, 'linha `**Branch**` no Handoff').toBeDefined();
+  // montado em runtime para o próprio teste não ser um resultado do `git grep` da C19
+  expect(branch).not.toMatch(new RegExp(['pgs', 'ty'].join('') + '/minio', 'i'));
+  expect(branch).toMatch(/RustFS/i);
 });

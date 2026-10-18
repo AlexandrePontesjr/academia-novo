@@ -202,3 +202,30 @@ Notas para o builder:
 - a C3 (`pnpm verify`) e a suíte de stack inteira (`pnpm test:stack`) rodam no fim de cada slice verde; as nove provas novas de stack entram todas no mesmo `describe('stack de pé')`, para não pagar um segundo `up --build --wait`
 - a C4 só fecha com a base certa: rodar o `git diff` contra `a3276c9`, nunca contra `334b2ce` por conveniência
 - o Verifier é disparado pelo orquestrador depois do último commit desta feature, sobre `<base da feature>..HEAD`, com os 24 checks e `Profile: standard`
+
+Build (2026-10-18) - **um builder**, ordem S1 -> S2 -> S3, sobre a base `a3276c9` e os documentos de `56959de`:
+
+- **S1 `37ad834`** - a suíte de API contra o RustFS: `apps/api/test/support/servers.ts` (`MINIO_IMAGE` -> `STORAGE_IMAGE`, `startMinio` por `GenericContainer` com `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY`, espera `GET /health/ready` `200` e cria o bucket pelo cliente S3, mesma forma de retorno), `apps/api/package.json` (`@testcontainers/minio` sai, `testcontainers ^12.2.0` entra em `devDependencies`) e `pnpm-lock.yaml` com o diff mínimo (3 linhas a mais, 15 a menos: só o importer de `apps/api`, o pacote e o snapshot do módulo do MinIO). Provas: C1 (repo + `photos-delete`), C6 (`health`), C7 (`check-in-status` + `privacy-retention`) e C8 (repo). `pnpm verify` verde (21 tarefas; 77 arquivos e 709 testes de API, 12 de repo).
+- **S2 `e13ab69`** - a stack com o RustFS: `compose.yaml` com os serviços `storage` (imagem da door 1, `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY`/`RUSTFS_CONSOLE_ENABLE: 'false'`, `RUSTFS_OBS_LOG_DIRECTORY: ''`, sem `command`, healthcheck em `/health/ready`, volume `rustfs-data:/data`) e `storage-init` (imagem da door 2, `entrypoint` com `head-bucket || create-bucket`, `AWS_*` e `S3_BUCKET`); `volumes:` perde `storage-data` e ganha `rustfs-data`. `tests/stack/support.ts` (`breakBucketInit` quebra `aws s3api create-bucket`), `tests/stack/compose.test.ts` (nove casos novos no mesmo `up --build --wait` e a listagem pelo `aws-cli` do `storage-init` nos quatro casos que usavam `mc`) e o teste de repo da C2. Provas: C2, C5 e C9 a C18 e C23; `pnpm verify` verde (709 de API, 13 de repo) e `pnpm test:stack` com tudo desta fatia verde (o único vermelho da suíte é o da `check-in`, pré-existente).
+  - a listagem passou a ser `docker compose run --rm --no-deps --entrypoint aws storage-init s3 ls --recursive s3://<bucket>/<prefixo>`, e as chaves voltam completas (`photos/main/<id>/...`): os helpers dos casos existentes removem o prefixo para continuar comparando as chaves relativas.
+  - a C17 reprovou na primeira execução pelo shell do Windows: em `sh -c 'ls -A /logs | wc -l'` o `cmd.exe` interpreta o `|`; a prova passou a usar aspas duplas, como os outros `sh -c` do arquivo. Nenhum claim mudou.
+  - o `$$` do `entrypoint` aparece `$$` no `config --format json` (o compose reescapa o `$` literal): a C10 compara a string exatamente como o check a escreve.
+- **S3 = este commit final** - documentos e varreduras: `.env.example` (o comentário passa a dizer "RustFS na stack"), `.specs/STATE.md` (linha `**Branch**` e `**In progress**`/`**Uncommitted**`) e os cinco casos de repo C19 a C22 e C24.
+
+Provas dos 24 checks, todas verdes em `HEAD`:
+
+- S1: C1, C6, C7 e C8; S2: C2, C5, C9 a C18 e C23; S3: C19 a C22 e C24. A C3 é o `pnpm verify` inteiro: verde nas três fatias (21 tarefas; a última só com os casos de repo novos, 18 em cache, API 709 em 77 arquivos e repo 18). A C4 (`git diff --name-only a3276c9..HEAD -- apps/api/src "apps/api/test/*.test.ts"`) sai vazia.
+- `pnpm test:stack` inteiro: **33 de 34** verdes, incluindo `verify.test.ts` (4) e, em `compose.test.ts`, os nove casos novos e `api_never_starts_when_bucket_init_fails`. O 34º é o vermelho pré-existente da `check-in` (CPF `987.654.321-00` repetido entre `photo_uploaded_through_web_...` e `check_in_through_web_...` na mesma stack, `409 cpf_taken`), registrado no `## Handoff` de `features/privacidade/checks.md` (batch C); **não foi tocado**, por estar fora dos 24 checks e pelo scope guardrail. Decisão do Lead em 2026-10-18: manter e reportar.
+- Cada prova entrou no commit do slice em que o assembly que ela compara passa a existir: C1 e C8 (só `servers.ts`/`package.json`) no S1; C2 (compara `compose.yaml` com `servers.ts`) no S2; C19 a C24 no S3. Nenhum claim editado, nenhum teste afrouxado, apagado ou pulado.
+
+Settled mid-build (sem tocar check nem door):
+
+- (1) O `RUSTFS_OBS_LOG_DIRECTORY: ''` foi confirmado no binário antes da S2: o `docker logs` mostra `Initializing data directories: /data`, `OBS log directory not configured...` e as linhas JSON com `target: rustfs_...`, e `ls -A /logs` volta 0 - a Assumption "log do RustFS" está cumprida sem pergunta.
+- (2) O volume nomeado funciona com o usuário `rustfs` da imagem (volume novo sobre `/data` sobe `healthy`), então a door 3 não precisou de `user:` nem de permissão extra.
+- (3) O `docker compose up --wait` de repetição (C11) sai 0 porque a `api` depende de `storage-init` com `service_completed_successfully`; a prova confirma `storage-init` `exited` `0` e `api` `healthy` depois do segundo `up`.
+- (4) O `testcontainers` já estava no lockfile como transitivo na mesma versão; o diff do `pnpm-lock.yaml` ficou mínimo em vez do `pnpm install` completo (que reescrevia sufixos de peer de outros importers). `pnpm install --frozen-lockfile` valida o resultado.
+- (5) A imagem do RustFS não traz o `mc`; a criação do bucket nos testes continua pelo cliente S3 de `servers.ts`, e a listagem da stack pelo `aws-cli` da door 2.
+
+Abandoned: nada. Nenhum check editado, nenhum teste fraco, nenhuma prova pulada. Os quatro casos de stack que usavam `mc` só trocaram o mecanismo de listagem, mantendo as mesmas asserções de chaves.
+
+Nota para o Verifier: os 24 `Proof:` estão no corpo deste arquivo; a base é `a3276c9`; o perfil é `standard`; o vermelho pré-existente da `check-in` não é desta feature e não deve ser contado como regressão dela.
