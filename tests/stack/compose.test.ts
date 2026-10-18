@@ -1,4 +1,4 @@
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -16,6 +16,28 @@ interface ComposeContainer {
   State: string;
   Health: string;
   ExitCode: number;
+}
+
+/** A imagem do servidor de objetos (door 1) e a do cliente da execução única (door 2). */
+const STORAGE_IMAGE =
+  'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
+const AWS_CLI_IMAGE =
+  'amazon/aws-cli:2.37.9@sha256:92de75724b6a746951f0e8b915d86bbccd7cb55aff96cd0cb4f7017272160780';
+
+interface ResolvedConfig {
+  services: Record<
+    string,
+    {
+      image?: string;
+      command?: string | null;
+      entrypoint?: string[] | null;
+      environment?: Record<string, string>;
+      healthcheck?: { test?: string[] };
+      ports?: Array<{ host_ip?: string }>;
+      volumes?: Array<{ type?: string; source?: string; target?: string }>;
+    }
+  >;
+  volumes?: Record<string, unknown>;
 }
 
 /** Uma stack isolada: clone limpo, `.env` copiado de `.env.example`, projeto e portas próprios. */
@@ -52,6 +74,16 @@ describe('stack de pé', () => {
   let stack: Stack;
   let up: ReturnType<typeof run>;
 
+  /** As chaves do bucket pelo `aws-cli` do serviço `storage-init` (door 2). */
+  const listKeys = (prefix = '') => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const listed = stack.compose(
+      `run --rm --no-deps --entrypoint aws storage-init s3 ls --recursive s3://${env.S3_BUCKET}/${prefix}`,
+    );
+    expect(listed.status, listed.output).toBe(0);
+    return listed.output.split(/\r?\n/).flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? []);
+  };
+
   beforeAll(async () => {
     stack = await prepareStack('up');
     up = stack.compose('up --build --wait');
@@ -67,6 +99,126 @@ describe('stack de pé', () => {
       const container = containers.find((c) => c.Service === service);
       expect(container?.Health, `saúde de ${service}`).toBe('healthy');
     }
+  });
+
+  test('storage_healthy_and_storage_init_exited_zero_after_up_wait', () => {
+    expect(up.status, up.output.slice(-4000)).toBe(0);
+
+    const containers = stack.containers();
+    const storage = containers.find((c) => c.Service === 'storage');
+    expect(storage?.Health).toBe('healthy');
+    const init = containers.find((c) => c.Service === 'storage-init');
+    expect(init?.State).toBe('exited');
+    expect(init?.ExitCode).toBe(0);
+  });
+
+  test('storage_and_storage_init_resolve_the_literal_config_of_the_two_doors', () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const config = stack.compose('config --format json');
+    expect(config.status, config.output).toBe(0);
+    const { services } = JSON.parse(config.output.slice(config.output.indexOf('{'))) as ResolvedConfig;
+
+    const storage = services.storage!;
+    expect(storage.image).toBe(STORAGE_IMAGE);
+    expect(storage.environment?.RUSTFS_ACCESS_KEY).toBe(env.S3_ACCESS_KEY_ID);
+    expect(storage.environment?.RUSTFS_SECRET_KEY).toBe(env.S3_SECRET_ACCESS_KEY);
+    expect(storage.environment?.RUSTFS_CONSOLE_ENABLE).toBe('false');
+    expect(storage.command ?? null).toBeNull();
+    expect(storage.healthcheck?.test).toEqual(['CMD', 'curl', '-fs', 'http://127.0.0.1:9000/health/ready']);
+
+    const init = services['storage-init']!;
+    expect(init.image).toBe(AWS_CLI_IMAGE);
+    expect(init.entrypoint).toEqual([
+      'sh',
+      '-c',
+      'aws s3api head-bucket --bucket "$$S3_BUCKET" || aws s3api create-bucket --bucket "$$S3_BUCKET"',
+    ]);
+    expect(init.environment?.AWS_ENDPOINT_URL).toBe('http://storage:9000');
+    expect(init.environment?.AWS_ACCESS_KEY_ID).toBe(env.S3_ACCESS_KEY_ID);
+    expect(init.environment?.AWS_SECRET_ACCESS_KEY).toBe(env.S3_SECRET_ACCESS_KEY);
+    expect(init.environment?.AWS_DEFAULT_REGION).toBe('us-east-1');
+    expect(init.environment?.S3_BUCKET).toBe(env.S3_BUCKET);
+  });
+
+  test('compose_config_refuses_a_missing_or_empty_credential', () => {
+    const envPath = join(stack.dir, '.env');
+    const original = readFileSync(envPath, 'utf8');
+    const withoutKey = (key: string) =>
+      original
+        .split(/\r?\n/)
+        .filter((line) => !line.startsWith(`${key}=`))
+        .join('\n');
+    const withEmptyKey = (key: string) => original.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=`);
+    const cases: Array<[name: string, variable: string, text: string]> = [
+      ['ausente', 'S3_ACCESS_KEY_ID', withoutKey('S3_ACCESS_KEY_ID')],
+      ['vazia', 'S3_ACCESS_KEY_ID', withEmptyKey('S3_ACCESS_KEY_ID')],
+      ['ausente', 'S3_SECRET_ACCESS_KEY', withoutKey('S3_SECRET_ACCESS_KEY')],
+      ['vazia', 'S3_SECRET_ACCESS_KEY', withEmptyKey('S3_SECRET_ACCESS_KEY')],
+    ];
+    try {
+      for (const [name, variable, text] of cases) {
+        writeFileSync(envPath, text);
+        const result = stack.compose('config');
+        expect(result.status, `${variable} ${name}`).not.toBe(0);
+        expect(result.output, `${variable} ${name}`).toContain(variable);
+      }
+    } finally {
+      writeFileSync(envPath, original);
+    }
+  });
+
+  test('up_wait_again_over_the_existing_stack_keeps_init_zero_and_api_healthy', () => {
+    const again = stack.compose('up --wait');
+    expect(again.status, again.output.slice(-4000)).toBe(0);
+
+    const containers = stack.containers();
+    const init = containers.find((c) => c.Service === 'storage-init');
+    expect(init?.State).toBe('exited');
+    expect(init?.ExitCode).toBe(0);
+    expect(containers.find((c) => c.Service === 'api')?.Health).toBe('healthy');
+  });
+
+  test('console_9001_is_refused_and_every_storage_port_is_on_loopback', () => {
+    // o console do RustFS está desligado: de dentro do container `api`, a porta 9001 recusa a conexão
+    const script = [
+      "import net from 'node:net';",
+      "const socket = net.connect(9001, 'storage');",
+      "socket.on('connect', () => { console.log('connected'); socket.destroy(); process.exit(1); });",
+      "socket.on('error', (error) => { console.log('refused', error.code); process.exit(0); });",
+    ].join(' ');
+    const refused = stack.compose(`exec -T api node --input-type=module -e "${script}"`);
+    expect(refused.status, refused.output).toBe(0);
+    expect(refused.output).toContain('refused ECONNREFUSED');
+
+    const config = stack.compose('config --format json');
+    expect(config.status, config.output).toBe(0);
+    const { services } = JSON.parse(config.output.slice(config.output.indexOf('{'))) as ResolvedConfig;
+    const ports = services.storage?.ports ?? [];
+    expect(ports.length).toBeGreaterThan(0);
+    for (const port of ports) expect(port.host_ip).toBe('127.0.0.1');
+  });
+
+  test('storage_writes_its_log_to_stdout_and_leaves_the_logs_directory_empty', () => {
+    const empty = stack.compose(`exec -T storage sh -c "ls -A /logs | wc -l"`);
+    expect(empty.status, empty.output).toBe(0);
+    expect(empty.output.trim()).toBe('0');
+
+    const logs = stack.compose('logs storage');
+    expect(logs.status, logs.output.slice(-4000)).toBe(0);
+    expect(logs.output).toMatch(/(^|\n).*rustfs/im);
+  });
+
+  test('storage_mounts_rustfs_data_and_storage_data_leaves_the_file', () => {
+    const config = stack.compose('config --format json');
+    expect(config.status, config.output).toBe(0);
+    const resolved = JSON.parse(config.output.slice(config.output.indexOf('{'))) as ResolvedConfig;
+
+    expect(resolved.services.storage?.volumes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'volume', source: 'rustfs-data', target: '/data' })]),
+    );
+    const declared = Object.keys(resolved.volumes ?? {});
+    expect(declared).toContain('rustfs-data');
+    expect(declared).not.toContain('storage-data');
   });
 
   test('postgres_major_is_18', () => {
@@ -357,12 +509,10 @@ describe('stack de pé', () => {
 
   test('storage_bucket_exists_private_and_ports_on_loopback', () => {
     const env = readDotenv(join(stack.dir, '.env'));
-    const mc = (command: string) =>
-      stack.compose(
-        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && ${command}"`,
-      );
-
-    const listed = mc(`mc ls local/${env.S3_BUCKET}`);
+    // o bucket existe: o `aws-cli` do `storage-init` lista a raiz
+    const listed = stack.compose(
+      `run --rm --no-deps --entrypoint aws storage-init s3 ls s3://${env.S3_BUCKET}`,
+    );
     expect(listed.status, listed.output).toBe(0);
 
     // pedido anônimo, de dentro do container `api`, sem credencial: o objeto e a listagem respondem 403
@@ -379,9 +529,7 @@ describe('stack de pé', () => {
 
     const config = stack.compose('config --format json');
     expect(config.status, config.output).toBe(0);
-    const { services } = JSON.parse(config.output.slice(config.output.indexOf('{'))) as {
-      services: Record<string, { ports?: Array<{ host_ip?: string }> }>;
-    };
+    const { services } = JSON.parse(config.output.slice(config.output.indexOf('{'))) as ResolvedConfig;
     const ports = services.storage?.ports ?? [];
     expect(ports.length).toBeGreaterThan(0);
     for (const port of ports) expect(port.host_ip).toBe('127.0.0.1');
@@ -445,6 +593,82 @@ describe('stack de pé', () => {
     expect(((await tooLarge.json()) as { code: string }).code).toBe('payload_too_large');
   }, 120_000);
 
+  test('photo_file_404_when_the_object_is_gone_from_the_bucket', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const cookie = await receptionCookie('recepcao.do.arquivo.perdido@exemplo.com', 'senha-da-stack-404-1');
+    const headers = {
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': 'teste-arquivo-perdido/1.0',
+      'X-Forwarded-For': '203.0.113.23',
+    };
+    const created = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Aluna do Arquivo Perdido', cpf: '526.018.159-06', birthDate: '2000-01-01', phone: '(11) 91234-5678' }),
+    });
+    expect(created.status, await created.clone().text()).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(await jpegOfSize(64_000))], { type: 'image/jpeg' }), 'foto.jpg');
+    const upload = await fetch(`${stack.webOrigin}/api/students/${id}/photo`, { method: 'POST', headers, body: form });
+    expect(upload.status, await upload.clone().text()).toBe(201);
+
+    const medium = await fetch(`${stack.webOrigin}/api/students/${id}/photo?variant=medium`, { headers });
+    expect(medium.status).toBe(200);
+    const { url } = (await medium.json()) as { url: string };
+    const photoId = /\/api\/photo-files\/([^/]+)\/medium\?/.exec(url)?.[1];
+    expect(photoId, url).toMatch(/\S/);
+
+    // o objeto é apagado pelo `aws-cli` do `storage-init`, e a linha de `photos` continua de pé
+    const removed = stack.compose(
+      `run --rm --no-deps --entrypoint aws storage-init s3 rm s3://${env.S3_BUCKET}/photos/main/${id}/${photoId}/medium.webp`,
+    );
+    expect(removed.status, removed.output).toBe(0);
+    const row = stack.compose(
+      `exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "select count(*) from photos where id = '${photoId}'"`,
+    );
+    expect(row.status, row.output).toBe(0);
+    expect(row.output.trim()).toBe('1');
+
+    const response = await fetch(`${stack.webOrigin}${url}`);
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json\b/);
+    expect(((await response.json()) as { code: string }).code).toBe('not_found');
+  });
+
+  test('bucket_is_listed_through_the_aws_cli_of_storage_init', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const cookie = await receptionCookie('recepcao.da.listagem@exemplo.com', 'senha-da-stack-lista-1');
+    const headers = {
+      Origin: stack.webOrigin,
+      Cookie: cookie,
+      'User-Agent': 'teste-listagem/1.0',
+      'X-Forwarded-For': '203.0.113.25',
+    };
+    const created = await fetch(`${stack.webOrigin}/api/students`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Aluna da Listagem', cpf: '083.016.613-05', birthDate: '2000-01-01', phone: '(11) 91234-5678' }),
+    });
+    expect(created.status, await created.clone().text()).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(await jpegOfSize(64_000))], { type: 'image/jpeg' }), 'foto.jpg');
+    const uploaded = await fetch(`${stack.webOrigin}/api/students/${id}/photo`, { method: 'POST', headers, body: form });
+    expect(uploaded.status, await uploaded.clone().text()).toBe(201);
+    const { id: photoId } = (await uploaded.json()) as { id: string };
+
+    const listed = stack.compose(
+      `run --rm --no-deps --entrypoint aws storage-init s3 ls --recursive s3://${env.S3_BUCKET}/photos/main/${id}/`,
+    );
+    expect(listed.status, listed.output).toBe(0);
+    const keys = listed.output.split(/\r?\n/).flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? []);
+    expect(keys.sort()).toEqual(
+      ['large.webp', 'medium.webp', 'thumb.webp'].map((name) => `photos/main/${id}/${photoId}/${name}`),
+    );
+  });
+
   test('photo_replaced_through_web_then_expired_version_purged_on_api_restart', async () => {
     const env = readDotenv(join(stack.dir, '.env'));
     const psql = (sql: string) => {
@@ -456,13 +680,9 @@ describe('stack de pé', () => {
     expect(psql('select photo_version_retention_days from privacy_settings')).toBe('30');
     /** As chaves do bucket da stack sob o prefixo do aluno, relativas a ele. */
     const keysOf = (studentId: string) => {
-      const listed = stack.compose(
-        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/photos/main/${studentId}/"`,
-      );
-      expect(listed.status, listed.output).toBe(0);
-      return listed.output
-        .split(/\r?\n/)
-        .flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? [])
+      const prefix = `photos/main/${studentId}/`;
+      return listKeys(prefix)
+        .map((key) => key.slice(prefix.length))
         .sort();
     };
     const waitFor = async (what: string, done: () => boolean | Promise<boolean>) => {
@@ -556,13 +776,7 @@ describe('stack de pé', () => {
       return result.output.trim();
     };
     /** Todas as chaves do bucket da stack: o bucket sempre existe, então a listagem não falha por prefixo vazio. */
-    const bucketKeys = () => {
-      const listed = stack.compose(
-        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/"`,
-      );
-      expect(listed.status, listed.output).toBe(0);
-      return listed.output.split(/\r?\n/).flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? []);
-    };
+    const bucketKeys = () => listKeys();
     const keysUnder = (studentId: string) => bucketKeys().filter((key) => key.startsWith(`photos/main/${studentId}/`));
 
     // a `0011` foi aplicada ao subir, com a configuração inicial, e o container `api` não tem a variável
@@ -670,13 +884,9 @@ describe('stack de pé', () => {
     };
     /** As chaves do bucket da stack sob o prefixo do funcionário, relativas a ele. */
     const keysOf = (staffId: string) => {
-      const listed = stack.compose(
-        `exec -T storage sh -c "mc alias set local http://127.0.0.1:9000 ${env.S3_ACCESS_KEY_ID} ${env.S3_SECRET_ACCESS_KEY} > /dev/null && mc ls --recursive local/${env.S3_BUCKET}/photos/main/${staffId}/"`,
-      );
-      expect(listed.status, listed.output).toBe(0);
-      return listed.output
-        .split(/\r?\n/)
-        .flatMap((line) => /(\S+\.webp)\s*$/.exec(line)?.[1] ?? [])
+      const prefix = `photos/main/${staffId}/`;
+      return listKeys(prefix)
+        .map((key) => key.slice(prefix.length))
         .sort();
     };
     const waitFor = async (what: string, done: () => boolean | Promise<boolean>) => {

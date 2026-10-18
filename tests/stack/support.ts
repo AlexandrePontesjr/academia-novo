@@ -97,11 +97,12 @@ export function readDotenv(path: string): Record<string, string> {
   );
 }
 
-/** Quebra a execução única que cria o bucket: o comando passa a ser um que não existe. */
+/** Quebra a execução única que cria o bucket: o comando de criação passa a ser um que não existe. */
 export function breakBucketInit(cloneDir: string) {
   const path = join(cloneDir, 'compose.yaml');
   const compose = readFileSync(path, 'utf8');
-  const broken = compose.replace('mc mb --ignore-existing', 'mc comando-que-nao-existe');
+  // o `head-bucket` falha com o bucket ausente e o `||` cai no comando quebrado
+  const broken = compose.replace('aws s3api create-bucket', 'aws s3api comando-que-nao-existe');
   if (broken === compose) throw new Error('compose.yaml não tem a execução que cria o bucket');
   writeFileSync(path, broken);
 }

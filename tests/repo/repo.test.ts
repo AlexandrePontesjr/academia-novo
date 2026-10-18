@@ -238,9 +238,31 @@ test('api_declares_testcontainers_and_the_minio_module_is_gone', () => {
 
   expect(api.devDependencies.testcontainers).toBe('^12.2.0');
 
+  // montado em runtime para o próprio teste não ser um resultado do `git grep` da C19
+  const minioModule = ['@testcontainers', 'minio'].join('/');
   const manifests = ['package.json', ...workspaceDirs().map((dir) => `${dir}/package.json`)];
   for (const manifest of manifests) {
-    expect(read(manifest), manifest).not.toContain('@testcontainers/minio');
+    expect(read(manifest), manifest).not.toContain(minioModule);
   }
-  expect(read('pnpm-lock.yaml')).not.toContain('@testcontainers/minio');
+  expect(read('pnpm-lock.yaml')).not.toContain(minioModule);
+});
+
+test('storage_image_is_the_same_digest_in_compose_and_the_api_helper', () => {
+  const compose = parseYaml(read('compose.yaml')) as { services: Record<string, { image?: string }> };
+  // tag e digest, iguais ao literal da door 1
+  expect(compose.services.storage?.image).toBe(STORAGE_IMAGE);
+  expect(compose.services.storage?.image).toMatch(/^rustfs\/rustfs:1\.0\.1@sha256:[0-9a-f]{64}$/);
+
+  expect(/export const STORAGE_IMAGE =\s*\n?\s*'([^']+)'/.exec(read('apps/api/test/support/servers.ts'))?.[1]).toBe(
+    STORAGE_IMAGE,
+  );
+
+  // o identificador antigo não existe em nenhum arquivo fora do histórico de `.specs/`
+  // (montado em runtime para o próprio teste não ser um resultado do `git grep`)
+  const legacyImage = ['MINIO', 'IMAGE'].join('_');
+  const grep = spawnSync('git', ['grep', '-n', legacyImage], { cwd: repoRoot, encoding: 'utf8' });
+  const outsideSpecs = (grep.stdout ?? '')
+    .split(/\r?\n/)
+    .filter((line) => line !== '' && !line.startsWith('.specs/'));
+  expect(outsideSpecs).toEqual([]);
 });

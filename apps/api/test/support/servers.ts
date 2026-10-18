@@ -64,7 +64,7 @@ export async function startHangingDatabase() {
 
 /**
  * O servidor de objetos da stack e dos testes é o RustFS (Apache 2.0), fixado por tag e digest;
- * o compose (S2) usa a mesma imagem (door 1). A imagem não traz o `mc`: o bucket é criado pelo
+ * o compose usa a mesma imagem (door 1). A imagem não traz o `mc`: o bucket é criado pelo
  * cliente S3 daqui, depois de `/health/ready` responder 200 (door 4).
  */
 export const STORAGE_IMAGE =
