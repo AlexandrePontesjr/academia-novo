@@ -1,0 +1,7 @@
+[Unit]
+Description=Backup diario do banco e das fotos da academia
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/academia-bairro
+ExecStart=/usr/bin/env bash deploy/backup.sh

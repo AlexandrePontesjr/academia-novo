@@ -128,10 +128,11 @@ describe('stack de pé', () => {
 
     const init = services['storage-init']!;
     expect(init.image).toBe(AWS_CLI_IMAGE);
+    // door 4: o bucket e o versionamento, na mesma execução única
     expect(init.entrypoint).toEqual([
       'sh',
       '-c',
-      'aws s3api head-bucket --bucket "$$S3_BUCKET" || aws s3api create-bucket --bucket "$$S3_BUCKET"',
+      'aws s3api head-bucket --bucket "$$S3_BUCKET" || aws s3api create-bucket --bucket "$$S3_BUCKET" && aws s3api put-bucket-versioning --bucket "$$S3_BUCKET" --versioning-configuration Status=Enabled',
     ]);
     expect(init.environment?.AWS_ENDPOINT_URL).toBe('http://storage:9000');
     expect(init.environment?.AWS_ACCESS_KEY_ID).toBe(env.S3_ACCESS_KEY_ID);
@@ -1515,7 +1516,7 @@ describe('stack de pé', () => {
     // um aluno matriculado a partir de hoje, em `America/Sao_Paulo`
     const student = await post('/api/students', reception, {
       name: 'Aluno do Balcão na Stack',
-      cpf: '987.654.321-00',
+      cpf: '168.995.350-09',
       birthDate: '2000-01-01',
       phone: '(11) 91234-5678',
     });

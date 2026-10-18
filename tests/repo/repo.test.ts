@@ -343,3 +343,220 @@ test('state_branch_line_no_longer_names_the_minio_image', () => {
   expect(branch).not.toMatch(new RegExp(['pgs', 'ty'].join('') + '/minio', 'i'));
   expect(branch).toMatch(/RustFS/i);
 });
+
+/** A imagem da borda, com tag e digest, como a door 1/AD-083 a fixou. */
+const CADDY_IMAGE =
+  'caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af';
+
+test('deploy_script_renders_then_runs_the_overlay_up_wait', () => {
+  const script = read('deploy/deploy.sh');
+
+  expect(script).toContain('set -euo pipefail');
+  expect(script).toMatch(/deploy\/render\.sh/);
+  // o comando do plano, exatamente, numa linha própria
+  expect(script).toMatch(/^docker compose -f compose\.yaml -f compose\.prod\.yaml up -d --wait$/m);
+});
+
+test('caddyfile_matches_the_door_one_literal', () => {
+  const caddyfile = read('deploy/Caddyfile');
+
+  // as opções globais, cada uma na sua linha
+  for (const option of ['http_port 80', 'https_port 443', 'email {$ACME_EMAIL}', 'metrics']) {
+    expect(caddyfile).toMatch(new RegExp(`^\\t${option.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+  }
+  // o site interno de métricas e o site público
+  expect(caddyfile).toMatch(/^:9180 \{$/m);
+  expect(caddyfile).toContain('{$SITE_ADDRESS}');
+
+  // os cabeçalhos da borda
+  for (const header of [
+    'Strict-Transport-Security "max-age=31536000"',
+    'X-Content-Type-Options "nosniff"',
+    'Referrer-Policy "strict-origin-when-cross-origin"',
+    'Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=()"',
+    '-Server',
+    '-X-Powered-By',
+  ]) {
+    expect(caddyfile, header).toContain(header);
+  }
+
+  // o corpo, o TRACE, a rota única e o log
+  expect(caddyfile).toContain('request_body {');
+  expect(caddyfile).toContain('max_size 6MB');
+  expect(caddyfile).toContain('@trace method TRACE');
+  expect(caddyfile).toContain('respond @trace 405');
+  expect(caddyfile).toContain('reverse_proxy web:3000');
+  expect(caddyfile).not.toContain('trusted_proxies');
+  expect(caddyfile).toContain('format filter');
+  expect(caddyfile).toMatch(/delete q/);
+  expect(caddyfile).toMatch(/delete sig/);
+
+  // e o overlay resolve a imagem da borda: tag e digest
+  const compose = parseYaml(read('compose.prod.yaml')) as { services: Record<string, { image?: string }> };
+  expect(compose.services.caddy?.image).toBe(CADDY_IMAGE);
+});
+
+test('web_proxy_nonce_and_dynamic_pages_match_the_door_two_literal', () => {
+  const proxy = read('apps/web/src/proxy.ts');
+
+  // o nonce por requisição e os dois cabeçalhos
+  expect(proxy).toContain("Buffer.from(crypto.randomUUID()).toString('base64')");
+  expect(proxy).toContain("set('x-nonce', nonce)");
+  expect(proxy).toMatch(/requestHeaders\.set\('Content-Security-Policy'/);
+  expect(proxy).toMatch(/response\.headers\.set\('Content-Security-Policy'/);
+
+  // a política literal: as dez diretivas da door 2
+  for (const directive of [
+    "default-src 'self'",
+    "'strict-dynamic'",
+    "'nonce-${nonce}'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ]) {
+    expect(proxy, directive).toContain(directive);
+  }
+
+  // o escape de desenvolvimento: `'unsafe-eval'` só sob `NODE_ENV === 'development'`
+  expect(proxy).toMatch(/process\.env\.NODE_ENV === 'development'/);
+  expect(proxy).toMatch(/development \? " 'unsafe-eval'" : ''/);
+
+  // as duas páginas sem renderização dinâmica passam a ser dinâmicas
+  for (const page of ['apps/web/src/app/login/page.tsx', 'apps/web/src/app/login/two-factor/page.tsx']) {
+    expect(read(page), page).toContain("export const dynamic = 'force-dynamic'");
+  }
+});
+
+test('systemd_units_run_the_backup_at_three_sao_paulo_persistently', () => {
+  const timer = read('deploy/systemd/academia-backup.timer');
+  expect(timer).toContain('OnCalendar=*-*-* 03:00:00 America/Sao_Paulo');
+  expect(timer).toMatch(/^Persistent=true$/m);
+  expect(timer).toContain('academia-backup.service');
+
+  const service = read('deploy/systemd/academia-backup.service');
+  expect(service).toContain('deploy/backup.sh');
+});
+
+test('monitoring_files_and_scrape_targets_match_the_door_six_literal', () => {
+  for (const file of ['prometheus.yml', 'alerts.yml', 'blackbox.yml', 'alertmanager.yml.tmpl']) {
+    expect(existsSync(join(repoRoot, 'deploy/monitoring', file)), file).toBe(true);
+  }
+
+  const prometheus = read('deploy/monitoring/prometheus.yml');
+  for (const literal of [
+    'caddy:9180',
+    'node-exporter:9100',
+    'blackbox-exporter:9115',
+    'http://web:3000/login',
+    'http://api:3001/health',
+  ]) {
+    expect(prometheus, literal).toContain(literal);
+  }
+});
+
+test('deploy_readme_documents_the_runbook_and_the_owasp_matrix', () => {
+  const readme = read('deploy/README.md');
+
+  // os cinco passos do runbook
+  for (const heading of [
+    'A primeira subida',
+    'Atualizar a homologação',
+    'drill de restauração',
+    'Responder a um alerta',
+    'Rollback',
+  ]) {
+    expect(readme, heading).toContain(heading);
+  }
+  // o `WEB_ORIGIN` de produção, que muda de origem quando o domínio entra
+  expect(readme).toContain('WEB_ORIGIN');
+
+  // a matriz OWASP: as dez categorias, cada uma com o controle e a prova na última coluna
+  const rows = readme.split(/\r?\n/).filter((line) => /^\| A\d\d /.test(line));
+  expect(rows).toHaveLength(10);
+  for (const [index, row] of rows.entries()) {
+    const cells = row.split('|').map((cell) => cell.trim());
+    expect(cells[1], row).toMatch(new RegExp(`^A${String(index + 1).padStart(2, '0')} \\S`));
+    expect(cells[2], row).toMatch(/\S/);
+    expect(cells[3], row).toMatch(/\S/);
+  }
+});
+
+test('deploy_artifacts_fix_the_seven_hundred_and_six_hundred_permissions', () => {
+  const ignored = spawnSync('git', ['check-ignore', '.env'], { cwd: repoRoot, encoding: 'utf8' });
+  expect(ignored.status, ignored.stderr).toBe(0);
+
+  // o `.env` em 0600 pelo `deploy.sh`
+  expect(read('deploy/deploy.sh')).toMatch(/chmod 600 \.env/);
+
+  // o `$BACKUP_DIR` em 0700 e cada arquivo em 0600, pelo `backup.sh`
+  const backup = read('deploy/backup.sh');
+  expect(backup).toContain('install -d -m 700');
+  expect(backup).toContain('install -m 600');
+  expect(backup).toContain('umask 077');
+
+  // e o README repete os três modos, que o drill do servidor confere
+  const readme = read('deploy/README.md');
+  expect(readme).toContain("stat -c '%a' .env");
+  expect(readme).toContain("stat -c '%a' \"$BACKUP_DIR\"");
+  expect(readme).toMatch(/%m %p/);
+  expect(readme).toContain('0600');
+  expect(readme).toContain('0700');
+});
+
+test('deploy_readme_lists_the_off_server_secrets_and_the_irreversible_key', () => {
+  const readme = read('deploy/README.md');
+
+  for (const key of [
+    'AUTH_SECRET',
+    'DATA_ENCRYPTION_KEY',
+    'PHOTO_URL_SECRET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'ALERT_WEBHOOK_URL',
+  ]) {
+    expect(readme, key).toContain(key);
+  }
+  // a perda da chave de cifra é marcada como irreversível
+  expect(readme).toContain('DATA_ENCRYPTION_KEY');
+  expect(readme).toContain('irreversível');
+  expect(readme).toMatch(/DATA_ENCRYPTION_KEY[^\n]*irreversível/);
+});
+
+test('env_example_lists_every_production_key', () => {
+  const example = read('.env.example');
+  const listed = new Map(
+    example
+      .split(/\r?\n/)
+      .map((line) => /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line))
+      .filter((match) => match !== null)
+      .map((match) => [match[1]!, match[2]!] as const),
+  );
+
+  for (const key of [
+    'SITE_ADDRESS',
+    'ACME_EMAIL',
+    'ALERT_WEBHOOK_URL',
+    'BACKUP_DIR',
+    'BACKUP_RETENTION_DAYS',
+    'CADDY_HTTP_PORT',
+    'CADDY_HTTPS_PORT',
+  ]) {
+    expect(listed.get(key), `.env.example deve listar ${key}`).toMatch(/\S/);
+  }
+});
+
+test('ci_runs_only_pnpm_verify_and_no_deploy_job', () => {
+  const workflow = parseYaml(read('.github/workflows/ci.yml')) as {
+    jobs: Record<string, { steps: Array<{ run?: string }> }>;
+  };
+
+  expect(Object.keys(workflow.jobs)).toEqual(['verify']);
+  const commands = Object.values(workflow.jobs).flatMap((job) => job.steps.map((step) => step.run ?? ''));
+  expect(commands).toContain('pnpm verify');
+  expect(commands.filter((command) => /docker|deploy|test:stack/.test(command))).toEqual([]);
+});
