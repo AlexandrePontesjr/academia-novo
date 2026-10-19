@@ -100,7 +100,7 @@ export function PlanForm({ plan }: { plan?: Plan }) {
           ))}
         </Select>
         {errors.period && (
-          <p id={`${periodId}-error`} className="text-sm text-destructive">
+          <p id={`${periodId}-error`} className="text-sm text-[#f87171]">
             {errors.period.message}
           </p>
         )}
@@ -119,11 +119,11 @@ export function PlanForm({ plan }: { plan?: Plan }) {
           rows={4}
           aria-invalid={errors.rules ? true : undefined}
           aria-describedby={errors.rules ? `${rulesId}-error` : undefined}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+          className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground aria-invalid:border-[#f87171]"
           {...form.register('rules')}
         />
         {errors.rules && (
-          <p id={`${rulesId}-error`} className="text-sm text-destructive">
+          <p id={`${rulesId}-error`} className="text-sm text-[#f87171]">
             {errors.rules.message}
           </p>
         )}

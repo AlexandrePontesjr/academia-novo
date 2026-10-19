@@ -32,7 +32,7 @@ function Field({
         'aria-describedby': error ? `${id}-error` : undefined,
       })}
       {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive">
+        <p id={`${id}-error`} className="text-sm text-[#f87171]">
           {error}
         </p>
       )}

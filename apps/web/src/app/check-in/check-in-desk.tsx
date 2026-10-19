@@ -148,7 +148,7 @@ function StudentCard({
   const allowed = status.access === 'allowed';
 
   return (
-    <section aria-labelledby="check-in-card-heading" className="flex flex-wrap gap-6 rounded-lg border p-4">
+    <section aria-labelledby="check-in-card-heading" className="flex flex-wrap gap-6 rounded-lg border bg-card p-4">
       <PersonPhoto name={student.name} photoUrl={status.photoUrl} shape="ficha" />
       <div className="grid content-start gap-3">
         <h3 id="check-in-card-heading" className="text-lg font-semibold">
@@ -157,7 +157,9 @@ function StudentCard({
         <p>
           <span
             className={`rounded-full px-3 py-1 text-sm font-medium ${
-              allowed ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900'
+              allowed
+                ? 'bg-[rgb(205_247_32_/_0.15)] text-primary'
+                : 'bg-[rgb(248_113_113_/_0.15)] text-[#f87171]'
             }`}
           >
             {allowed ? 'Liberado' : 'Bloqueado'}

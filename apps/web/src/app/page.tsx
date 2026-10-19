@@ -17,7 +17,7 @@ const LINK = 'text-primary underline underline-offset-4';
 /** Um card do painel: uma região com o título dele por nome. */
 function Card({ id, title, wide, children }: { id: string; title: string; wide?: boolean; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className={`grid content-start gap-3 rounded-lg border p-4${wide ? ' sm:col-span-2' : ''}`}>
+    <section aria-labelledby={id} className={`grid content-start gap-3 rounded-lg border bg-card p-4${wide ? ' sm:col-span-2' : ''}`}>
       <h3 id={id} className="font-semibold">
         {title}
       </h3>
@@ -33,7 +33,7 @@ function Counts({ items }: { items: Array<{ label: string; value: number; href?:
       {items.map(({ label, value, href }) => (
         <div key={label}>
           <dt className="text-sm text-muted-foreground">{label}</dt>
-          <dd className="text-2xl font-semibold">
+          <dd className="text-2xl font-semibold tabular-nums">
             {href ? (
               <Link href={href} prefetch={false} className={LINK}>
                 {value}
@@ -70,7 +70,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
       </Card>
       {checkIns && (
         <Card id="card-check-ins" title="Check-ins de hoje">
-          <p className="text-2xl font-semibold">{checkIns.count}</p>
+          <p className="text-2xl font-semibold tabular-nums">{checkIns.count}</p>
           <Link href="/check-ins" prefetch={false} className={`${LINK} text-sm`}>
             Ver presenças de hoje
           </Link>

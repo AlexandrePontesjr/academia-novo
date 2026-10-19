@@ -24,7 +24,7 @@ export function TextField({ label, error, registration, ...input }: TextFieldPro
         {...registration}
       />
       {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive">
+        <p id={`${id}-error`} className="text-sm text-[#f87171]">
           {error}
         </p>
       )}

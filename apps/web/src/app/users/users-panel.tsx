@@ -258,7 +258,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </Select>
         {errors.role && (
-          <p id={`${roleId}-error`} className="text-sm text-destructive">
+          <p id={`${roleId}-error`} className="text-sm text-[#f87171]">
             {errors.role.message}
           </p>
         )}

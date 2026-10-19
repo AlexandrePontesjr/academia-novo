@@ -56,7 +56,7 @@ export function ConsentsBlock({
       ) : (
         <div className="grid gap-1">
           <p>Nenhum responsável cadastrado.</p>
-          {minor && <p className="text-sm text-destructive">{PENDING_GUARDIAN}</p>}
+          {minor && <p className="text-sm text-[#f87171]">{PENDING_GUARDIAN}</p>}
         </div>
       )}
       <div className="grid gap-3">
@@ -200,7 +200,7 @@ function GrantDialog({
           <p className="max-h-60 overflow-auto text-sm break-words whitespace-pre-wrap">{term.term.text}</p>
         )}
         {blocked ? (
-          <p className="text-sm text-destructive">{PENDING_GUARDIAN}</p>
+          <p className="text-sm text-[#f87171]">{PENDING_GUARDIAN}</p>
         ) : (
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium">Quem concede</legend>

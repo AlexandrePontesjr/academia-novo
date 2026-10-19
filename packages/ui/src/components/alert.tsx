@@ -5,8 +5,9 @@ import { cn } from '../cn.ts';
 const alertVariants = cva('rounded-md border px-4 py-3 text-sm', {
   variants: {
     variant: {
-      default: 'border-border bg-muted text-foreground',
-      destructive: 'border-destructive/40 bg-destructive/5 text-destructive',
+      // o alerta padrão é uma superfície em camadas, com o texto secundário do tema (AC 13)
+      default: 'border-border bg-muted text-[#d4d4d4]',
+      destructive: 'border-[#f87171] bg-[#f87171]/10 text-[#f87171]',
     },
   },
   defaultVariants: { variant: 'default' },

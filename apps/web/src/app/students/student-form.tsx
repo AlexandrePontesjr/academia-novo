@@ -146,7 +146,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
           ))}
         </Select>
         {errors.sex && (
-          <p id={`${sexId}-error`} className="text-sm text-destructive">
+          <p id={`${sexId}-error`} className="text-sm text-[#f87171]">
             {errors.sex.message}
           </p>
         )}
@@ -154,7 +154,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
       {showGuardian && (
         <fieldset className="grid gap-4 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">Responsável legal</legend>
-          {errors.guardian?.message && <p className="text-sm text-destructive">{errors.guardian.message}</p>}
+          {errors.guardian?.message && <p className="text-sm text-[#f87171]">{errors.guardian.message}</p>}
           <TextField
             label="Nome do responsável"
             autoComplete="off"
@@ -191,7 +191,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
               ))}
             </Select>
             {errors.guardian?.relationship && (
-              <p id={`${guardianRelationshipId}-error`} className="text-sm text-destructive">
+              <p id={`${guardianRelationshipId}-error`} className="text-sm text-[#f87171]">
                 {errors.guardian.relationship.message}
               </p>
             )}
@@ -221,11 +221,11 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
           rows={4}
           aria-invalid={errors.healthNotes ? true : undefined}
           aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+          className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground aria-invalid:border-[#f87171]"
           {...form.register('healthNotes')}
         />
         {errors.healthNotes && (
-          <p id={`${notesId}-error`} className="text-sm text-destructive">
+          <p id={`${notesId}-error`} className="text-sm text-[#f87171]">
             {errors.healthNotes.message}
           </p>
         )}
