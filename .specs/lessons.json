@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 35,
+  "next_id": 38,
   "lessons": [
     {
       "id": "L-001",
@@ -618,6 +618,60 @@
       ],
       "created": "2026-10-17T18:05:16Z",
       "last_seen": "2026-10-17T18:05:16Z"
+    },
+    {
+      "id": "L-035",
+      "key": "gate_fail::keep the rustfs clause on the branch line of specs state md the repo suite asserts it and a handoff rewrite can drop it",
+      "text": "Keep the RustFS clause on the **Branch** line of .specs/STATE.md; the repo suite asserts it and a handoff rewrite can drop it",
+      "signal": "gate_fail",
+      "scope": "repo",
+      "status": "candidate",
+      "features": [
+        "identidade-visual"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C23 - tests/repo/repo.test.ts:344 / .specs/STATE.md:144 (repo)"
+      ],
+      "created": "2026-10-19T22:07:48Z",
+      "last_seen": "2026-10-19T22:07:48Z"
+    },
+    {
+      "id": "L-036",
+      "key": "spec_deviation::when an ac fixes a colour the landing token set does not carry add the token to the door instead of hard coding the literal in screen components",
+      "text": "When an AC fixes a colour the Landing token set does not carry, add the token to the door instead of hard-coding the literal in screen components",
+      "signal": "spec_deviation",
+      "scope": "ui",
+      "status": "candidate",
+      "features": [
+        "identidade-visual"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C12 - packages/ui/src/globals.css:23 / apps/web/src/app/students/student-form.tsx:149 (ui)"
+      ],
+      "created": "2026-10-19T22:07:48Z",
+      "last_seen": "2026-10-19T22:07:48Z"
+    },
+    {
+      "id": "L-037",
+      "key": "spec_precision_gap::count the shell bearing screens from the table before claiming the shell in the check prose 24 screens split 21 with the shell and 3 without",
+      "text": "Count the shell-bearing screens from the table before claiming the shell in the check prose; 24 screens split 21 with the shell and 3 without",
+      "signal": "spec_precision_gap",
+      "scope": "ui",
+      "status": "candidate",
+      "features": [
+        "identidade-visual"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C18 - apps/web/e2e/identidade.spec.ts:118-137 / :680-693 (ui)"
+      ],
+      "created": "2026-10-19T22:07:48Z",
+      "last_seen": "2026-10-19T22:07:48Z"
     }
   ]
 }

@@ -216,6 +216,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C21, C34 - .specs/features/privacidade/checks.md (Test policy, operação destrutiva) (api)
 - last seen: 2026-10-17T18:05:16Z
 
+### L-035 - Keep the RustFS clause on the **Branch** line of .specs/STATE.md; the repo suite asserts it and a handoff rewrite can drop it
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `repo` · harmful: 0
+- features: identidade-visual
+- evidence: C23 - tests/repo/repo.test.ts:344 / .specs/STATE.md:144 (repo)
+- last seen: 2026-10-19T22:07:48Z
+
+### L-036 - When an AC fixes a colour the Landing token set does not carry, add the token to the door instead of hard-coding the literal in screen components
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `ui` · harmful: 0
+- features: identidade-visual
+- evidence: C12 - packages/ui/src/globals.css:23 / apps/web/src/app/students/student-form.tsx:149 (ui)
+- last seen: 2026-10-19T22:07:48Z
+
+### L-037 - Count the shell-bearing screens from the table before claiming the shell in the check prose; 24 screens split 21 with the shell and 3 without
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `ui` · harmful: 0
+- features: identidade-visual
+- evidence: C18 - apps/web/e2e/identidade.spec.ts:118-137 / :680-693 (ui)
+- last seen: 2026-10-19T22:07:48Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
