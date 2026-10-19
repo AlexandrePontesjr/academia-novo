@@ -229,3 +229,107 @@ mudaram com o conserto; o julgamento de cada uma é carregado, e o último item 
 2. **C12/AD-090 - precisão de token (não bloqueante).** `text-[#f87171]` nas telas realiza o AC 12,
    mas o `Landing` não tem token para #f87171; o `--destructive` é #dc2626. Lacuna de precisão da
    autoridade, julgada em `## Handoff deviations`.
+
+## Percurso visual
+
+**Quando:** 2026-10-19, na sessão de verificação, depois do PASS da rodada 2 (`a43fcb7`) e do commit
+`8d2f737`. Passo 5 do `verify.md` (julgamento humano de tela), conduzido pelo Lead com o usuário.
+
+**Stack e preparação.** Não foi usada a API falsa do e2e: a stack de desenvolvimento do `docker
+compose` foi reconstruída e subida (`docker compose up --build -d web`; `web` com o build do HEAD,
+`api`, `postgres` e `storage` saudáveis) e servida em `http://localhost:3000`. Para que as 24 rotas
+abrissem com dados, o banco local de desenvolvimento recebeu dados de percurso (5 alunos, 2
+funcionários com um usuário vinculado, 2 planos, uma matrícula paga e uma atrasada, 3 presenças,
+responsável e consentimentos do aluno principal, e o admin `marina@exemplo.com`). As linhas de foto
+antigas do aluno principal apontavam para objetos ausentes no RustFS e derrubavam a exportação com
+`503` (`GET /api/students/:id/data-export`), o que impedia a tela de print de renderizar; elas foram
+substituídas por uma foto real enviada pela API (`POST /api/students/:id/photo`, `201`). Nenhum
+arquivo de produto, teste, check ou plano foi alterado nesta etapa.
+
+**Como foi conduzido.** Uma tela por vez, na ordem pedida (`/login`, `/`, `/students`,
+`/students/new`, `/students/[id]`, `/students/[id]/edit`, `/staff`, `/staff/new`, `/staff/[id]`,
+`/staff/[id]/edit`, `/plans`, `/plans/new`, `/plans/[id]/edit`, `/payments`, `/check-ins`,
+`/check-in`, `/audit`, `/users`, `/privacy`, `/account`, `/login/two-factor`, `/two-factor/setup`,
+`/students/[id]/print`, `/staff/[id]/print`); antes de cada uma foi dito o resultado esperado com o
+AC correspondente e reabertas as duas pranchas binding. As capturas foram feitas por **Playwright**
+(Chromium real contra a stack, login do admin, ativação e confirmação do 2FA pelo próprio fluxo,
+logout e novo login para o estado de `/login/two-factor`, `page.pdf()` nas duas telas de print):
+**28 PNGs + 2 PDFs** em `.turbo/percurso/shots/` (fora do git), dirigidos por
+`.turbo/percurso/capture.mjs`, com o manifesto em `.turbo/percurso/manifest.json`. Nenhum conserto
+foi feito durante o percurso.
+
+O percurso cobriu 24 rotas e, além delas, quatro estados: `/check-in` com `Liberado` e com
+`Bloqueado` (AC 15) e os três passos de `/two-factor/setup` (senha, QR/código e códigos de
+recuperação). Os dois PDFs foram conferidos: `/students/[id]/print` e `/staff/[id]/print` imprimem
+em fundo branco e texto preto, com as tabelas legíveis no papel (AC 18).
+
+**Provas automatizadas re-rodadas na sessão, a pedido do usuário.** No meio do percurso o usuário
+perguntou se o Playwright não poderia fazer a verificação; responderam-se as provas: `pnpm --filter
+@academia/web exec playwright test e2e/identidade.spec.ts --reporter=list` - **23 passed, 0 failed,
+exit 0** (29,2 s, os 23 nomes individualmente) e `pnpm --filter @academia/repo-tests exec vitest run
+identidade.test.ts --reporter=verbose` - **4 passed**, exit 0. Foi explicado que elas decidem os
+valores computados, não a fidelidade visual à prancha - por isso o percurso continuou com o humano.
+
+### Palavras do usuário, tela a tela
+
+As falas abaixo são literais, com a grafia digitada pelo usuário.
+
+| Tela | Palavras do usuário (literal) | O que ficou declarado |
+| --- | --- | --- |
+| `/login` | "tela com background preto, Entrar, um formulario de email e senha e um botao entrar em amarelo arredondado." | descreveu a tela; não deu veredito |
+| `/` | "está do meu agrado, background preto, tela do painel e etc." | aprovada |
+| `/students` | "está ok. como esperado, mas ainda um pouco longe do padrao visual q eu mandei" | ok, com ressalva de fidelidade em aberto |
+| `/students/new` | "background preto, botao amarelo e etc. todos estao de acordo para que tudo isso?" | descreveu e perguntou o propósito; não deu veredito |
+| `/students/[id]` | "sim" | lido como "sim, de acordo"; sem declaração dos quatro atributos |
+| `/students/[id]/edit` | "ok" | aprovada |
+| `/staff` | "está certo" | aprovada |
+| `/staff/new` | "está certo" | aprovada |
+| `/staff/[id]` | "está certo" | aprovada |
+| `/staff/[id]/edit` | "está certo" | aprovada |
+| `/plans` | "está certo" | aprovada |
+| `/plans/new` | "está certo" | aprovada |
+| `/plans/[id]/edit` | "está certo" | aprovada |
+| `/payments` | "está certo" | aprovada |
+| `/check-ins` | "está certo" | aprovada |
+| `/check-in` | "está certo" | aprovada |
+| `/audit` | "está com um lista bem longa, poderia ter paginacao. mas as cores estao certas" | cores declaradas certas; paginação pedida como melhoria |
+| `/users` | "está certo pode ir até o 24, está tudo certo" | aprovada; autorizou seguir até a tela 24 |
+| `/privacy` | "pode ir até o 24, está tudo certo" (declaração única, dada antes de ver as telas 19 a 24) | coberta pela declaração geral |
+| `/account` | idem | coberta pela declaração geral |
+| `/login/two-factor` | idem | coberta pela declaração geral |
+| `/two-factor/setup` | idem | coberta pela declaração geral |
+| `/students/[id]/print` | idem, e o PDF foi gerado | coberta pela declaração geral |
+| `/staff/[id]/print` | idem, e o PDF foi gerado | coberta pela declaração geral |
+
+### O que ficou sem resultado declarado
+
+- **Espaçamento, peso e hierarquia não foram declarados em nenhuma tela.** A única declaração sobre
+  um dos quatro atributos pedidos é a cor, em `/audit` ("as cores estao certas"); as demais falas
+  aprovam a tela como um todo ("ok", "está certo", "está do meu agrado"), sem separar os atributos.
+- **`/login`** - houve descrição, não veredito.
+- **`/students/new`** - o usuário descreveu e perguntou para que serve o percurso; não houve veredito.
+- **`/students/[id]`** - o "sim" não tem antecedente claro na pergunta feita; foi lido como
+  "sim, de acordo", mas não é uma declaração sobre espaçamento, cor, peso ou hierarquia.
+- **`/students`** - a ressalva "um pouco longe do padrao visual q eu mandei" não nomeia atributo,
+  tela nem valor; não virou um claim verificável. O plano mantém a estrutura das telas
+  (`Assumptions`, "Estrutura das telas") e exclui redesenho (`Out of scope`), e o próprio usuário
+  fechou o percurso com "está tudo certo".
+- **Telas 19 a 24** - cobertas por uma única declaração ("está tudo certo"), dada antes de cada tela
+  ser mostrada, não por observação tela a tela. O `/check-in` teve os dois badges (Liberado e
+  Bloqueado) e o `/two-factor/setup` os três passos capturados, mas a reação foi a mesma declaração
+  geral.
+
+### Observações e desfecho
+
+- **Paginação de `/audit`** - pedido de funcionalidade nova, fora do escopo da `identidade-visual`
+  (`Out of scope`: telas/funcionalidades novas e mudança de layout ou informação). Registrado como
+  melhoria para uma feature própria; não abre conserto nesta feature.
+- **"Um pouco longe do padrão visual"** - sem atributo ou valor concreto, não gera claim nem check.
+  A comparação com as pranchas foi feita tela a tela e os valores que as pranchas fixam (fundo,
+  superfícies em camadas, borda, raio, acento, hierarquia de título e número) são exatamente os dos
+  AC 1 a 24; o que resta é decisão de estrutura, que o plano manteve de propósito. O usuário encerrou
+  com "está tudo certo".
+- **Nenhum defeito concreto foi declarado**, nenhum check mudou e nenhum build foi aberto por causa
+  do percurso; `validate_verification.py` continua saindo 0. As duas observações acima ficam para
+  uma decisão de produto em sessão futura: paginação da auditoria (feature própria) e, se houver,
+  um redesenho de estrutura (feature própria, porque contraria o `Out of scope` desta).
