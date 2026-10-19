@@ -50,7 +50,7 @@ da door 1 da `dashboard`; nenhuma cor, fonte ou regra de permissão nova.
 | Front | What changes |
 | --- | --- |
 | domain | novo termo: `DukFit` - o nome da academia e do sistema, em `<title>`, shell, login e landing |
-| domain | rota `/` mudou de sentido: era o painel autenticado, agora é a landing pública - quem ramifica nela hoje: `proxy.ts` (manda o logado de `/login` para `/`), `login-form.tsx` e `two-factor-form.tsx` (`window.location.assign('/')`), o link "Início" do shell, o `nav-link.tsx` (regra `href === '/'`), o `not-found.tsx` e os 10 `page.goto('/')` de `e2e/dashboard.spec.ts`; todos passam a `/dashboard`, menos o link do 404, que vai para `/` |
+| domain | rota `/` mudou de sentido: era o painel autenticado, agora é a landing pública - quem ramifica nela hoje: `proxy.ts` (manda o logado de `/login` para `/`), `login-form.tsx` e `two-factor-form.tsx` (`window.location.assign('/')`), o "Continuar" de `two-factor-setup.tsx` (`href="/"`), o link "Início" do shell, o `nav-link.tsx` (regra `href === '/'`), o `not-found.tsx` e os 10 `page.goto('/')` de `e2e/dashboard.spec.ts`; todos passam a `/dashboard`, menos o link do 404, que vai para `/` |
 | domain | `/dashboard` - novo endereço do painel; favoritos antigos de `/` caem na landing, que oferece "Ir para o painel" a quem tem sessão |
 | stored data | nothing - nenhuma migração; o `lastSevenDays` é leitura sobre `check_ins.day`, que já existe com índice `check_ins_one_per_day_idx` |
 | contrato da API | `GET /api/dashboard`: chave nova `checkIns.lastSevenDays`, aditiva, só onde `checkIns` já existe; o schema `strictObject` de `packages/contracts` muda junto (AD-011) |

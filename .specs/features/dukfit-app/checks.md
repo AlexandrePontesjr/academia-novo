@@ -31,10 +31,15 @@ da mudança; nenhuma é apagada nem enfraquecida no que ainda vale:
   "Entrar" e textos do `/login`), C8 (painel em `/`), C3 só no raio dos cartões do painel (16 px
   vira 24 px) e C22 na lista de telas (`/` vira `/dashboard`, `h1` do shell "Gestão de Academia"
   vira "DukFit", `h1` do `/login` vira "Bem-vindo de volta").
-- `dashboard`: `GET /api/dashboard` em `/` vira `/dashboard`; as asserções `checkIns` `toEqual({ count })`
+- `identidade-visual` C9 e C24: as marcas lime e as barras do de-para (pontos das pílulas e do menu,
+  rótulos de `MetricTile`, "Fit" da marca, ícone ativo, medidor e barras) passam a ser permitidas
+  pelo seletor `data-slot` delas; todo o resto continua proibido como antes.
+- `dashboard`: a lista de cards ganha "Check-ins da semana" depois de "Check-ins de hoje" (7, 6, 5 e
+  1 cards por perfil); `GET /api/dashboard` em `/` vira `/dashboard`; as asserções `checkIns` `toEqual({ count })`
   passam a afirmar `count` e `lastSevenDays` (door 2).
 - `auth-rbac`/`fundacao`: o destino depois do login e do 2FA, e do logado que abre `/login`, passa de
   `/` a `/dashboard` (door 1); o título "Gestão de Academia" vira "DukFit".
+- `auth-rbac` (`login.spec.ts`): o perfil no cabeçalho passa a ser lido como "Perfil: <perfil>" (AC 2).
 
 ## Checks
 
@@ -46,7 +51,7 @@ Proof: `E2E e2e/dukfit.spec.ts -g "title_and_wordmark_are_dukfit_on_shell_login_
 **C2** - The shell header shows a 44×44 px avatar with `border-radius` 50% and text "MD" for "Marina Duarte" and "A" for a one-word name, the user's name, and "Perfil: <perfil>" for each of the four roles (AC 2)
 Proof: `E2E e2e/dukfit.spec.ts -g "header_shows_avatar_initials_name_and_profile_for_four_roles"`
 
-**C3** - At 390×844 the bottom navigation is visible, fixed at the bottom, background rgb(20, 20, 20), radius 24px, with exactly 5 links/buttons, and the side navigation is not visible (AC 3)
+**C3** - At 390×844, for the admin, the bottom navigation is visible, fixed at the bottom, background rgb(20, 20, 20), radius 24px, with exactly 5 links/buttons, and the side navigation is not visible (AC 3)
 Proof: `E2E e2e/dukfit.spec.ts -g "mobile_shows_the_fixed_bottom_nav_with_five_items_and_no_side_nav"`
 
 **C4** - The bottom navigation items, in order, are: admin `Início, Alunos, Check-in, Pagamentos, Mais`; hr_finance `Início, Alunos, Pagamentos, Planos, Mais`; reception `Início, Alunos, Check-in, Planos, Mais`; instructor `Início, Alunos, Mais` plus no slot the profile cannot open (AC 4)
@@ -103,7 +108,8 @@ Proof: `E2E e2e/dashboard.spec.ts -g "payments_card"`
 Proof: `E2E e2e/dukfit.spec.ts -g "lists_are_rows_on_mobile_and_tables_from_768"`
 
 **C20** - With `GET /api/dashboard` answering 500, `/dashboard` shows "Não foi possível carregar o painel." inside the shell (header visible) (AC 20)
-Proof: `E2E e2e/dashboard.spec.ts -g "load_error"`
+Proof: `E2E e2e/dukfit.spec.ts -g "dashboard_load_error_keeps_the_shell"`
+Proof: `E2E e2e/dashboard.spec.ts -g "load_failure_500_and_403"`
 
 **C21** - With empty `expiringSoon.items` and `byPlan`, the panels show "Nenhum vencimento nos próximos 7 dias." and "Nenhuma matrícula ativa." (AC 21)
 Proof: `E2E e2e/dashboard.spec.ts -g "empty"`
@@ -243,3 +249,7 @@ Evidence:
 
 - S1-S6 = ~53k tokens (≈210 KB touched / 4), across web, ui, contracts and api - under the 150k budget - one builder
 - Mechanism: one builder (under budget, no ask)
+
+- **Boundary:** C1-C44 closed by one builder over `de214e2..HEAD`; web e2e 347/347 before the final icon proof
+- **Settled mid-build:** C3 precisado para "for the admin" antes de qualquer teste (o instrutor tem 3 abas pela C4); a prova da C20 aponta o nome real do teste existente (`load_failure_500_and_403`); o "Continuar" do cadastro de 2FA também ia para `/` e passou a `/dashboard` (Impact atualizado); `Table` ganhou `relative min-w-0` porque o texto `sr-only` das células escapava da rolagem e alargava `/users` a 564 px em 360 px; `icons.tsx` entrou no `@source` do Tailwind (sem isso os ícones da navegação tinham 0 px e a C7 passava), e as provas da C4 e da C7 passaram a medir 20×20 px - com o `@source` removido as duas falham
+- **Abandoned:** nada
