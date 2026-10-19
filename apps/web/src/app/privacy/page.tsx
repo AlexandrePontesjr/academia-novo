@@ -4,6 +4,7 @@ import { loadPrivacySettings } from '../../lib/privacy-server.ts';
 import { requireSession } from '../../lib/session.ts';
 import { PrivacyForm } from './privacy-form.tsx';
 import { PrivacyLoadError } from './privacy-load-error.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +16,16 @@ export default async function PrivacyPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-lg font-semibold">Privacidade</h2>
-      {!allowed ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : settings === 'failed' || !settings ? (
-        <PrivacyLoadError />
-      ) : (
-        <PrivacyForm initial={settings} />
-      )}
+      <h2 className="text-2xl font-bold">Privacidade</h2>
+      <div className={PAGE_BODY}>
+        {!allowed ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : settings === 'failed' || !settings ? (
+          <PrivacyLoadError />
+        ) : (
+          <PrivacyForm initial={settings} />
+        )}
+      </div>
     </Shell>
   );
 }

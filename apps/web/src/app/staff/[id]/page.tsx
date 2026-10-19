@@ -13,6 +13,7 @@ import { formatBirthDate, formatCpf, formatPhone, STATUS_LABELS } from '../../..
 import { StaffLoadError } from '../staff-load-error.tsx';
 import { StaffStatusActions } from './status-actions.tsx';
 import { type LinkableUser, UserLink } from './user-link.tsx';
+import { PAGE_BODY } from '../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +65,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">{staff.name}</h2>
+            <h2 className="text-2xl font-bold">{staff.name}</h2>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
                 <Link href={`/staff/${staff.id}/edit`}>Editar</Link>
@@ -75,43 +76,45 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
           {staff.status === 'inactive' && staff.user?.active && (
             <Alert>Este funcionário está inativo e o usuário vinculado continua ativo.</Alert>
           )}
-          <PhotoBlock
-            url={`/api/staff/${staff.id}/photo`}
-            conflict="Este funcionário já tem foto."
-            name={staff.name}
-            photoUrl={staff.photoUrl}
-            canWrite
-          />
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-muted-foreground">Situação</dt>
-              <dd>{STATUS_LABELS[staff.status]}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">CPF</dt>
-              <dd>{formatCpf(staff.cpf)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Cargo</dt>
-              <dd className="break-words">{staff.position}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Setor</dt>
-              <dd className="break-words">{staff.department ?? NONE}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Data de admissão</dt>
-              <dd>{formatBirthDate(staff.hiredAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Telefone</dt>
-              <dd>{formatPhone(staff.phone)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">E-mail</dt>
-              <dd className="break-words">{staff.email ?? NONE}</dd>
-            </div>
-          </dl>
+          <div className={PAGE_BODY}>
+            <PhotoBlock
+              url={`/api/staff/${staff.id}/photo`}
+              conflict="Este funcionário já tem foto."
+              name={staff.name}
+              photoUrl={staff.photoUrl}
+              canWrite
+            />
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-sm text-muted-foreground">Situação</dt>
+                <dd>{STATUS_LABELS[staff.status]}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">CPF</dt>
+                <dd>{formatCpf(staff.cpf)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Cargo</dt>
+                <dd className="break-words">{staff.position}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Setor</dt>
+                <dd className="break-words">{staff.department ?? NONE}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Data de admissão</dt>
+                <dd>{formatBirthDate(staff.hiredAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Telefone</dt>
+                <dd>{formatPhone(staff.phone)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">E-mail</dt>
+                <dd className="break-words">{staff.email ?? NONE}</dd>
+              </div>
+            </dl>
+          </div>
           <section aria-labelledby="access-title" className="grid gap-3">
             <h3 id="access-title" className="font-semibold">
               Acesso ao sistema

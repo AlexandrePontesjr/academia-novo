@@ -2,8 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { readSession } from './lib/session.ts';
 
 /**
- * Decide, antes de qualquer página, para onde vai quem a pediu: sem sessão, para o login; com
- * sessão, para fora dele; e o Administrador que ainda não cadastrou o 2FA, para o cadastro.
+ * Decide, antes de qualquer página, para onde vai quem a pediu: `/` é a landing pública; sem sessão,
+ * para o login; com sessão, para fora dele e para o painel; e o Administrador que ainda não
+ * cadastrou o 2FA, para o cadastro.
  * `/api/*` não passa por aqui: é repassado à API, que responde por si.
  *
  * Também gera o nonce do CSP a cada requisição (door 2): o nonce vai na requisição, para o Next
@@ -27,7 +28,10 @@ export async function proxy(request: NextRequest) {
 
   let response: NextResponse;
   if (pathname === '/login' || pathname.startsWith('/login/')) {
-    response = session ? goTo('/') : NextResponse.next({ request: { headers: requestHeaders } });
+    response = session ? goTo('/dashboard') : NextResponse.next({ request: { headers: requestHeaders } });
+  } else if (pathname === '/') {
+    // a landing é pública, com ou sem sessão, e com o 2FA pendente também (dukfit-app, door 1)
+    response = NextResponse.next({ request: { headers: requestHeaders } });
   } else if (!session) {
     response = goTo('/login');
   } else if (session.twoFactorEnrollmentRequired && pathname !== '/two-factor/setup') {

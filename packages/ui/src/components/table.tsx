@@ -1,10 +1,14 @@
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
-/** A tabela do tema escuro: cartão com raio de 16 px, cabeçalho em camadas e linhas com a borda do tema. */
+/**
+ * A tabela do tema escuro: cartão com raio de 16 px, cabeçalho em camadas e linhas com a borda do tema.
+ * Rola na horizontal dentro de si no celular; `relative` segura também o texto `sr-only` das células,
+ * que sem isso escaparia da rolagem e alargaria a página (dukfit-app, AC 45).
+ */
 export function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border">
+    <div className="relative w-full min-w-0 overflow-x-auto rounded-lg border">
       <table className={cn('w-full text-left text-sm', className)} {...props} />
     </div>
   );

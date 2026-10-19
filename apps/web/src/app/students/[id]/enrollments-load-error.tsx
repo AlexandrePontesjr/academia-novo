@@ -8,7 +8,7 @@ export function EnrollmentsLoadError() {
   const router = useRouter();
 
   return (
-    <section aria-labelledby="enrollments-error-heading" className="grid justify-items-start gap-4 border-t pt-4">
+    <section aria-labelledby="enrollments-error-heading" className="grid justify-items-start gap-4 rounded-3xl border bg-card p-5">
       <h3 id="enrollments-error-heading" className="text-lg font-semibold">
         Matrículas
       </h3>

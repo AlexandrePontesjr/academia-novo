@@ -34,7 +34,7 @@ export function CheckInsBlock({ studentId, initial }: { studentId: string; initi
   }
 
   return (
-    <section aria-labelledby="check-ins-heading" className="grid gap-4 border-t pt-4">
+    <section aria-labelledby="check-ins-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
       <h3 id="check-ins-heading" className="text-lg font-semibold">
         Presenças
       </h3>

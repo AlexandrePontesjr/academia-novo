@@ -5,6 +5,7 @@ import { requireSession } from '../../../../lib/session.ts';
 import { PlanForm } from '../../plan-form.tsx';
 import { PlansLoadError } from '../../plans-load-error.tsx';
 import { PlanStatusActions } from './plan-status-actions.tsx';
+import { PAGE_BODY } from '../../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +20,20 @@ export default async function EditPlanPage({ params }: { params: Promise<{ id: s
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Editar plano</h2>
+        <h2 className="text-2xl font-bold">Editar plano</h2>
         {plan && <PlanStatusActions id={plan.id} name={plan.name} status={plan.status} />}
       </div>
-      {!allowed ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : !plans ? (
-        <PlansLoadError />
-      ) : !plan ? (
-        <p>Plano não encontrado.</p>
-      ) : (
-        <PlanForm plan={plan} />
-      )}
+      <div className={PAGE_BODY}>
+        {!allowed ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : !plans ? (
+          <PlansLoadError />
+        ) : !plan ? (
+          <p>Plano não encontrado.</p>
+        ) : (
+          <PlanForm plan={plan} />
+        )}
+      </div>
     </Shell>
   );
 }

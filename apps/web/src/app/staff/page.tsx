@@ -9,6 +9,7 @@ import { fetchApi, requireSession } from '../../lib/session.ts';
 import { canAccessStaff } from '../../lib/staff.ts';
 import { STATUS_LABELS } from '../../lib/students.ts';
 import { StaffLoadError } from './staff-load-error.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,54 +35,56 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Funcionários</h2>
+        <h2 className="text-2xl font-bold">Funcionários</h2>
         {allowed && (
           <Button asChild>
             <Link href="/staff/new">Novo funcionário</Link>
           </Button>
         )}
       </div>
-      {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
-      {!allowed ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : !list ? (
-        <StaffLoadError />
-      ) : list.items.length === 0 ? (
-        <p>Nenhum funcionário cadastrado.</p>
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <TableHead>Nome</TableHead>
-              <TableHead>Cargo</TableHead>
-              <TableHead>Setor</TableHead>
-              <TableHead>Situação</TableHead>
-            </tr>
-          </thead>
-          <tbody>
-            {list.items.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <PersonPhoto name={member.name} photoUrl={member.photoUrl} shape="thumb" />
-                    {/* a ficha só conta como vista quando alguém a abre: nada de pré-carregar (door 5) */}
-                    <Link
-                      href={`/staff/${member.id}`}
-                      prefetch={false}
-                      className="text-primary underline underline-offset-4"
-                    >
-                      {member.name}
-                    </Link>
-                  </div>
-                </TableCell>
-                <TableCell>{member.position}</TableCell>
-                <TableCell>{member.department ?? '—'}</TableCell>
-                <TableCell>{STATUS_LABELS[member.status]}</TableCell>
-              </TableRow>
-            ))}
-          </tbody>
-        </Table>
-      )}
+      <div className={PAGE_BODY}>
+        {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
+        {!allowed ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : !list ? (
+          <StaffLoadError />
+        ) : list.items.length === 0 ? (
+          <p>Nenhum funcionário cadastrado.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <TableHead>Nome</TableHead>
+                <TableHead>Cargo</TableHead>
+                <TableHead>Setor</TableHead>
+                <TableHead>Situação</TableHead>
+              </tr>
+            </thead>
+            <tbody>
+              {list.items.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <PersonPhoto name={member.name} photoUrl={member.photoUrl} shape="thumb" />
+                      {/* a ficha só conta como vista quando alguém a abre: nada de pré-carregar (door 5) */}
+                      <Link
+                        href={`/staff/${member.id}`}
+                        prefetch={false}
+                        className="text-primary underline underline-offset-4"
+                      >
+                        {member.name}
+                      </Link>
+                    </div>
+                  </TableCell>
+                  <TableCell>{member.position}</TableCell>
+                  <TableCell>{member.department ?? '—'}</TableCell>
+                  <TableCell>{STATUS_LABELS[member.status]}</TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
     </Shell>
   );
 }

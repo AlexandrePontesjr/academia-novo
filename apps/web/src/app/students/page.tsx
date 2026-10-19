@@ -8,6 +8,7 @@ import { fetchApi, requireSession } from '../../lib/session.ts';
 import { canWriteStudents } from '../../lib/students.ts';
 import { StudentsList } from './students-list.tsx';
 import { StudentsLoadError } from './students-load-error.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +32,17 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Alunos</h2>
+        <h2 className="text-2xl font-bold">Alunos</h2>
         {canWriteStudents(session.user.role) && (
           <Button asChild>
             <Link href="/students/new">Novo aluno</Link>
           </Button>
         )}
       </div>
-      {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
-      {page ? <StudentsList initial={page} role={session.user.role} /> : <StudentsLoadError />}
+      <div className={PAGE_BODY}>
+        {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
+        {page ? <StudentsList initial={page} role={session.user.role} /> : <StudentsLoadError />}
+      </div>
     </Shell>
   );
 }

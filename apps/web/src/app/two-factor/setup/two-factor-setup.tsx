@@ -39,7 +39,7 @@ export function TwoFactorSetup() {
         ))}
       </ul>
       <Button asChild>
-        <a href="/">Continuar</a>
+        <a href="/dashboard">Continuar</a>
       </Button>
     </section>
   );

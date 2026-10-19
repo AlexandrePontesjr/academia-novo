@@ -3,8 +3,9 @@
    o tema do app inteiro, sem alternância claro/escuro; a impressão reseta para papel branco. */
 @import 'tailwindcss';
 
-/* as classes usadas pelos componentes deste pacote */
+/* as classes usadas pelos componentes e pelos ícones deste pacote */
 @source './components';
+@source './icons.tsx';
 
 :root {
   color-scheme: dark;
@@ -59,6 +60,13 @@
   input::placeholder,
   textarea::placeholder {
     color: #8a8a8a;
+  }
+
+  /* no celular a ação de envio do formulário ocupa a largura toda (dukfit-app, AC 46) */
+  @media (width < 48rem) {
+    form button[type='submit'] {
+      width: 100%;
+    }
   }
 
   /* o anel de foco do tema vale para todo elemento interativo (AC 20) */

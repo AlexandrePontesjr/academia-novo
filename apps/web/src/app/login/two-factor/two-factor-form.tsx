@@ -26,7 +26,7 @@ export function TwoFactorForm() {
     setAlert(undefined);
     const result = await callApi<LoginResponse>('POST', '/api/auth/two-factor/verify', values);
 
-    if (result.kind === 'ok') window.location.assign('/');
+    if (result.kind === 'ok') window.location.assign('/dashboard');
     else if (result.kind === 'validation') showFieldErrors(form, result.errors);
     else if (result.kind === 'unavailable') setAlert(UNAVAILABLE);
     else if (result.status === 429) setAlert(tooManyAttempts(result.retryAfter));

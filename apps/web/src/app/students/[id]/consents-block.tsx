@@ -47,7 +47,7 @@ export function ConsentsBlock({
   const { guardian, items } = data;
 
   return (
-    <section aria-labelledby="consents-heading" className="grid gap-4 border-t pt-4">
+    <section aria-labelledby="consents-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
       <h3 id="consents-heading" className="text-lg font-semibold">
         Responsável e consentimentos
       </h3>

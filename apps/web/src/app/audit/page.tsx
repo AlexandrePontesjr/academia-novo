@@ -24,6 +24,7 @@ import {
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { AuditFilters } from './audit-filters.tsx';
 import { AuditLoadError } from './audit-load-error.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,35 +189,37 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <Shell session={session}>
-      <h2 className="text-lg font-semibold">Auditoria</h2>
-      {loaded.kind === 'forbidden' ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : loaded.kind === 'failed' ? (
-        <AuditLoadError />
-      ) : (
-        <>
-          <AuditFilters
-            values={filters}
-            users={loaded.users.map(({ id, name }) => ({ id, name }))}
-            errors={loaded.kind === 'invalid' ? loaded.errors : {}}
-          />
-          {loaded.kind === 'ok' &&
-            (loaded.page.items.length === 0 ? (
-              <p>Nenhum registro encontrado.</p>
-            ) : (
-              <>
-                <AuditTable items={loaded.page.items} users={loaded.users} plans={loaded.plans} />
-                {nextPage && (
-                  <div>
-                    <Link href={nextPage} prefetch={false} className="text-sm text-primary underline underline-offset-4">
-                      Próxima página
-                    </Link>
-                  </div>
-                )}
-              </>
-            ))}
-        </>
-      )}
+      <h2 className="text-2xl font-bold">Auditoria</h2>
+      <div className={PAGE_BODY}>
+        {loaded.kind === 'forbidden' ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : loaded.kind === 'failed' ? (
+          <AuditLoadError />
+        ) : (
+          <>
+            <AuditFilters
+              values={filters}
+              users={loaded.users.map(({ id, name }) => ({ id, name }))}
+              errors={loaded.kind === 'invalid' ? loaded.errors : {}}
+            />
+            {loaded.kind === 'ok' &&
+              (loaded.page.items.length === 0 ? (
+                <p>Nenhum registro encontrado.</p>
+              ) : (
+                <>
+                  <AuditTable items={loaded.page.items} users={loaded.users} plans={loaded.plans} />
+                  {nextPage && (
+                    <div>
+                      <Link href={nextPage} prefetch={false} className="text-sm text-primary underline underline-offset-4">
+                        Próxima página
+                      </Link>
+                    </div>
+                  )}
+                </>
+              ))}
+          </>
+        )}
+      </div>
     </Shell>
   );
 }

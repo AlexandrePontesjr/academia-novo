@@ -5,6 +5,7 @@ import { fetchApi, requireSession } from '../../../../lib/session.ts';
 import { canWriteStudents } from '../../../../lib/students.ts';
 import { StudentForm } from '../../student-form.tsx';
 import { StudentsLoadError } from '../../students-load-error.tsx';
+import { PAGE_BODY } from '../../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,16 +41,18 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
 
   return (
     <Shell session={session}>
-      <h2 className="text-lg font-semibold">Editar aluno</h2>
-      {student === 'forbidden' ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : student === 'failed' ? (
-        <StudentsLoadError />
-      ) : student === 'notfound' ? (
-        <p>Aluno não encontrado.</p>
-      ) : (
-        <StudentForm student={student} guardian={guardian} />
-      )}
+      <h2 className="text-2xl font-bold">Editar aluno</h2>
+      <div className={PAGE_BODY}>
+        {student === 'forbidden' ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : student === 'failed' ? (
+          <StudentsLoadError />
+        ) : student === 'notfound' ? (
+          <p>Aluno não encontrado.</p>
+        ) : (
+          <StudentForm student={student} guardian={guardian} />
+        )}
+      </div>
     </Shell>
   );
 }

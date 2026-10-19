@@ -12,7 +12,8 @@ const manrope = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Gestão de Academia',
+  title: 'DukFit',
+  description: 'DukFit, academia de bairro: musculação, aulas e acompanhamento de perto.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

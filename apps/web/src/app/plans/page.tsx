@@ -5,6 +5,7 @@ import { loadPlans } from '../../lib/plans-server.ts';
 import { canReadPlans, canWritePlans, formatPrice, PERIOD_LABELS, PLAN_STATUS_LABELS } from '../../lib/plans.ts';
 import { requireSession } from '../../lib/session.ts';
 import { PlansLoadError } from './plans-load-error.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export default async function PlansPage() {
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Planos</h2>
+        <h2 className="text-2xl font-bold">Planos</h2>
         {canWrite && (
           <Button asChild>
             <Link href="/plans/new" prefetch={false}>
@@ -27,49 +28,51 @@ export default async function PlansPage() {
           </Button>
         )}
       </div>
-      {!allowed ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : !plans ? (
-        <PlansLoadError />
-      ) : plans.length === 0 ? (
-        <p>Nenhum plano cadastrado.</p>
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <TableHead>Nome</TableHead>
-              <TableHead>Periodicidade</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Regras de acesso</TableHead>
-              <TableHead>Situação</TableHead>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.map((plan) => (
-              <TableRow key={plan.id}>
-                <TableCell>
-                  {canWrite ? (
-                    // a edição pede a lista de planos: nada de pré-carregar uma por linha
-                    <Link
-                      href={`/plans/${plan.id}/edit`}
-                      prefetch={false}
-                      className="text-primary underline underline-offset-4"
-                    >
-                      {plan.name}
-                    </Link>
-                  ) : (
-                    plan.name
-                  )}
-                </TableCell>
-                <TableCell>{PERIOD_LABELS[plan.period]}</TableCell>
-                <TableCell className="whitespace-nowrap">{formatPrice(plan.priceCents)}</TableCell>
-                <TableCell className="break-words whitespace-pre-wrap">{plan.rules ?? '—'}</TableCell>
-                <TableCell>{PLAN_STATUS_LABELS[plan.status]}</TableCell>
-              </TableRow>
-            ))}
-          </tbody>
-        </Table>
-      )}
+      <div className={PAGE_BODY}>
+        {!allowed ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : !plans ? (
+          <PlansLoadError />
+        ) : plans.length === 0 ? (
+          <p>Nenhum plano cadastrado.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <TableHead>Nome</TableHead>
+                <TableHead>Periodicidade</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Regras de acesso</TableHead>
+                <TableHead>Situação</TableHead>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map((plan) => (
+                <TableRow key={plan.id}>
+                  <TableCell>
+                    {canWrite ? (
+                      // a edição pede a lista de planos: nada de pré-carregar uma por linha
+                      <Link
+                        href={`/plans/${plan.id}/edit`}
+                        prefetch={false}
+                        className="text-primary underline underline-offset-4"
+                      >
+                        {plan.name}
+                      </Link>
+                    ) : (
+                      plan.name
+                    )}
+                  </TableCell>
+                  <TableCell>{PERIOD_LABELS[plan.period]}</TableCell>
+                  <TableCell className="whitespace-nowrap">{formatPrice(plan.priceCents)}</TableCell>
+                  <TableCell className="break-words whitespace-pre-wrap">{plan.rules ?? '—'}</TableCell>
+                  <TableCell>{PLAN_STATUS_LABELS[plan.status]}</TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
     </Shell>
   );
 }

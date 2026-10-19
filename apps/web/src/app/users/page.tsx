@@ -4,6 +4,7 @@ import { Shell } from '../../components/shell.tsx';
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { UsersLoadError } from './users-load-error.tsx';
 import { UsersPanel } from './users-panel.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +30,16 @@ export default async function UsersPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-lg font-semibold">Usuários</h2>
-      {users === 'forbidden' ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : users === 'failed' ? (
-        <UsersLoadError />
-      ) : (
-        <UsersPanel users={users} />
-      )}
+      <h2 className="text-2xl font-bold">Usuários</h2>
+      <div className={PAGE_BODY}>
+        {users === 'forbidden' ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : users === 'failed' ? (
+          <UsersLoadError />
+        ) : (
+          <UsersPanel users={users} />
+        )}
+      </div>
     </Shell>
   );
 }

@@ -4,3 +4,5 @@ export * from './components/button.tsx';
 export * from './components/dialog.tsx';
 export * from './components/input.tsx';
 export * from './components/table.tsx';
+export * from './components/panel.tsx';
+export * from './icons.tsx';

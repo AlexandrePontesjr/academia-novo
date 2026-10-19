@@ -1,7 +1,7 @@
 'use client';
 
 import { type LoginRequest, loginRequestSchema, type LoginResponse } from '@academia/contracts';
-import { Alert, Button } from '@academia/ui';
+import { Alert, Button, LockIcon, MailIcon } from '@academia/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -24,7 +24,7 @@ export function LoginForm() {
 
     if (result.kind === 'ok') {
       if (result.data.status === 'two_factor_required') router.push('/login/two-factor');
-      else window.location.assign('/');
+      else window.location.assign('/dashboard');
     } else if (result.kind === 'validation') {
       showFieldErrors(form, result.errors);
     } else if (result.kind === 'unavailable') {
@@ -42,6 +42,7 @@ export function LoginForm() {
       {alert && <Alert variant="destructive">{alert}</Alert>}
       <TextField
         label="E-mail"
+        icon={<MailIcon className="size-4" />}
         type="email"
         autoComplete="username"
         error={errors.email?.message}
@@ -49,12 +50,13 @@ export function LoginForm() {
       />
       <TextField
         label="Senha"
+        icon={<LockIcon className="size-4" />}
         type="password"
         autoComplete="current-password"
         error={errors.password?.message}
         registration={form.register('password')}
       />
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
         Entrar
       </Button>
     </form>

@@ -5,6 +5,7 @@ import { fetchApi, requireSession } from '../../../../lib/session.ts';
 import { canAccessStaff } from '../../../../lib/staff.ts';
 import { StaffForm } from '../../staff-form.tsx';
 import { StaffLoadError } from '../../staff-load-error.tsx';
+import { PAGE_BODY } from '../../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,16 +29,18 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
 
   return (
     <Shell session={session}>
-      <h2 className="text-lg font-semibold">Editar funcionário</h2>
-      {staff === 'forbidden' ? (
-        <p>Você não tem permissão para acessar esta página.</p>
-      ) : staff === 'failed' ? (
-        <StaffLoadError />
-      ) : staff === 'notfound' ? (
-        <p>Funcionário não encontrado.</p>
-      ) : (
-        <StaffForm staff={staff} />
-      )}
+      <h2 className="text-2xl font-bold">Editar funcionário</h2>
+      <div className={PAGE_BODY}>
+        {staff === 'forbidden' ? (
+          <p>Você não tem permissão para acessar esta página.</p>
+        ) : staff === 'failed' ? (
+          <StaffLoadError />
+        ) : staff === 'notfound' ? (
+          <p>Funcionário não encontrado.</p>
+        ) : (
+          <StaffForm staff={staff} />
+        )}
+      </div>
     </Shell>
   );
 }

@@ -35,6 +35,7 @@ import { EnrollmentsLoadError } from './enrollments-load-error.tsx';
 import { PaymentsBlock } from './payments-block.tsx';
 import { PaymentsLoadError } from './payments-load-error.tsx';
 import { StatusActions } from './status-actions.tsx';
+import { PAGE_BODY } from '../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,7 +122,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">{student.name}</h2>
+            <h2 className="text-2xl font-bold">{student.name}</h2>
             {canWrite && (
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" asChild>
@@ -131,25 +132,27 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               </div>
             )}
           </div>
-          <PhotoBlock
-            url={`/api/students/${student.id}/photo`}
-            conflict="Este aluno já tem foto."
-            name={student.name}
-            photoUrl={student.photoUrl}
-            canWrite={canWrite}
-          />
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-muted-foreground">Situação</dt>
-              <dd>{STATUS_LABELS[student.status]}</dd>
-            </div>
-            {FICHA_FIELDS.filter(({ key }) => key in student).map(({ key, label }) => (
-              <div key={key}>
-                <dt className="text-sm text-muted-foreground">{label}</dt>
-                <dd className="break-words whitespace-pre-wrap">{fichaValue(student, key)}</dd>
+          <div className={PAGE_BODY}>
+            <PhotoBlock
+              url={`/api/students/${student.id}/photo`}
+              conflict="Este aluno já tem foto."
+              name={student.name}
+              photoUrl={student.photoUrl}
+              canWrite={canWrite}
+            />
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-sm text-muted-foreground">Situação</dt>
+                <dd>{STATUS_LABELS[student.status]}</dd>
               </div>
-            ))}
-          </dl>
+              {FICHA_FIELDS.filter(({ key }) => key in student).map(({ key, label }) => (
+                <div key={key}>
+                  <dt className="text-sm text-muted-foreground">{label}</dt>
+                  <dd className="break-words whitespace-pre-wrap">{fichaValue(student, key)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
           {consents === 'failed' && <ConsentsLoadError />}
           {consents && consents !== 'failed' && (
             <ConsentsBlock
