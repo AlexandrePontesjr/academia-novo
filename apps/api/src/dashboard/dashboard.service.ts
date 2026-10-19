@@ -1,4 +1,7 @@
 import {
+  addDays,
+  CHECK_INS_WEEK_DAYS,
+  type DashboardCheckIns,
   type DashboardEnrollments,
   type DashboardPayments,
   type DashboardResponse,
@@ -10,7 +13,7 @@ import {
   type Role,
   saoPauloToday,
 } from '@academia/contracts';
-import { type Database, eq, isNull, schema, sql } from '@academia/database';
+import { and, type Database, eq, gte, isNull, lte, schema, sql } from '@academia/database';
 
 const { checkIns, enrollments, payments, plans, students } = schema;
 
@@ -39,14 +42,27 @@ export class DashboardService {
     const periods = await this.periods();
     response.enrollments = enrollmentsOf(periods, today);
     if (readsPayments(role)) response.payments = paymentsOf(periods, await this.alive(), today);
-    if (readsCheckIns(role)) response.checkIns = { count: await this.checkInsOn(today) };
+    if (readsCheckIns(role)) response.checkIns = await this.checkInsUntil(today);
     return response;
   }
 
-  /** As presenças de `day` igual ao `today` da resposta: o dia vem da API, não do relógio do banco. */
-  private async checkInsOn(today: string): Promise<number> {
-    const [row] = await this.db.select({ count: sql<number>`count(*)::int` }).from(checkIns).where(eq(checkIns.day, today));
-    return row!.count;
+  /**
+   * As presenças por `day`, de `today - 6` a `today` (dukfit-app, door 2), numa leitura só: o dia vem
+   * da API, não do relógio do banco, e o `count` de hoje é o último item da série.
+   */
+  private async checkInsUntil(today: string): Promise<DashboardCheckIns> {
+    const first = addDays(today, 1 - CHECK_INS_WEEK_DAYS);
+    const rows = await this.db
+      .select({ day: checkIns.day, count: sql<number>`count(*)::int` })
+      .from(checkIns)
+      .where(and(gte(checkIns.day, first), lte(checkIns.day, today)))
+      .groupBy(checkIns.day);
+    const byDay = new Map(rows.map((row) => [String(row.day), row.count]));
+    const lastSevenDays = Array.from({ length: CHECK_INS_WEEK_DAYS }, (_, index) => {
+      const day = addDays(first, index);
+      return { day, count: byDay.get(day) ?? 0 };
+    });
+    return { count: lastSevenDays.at(-1)!.count, lastSevenDays };
   }
 
   /** Alunos por `status`, que é guardado (AD-030); a situação sem aluno fica em `0`. */

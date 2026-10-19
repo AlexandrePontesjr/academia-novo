@@ -1,4 +1,4 @@
-import { type CheckInsReport, type DashboardResponse, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role } from '@academia/contracts';
+import { type CheckInsReport, type DashboardResponse, dashboardResponseSchema, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role } from '@academia/contracts';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { auditCount } from './support/audit.ts';
 import { insertCheckIn } from './support/check-ins.ts';
@@ -745,7 +745,7 @@ test('reading_the_dashboard_changes_no_row_of_four_tables_across_the_turn', asyn
 
 test('check_ins_count_is_todays_rows_for_admin_and_reception_and_zero_when_none', async () => {
   for (const role of ['admin', 'reception'] as const) {
-    expect((await dashboard(sessions[role])).checkIns, `${role} sem presença`).toEqual({ count: 0 });
+    expect((await dashboard(sessions[role])).checkIns!.count, `${role} sem presença`).toBe(0);
   }
   await checkInOn('2026-10-07');
   await checkInOn('2026-10-07');
@@ -753,7 +753,7 @@ test('check_ins_count_is_todays_rows_for_admin_and_reception_and_zero_when_none'
   await checkInOn('2026-10-08');
 
   for (const role of ['admin', 'reception'] as const) {
-    expect((await dashboard(sessions[role])).checkIns, role).toEqual({ count: 2 });
+    expect((await dashboard(sessions[role])).checkIns!.count, role).toBe(2);
   }
 });
 
@@ -761,10 +761,10 @@ test('check_ins_count_turns_at_sao_paulo_midnight', async () => {
   await checkInOn('2026-10-07');
 
   const before = await dashboard(await sessionAt(BEFORE_TURN, 'reception'));
-  expect([before.today, before.checkIns]).toEqual(['2026-10-07', { count: 1 }]);
+  expect([before.today, before.checkIns!.count]).toEqual(['2026-10-07', 1]);
 
   const after = await dashboard(await sessionAt(AFTER_TURN, 'reception'));
-  expect([after.today, after.checkIns]).toEqual(['2026-10-08', { count: 0 }]);
+  expect([after.today, after.checkIns!.count]).toEqual(['2026-10-08', 0]);
 });
 
 test('check_ins_count_and_report_total_agree_across_sao_paulo_midnight', async () => {
@@ -783,5 +783,77 @@ test('check_ins_count_and_report_total_agree_across_sao_paulo_midnight', async (
 
       expect(checkIns!.count, `${instant}, ${role}`).toBe(total);
     }
+  }
+});
+
+// dukfit-app S3 - a série semanal do card de check-ins (door 2)
+
+const seriesOf = (checkIns: DashboardResponse['checkIns']) => checkIns!.lastSevenDays.map(({ day, count }) => `${day}:${count}`);
+
+test('last_seven_days_has_seven_days_oldest_first_with_zeros', async () => {
+  await checkInOn('2026-10-01');
+  await checkInOn('2026-10-01');
+  await checkInOn('2026-10-04');
+  for (let index = 0; index < 3; index += 1) await checkInOn('2026-10-07');
+
+  for (const role of ['admin', 'reception'] as const) {
+    const { today, checkIns } = await dashboard(sessions[role]);
+    expect(today, role).toBe('2026-10-07');
+    expect(seriesOf(checkIns), role).toEqual([
+      '2026-10-01:2',
+      '2026-10-02:0',
+      '2026-10-03:0',
+      '2026-10-04:1',
+      '2026-10-05:0',
+      '2026-10-06:0',
+      '2026-10-07:3',
+    ]);
+  }
+});
+
+test('last_seven_days_leaves_out_days_outside_the_window', async () => {
+  await checkInOn('2026-09-30');
+  await checkInOn('2026-10-08');
+
+  const { checkIns } = await dashboard(sessions.admin);
+  expect(checkIns!.lastSevenDays).toHaveLength(7);
+  expect(checkIns!.lastSevenDays.map(({ count }) => count)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  expect(checkIns!.lastSevenDays[0]!.day).toBe('2026-10-01');
+});
+
+test('last_seven_days_last_item_is_today_and_equals_count_across_the_turn', async () => {
+  await checkInOn('2026-10-02');
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-07');
+  await checkInOn('2026-10-08');
+
+  for (const instant of [BEFORE_TURN, AFTER_TURN]) {
+    const { today, checkIns } = await dashboard(await sessionAt(instant, 'reception'));
+    const last = checkIns!.lastSevenDays.at(-1)!;
+    expect(last.day, instant).toBe(today);
+    expect(last.count, instant).toBe(checkIns!.count);
+  }
+  const after = await dashboard(await sessionAt(AFTER_TURN, 'reception'));
+  // depois da virada a janela anda um dia: 2026-10-02 a 2026-10-08
+  expect(seriesOf(after.checkIns)).toEqual([
+    '2026-10-02:1',
+    '2026-10-03:0',
+    '2026-10-04:0',
+    '2026-10-05:0',
+    '2026-10-06:0',
+    '2026-10-07:2',
+    '2026-10-08:1',
+  ]);
+});
+
+test('last_seven_days_absent_for_profiles_without_check_ins', async () => {
+  await checkInOn('2026-10-07');
+
+  for (const role of ROLES) {
+    const response = await sessions[role].get('/api/dashboard');
+    expect(response.status, role).toBe(200);
+    const text = await response.text();
+    expect(dashboardResponseSchema.safeParse(JSON.parse(text)).success, role).toBe(true);
+    expect(text.includes('lastSevenDays'), role).toBe(role === 'admin' || role === 'reception');
   }
 });

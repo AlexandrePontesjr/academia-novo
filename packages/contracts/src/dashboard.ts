@@ -48,8 +48,18 @@ export type DashboardEnrollments = z.infer<typeof dashboardEnrollmentsSchema>;
 export const dashboardPaymentsSchema = z.strictObject({ pending: countSchema, overdue: countSchema });
 export type DashboardPayments = z.infer<typeof dashboardPaymentsSchema>;
 
-/** O card "Check-ins de hoje" (check-in, door 4): as presenças de `day` igual ao `today` da resposta. */
-export const dashboardCheckInsSchema = z.strictObject({ count: countSchema });
+/** Quantos dias a série semanal do card de check-ins cobre (dukfit-app, door 2), hoje incluído. */
+export const CHECK_INS_WEEK_DAYS = 7;
+
+/**
+ * O card "Check-ins de hoje" (check-in, door 4): as presenças de `day` igual ao `today` da resposta.
+ * `lastSevenDays` (dukfit-app, door 2) traz um item por dia, de `today - 6` até `today`, o dia sem
+ * presença com `count: 0`; o último item é o `count`.
+ */
+export const dashboardCheckInsSchema = z.strictObject({
+  count: countSchema,
+  lastSevenDays: z.array(z.strictObject({ day: z.string(), count: countSchema })).length(CHECK_INS_WEEK_DAYS),
+});
 export type DashboardCheckIns = z.infer<typeof dashboardCheckInsSchema>;
 
 /**

@@ -171,7 +171,8 @@ test('dashboard_schema_accepts_three_profile_shapes_and_refuses_each_missing_key
 
 test('dashboard_schema_accepts_check_ins_for_admin_and_reception_shapes_and_refuses_bad_check_ins', () => {
   const { today, students, enrollments, payments } = full();
-  const checkIns = { count: 13 };
+  const lastSevenDays = week([1, 0, 4, 2, 0, 6, 13]);
+  const checkIns = { count: 13, lastSevenDays };
 
   // as quatro formas por perfil
   expect(accepts({ today, students, enrollments, payments, checkIns }), 'admin, cinco chaves').toBe(true);
@@ -180,18 +181,35 @@ test('dashboard_schema_accepts_check_ins_for_admin_and_reception_shapes_and_refu
   expect(accepts({ today, students }), 'instructor, duas chaves').toBe(true);
 
   // `count` igual a zero
-  expect(accepts({ today, students, enrollments, checkIns: { count: 0 } }), 'count 0').toBe(true);
+  expect(accepts({ today, students, enrollments, checkIns: { count: 0, lastSevenDays: week([0, 0, 0, 0, 0, 0, 0]) } }), 'count 0').toBe(true);
 
   // `null`, sem `count`, chave a mais e contagens que não são inteiros não negativos
   const refused: Array<[label: string, value: unknown]> = [
     ['null', null],
-    ['sem count', {}],
-    ['chave a mais', { count: 1, distinct: 1 }],
-    ['count -1', { count: -1 }],
-    ['count 1.5', { count: 1.5 }],
-    ['count "3"', { count: '3' }],
+    ['sem count', { lastSevenDays }],
+    ['sem lastSevenDays', { count: 1 }],
+    ['chave a mais', { count: 1, lastSevenDays, distinct: 1 }],
+    ['count -1', { count: -1, lastSevenDays }],
+    ['count 1.5', { count: 1.5, lastSevenDays }],
+    ['count "3"', { count: '3', lastSevenDays }],
   ];
   for (const [label, value] of refused) {
     expect(accepts({ today, students, enrollments, checkIns: value }), label).toBe(false);
   }
+});
+
+/** Sete dias de 2026-10-01 a 2026-10-07 com as contagens dadas, na ordem. */
+function week(counts: number[]) {
+  return counts.map((count, index) => ({ day: `2026-10-0${index + 1}`, count }));
+}
+
+test('dashboard_check_ins_series_has_exactly_seven_items', () => {
+  const { today, students, enrollments } = full();
+  const series = (counts: number[]) => ({ today, students, enrollments, checkIns: { count: 1, lastSevenDays: week(counts) } });
+
+  expect(accepts(series([0, 0, 0, 0, 0, 0, 1])), 'sete itens').toBe(true);
+  expect(accepts(series([0, 0, 0, 0, 0, 1])), 'seis itens').toBe(false);
+  expect(accepts(series([0, 0, 0, 0, 0, 0, 0, 1])), 'oito itens').toBe(false);
+  expect(accepts({ today, students, enrollments, checkIns: { count: 1, lastSevenDays: [...week([0, 0, 0, 0, 0, 0]), { day: '2026-10-07', count: -1 }] } }), 'contagem negativa').toBe(false);
+  expect(accepts({ today, students, enrollments, checkIns: { count: 1, lastSevenDays: [...week([0, 0, 0, 0, 0, 0]), { day: '2026-10-07', count: 1, extra: 1 }] } }), 'chave a mais no item').toBe(false);
 });
