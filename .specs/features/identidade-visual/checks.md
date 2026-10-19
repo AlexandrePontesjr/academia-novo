@@ -181,3 +181,31 @@ token values would be proven only by whatever path a screen happens to traverse.
 - S1 = ~44 KB de texto tocado (globals.css + componentes de `@academia/ui` + shell + layout + `page.tsx` do painel + `check-in-desk.tsx` + a spec de identidade) ≈ 11k tokens; S2 herda os tokens em 24 telas, ~3 KB ≈ 1k; S3 = print, `not-found.tsx`, spec e teste estático, ~8 KB ≈ 2k. A fonte `manrope-variable.woff2` (24 KB) fica fora da conta: asset binário, não é lido como contexto. Total ≈ 14k, sob o budget de 150k - one builder, sem ask.
 - Mechanism: one builder (a sessão que escreveu os checks).
 - Settled mid-build: em 2026-10-19 o usuário aprovou corrigir dois dígitos do `Landing` (`--primary`/`--ring` `0.215` -> `0.2148`; `--destructive` `0.245` -> `0.215`) porque os literais aprovados renderizavam #cdf71f e #e7000b, não os hexes dos AC 2 e AC 17. O plano foi corrigido antes destes checks; nenhum outro literal mudou.
+
+### Build record (base `b0cabb4`, one builder)
+
+- **Boundary:** C1 a C25 verdes no HEAD do build; commits `47ec954` (estes checks e as decisões da
+  revisão), o commit `feat(ui)` e o commit `test(identity)`. Provas no HEAD final:
+  `e2e/identidade.spec.ts` **23/23**, `tests/repo/identidade.test.ts` **4/4**, `pnpm verify` exit `0`
+  (21 tarefas, web com **313** testes de tela), `e2e/csp.spec.ts` **3/3** dentro do `pnpm verify`.
+- **Settled mid-build:** a decisão do usuário que mudou o plano está acima. O resto é detalhe
+  reversível: `nav-link.tsx` novo (componente cliente que marca a rota ativa, que o `Shell` servidor
+  não consegue ver), `not-found.tsx` nova, e a varredura de `text-destructive` -> `text-[#f87171]`
+  nas telas, para todo erro de campo ficar no vermelho do AC 12.
+- **Abandoned:** `rounded-full` para o botão primário - o Tailwind v4 compila para
+  `calc(infinity * 1px)` e o computado sai `3.35544e+07px`, não o `9999px` do AC 2; ficou
+  `rounded-[9999px]`. `bg-black/70` no overlay do diálogo - o modificador de opacidade vira
+  `color-mix` e a serialização computada deixa de ser `rgba(0, 0, 0, 0.7)`; ficou
+  `bg-[rgb(0_0_0_/_0.7)]`. Os scans de cor da prova reusavam o canvas sem `clearRect`, e uma cor
+  transparente herdava o pixel anterior (falso positivo de "TD lime"); corrigido na prova.
+- **Focus e impressão:** o anel do AC 20 é `outline: 2px solid var(--ring); outline-offset: 2px` em
+  `:focus-visible` no `@layer base`, para todo elemento interativo (o `ring` do Tailwind é
+  box-shadow e não serializa como `outline`); a impressão reseta os tokens e força `th { color:
+  #000 }` para o cabeçalho de tabela continuar legível no papel.
+- **Fonte:** `apps/web/src/fonts/manrope-variable.woff2` (24.836 bytes, subset latin do Manrope
+  variável v20, sha256 `A30DDCD349703AFF7464C34BEF3FFFDFF405EE50C113440D7C8693C02D210972`) e
+  `apps/web/src/fonts/OFL.txt`, baixados de `fonts.gstatic.com` e do repositório `google/fonts`. O
+  eixo interno cobre 200-800; o `next/font/local` declara `weight: '400 800'`, como o plano diz.
+- **Arquivos da prova:** `apps/web/e2e/identidade.spec.ts` (23 casos) e
+  `tests/repo/identidade.test.ts` (4 casos). O `pnpm verify` passou a rodar 313 testes de tela (290
+  antes + 23 novos).
