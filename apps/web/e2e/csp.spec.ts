@@ -67,16 +67,16 @@ test('chromium_opens_login_and_students_without_csp_violations', async ({ page, 
 
   // a primeira tela: /login, sem sessão
   expect(await visit('/login')).toEqual([]);
-  await expect(page.getByRole('heading', { name: 'Entrar', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo de volta', exact: true })).toBeVisible();
 
-  // entra: a API falsa passa a ter sessão, e o login recarrega a aplicação na home
+  // entra: a API falsa passa a ter sessão, e o login recarrega a aplicação no painel
   api.session = sessionOf('reception');
   api.on('POST', '/api/auth/login', { status: 200, body: { status: 'authenticated' } });
   api.on('GET', '/api/students', { status: 200, body: { items: [], nextCursor: null } });
   await page.getByLabel('E-mail').fill('marina@exemplo.com');
   await page.getByLabel('Senha').fill('senha-de-teste-123');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/dashboard');
   expect(await violations()).toEqual([]);
 
   // a segunda tela: a lista de alunos, servida pela API falsa

@@ -66,7 +66,7 @@ test('enrollment_required_redirects_three_pages', async ({ page, api }) => {
   api.session = sessionOf('admin', { twoFactorEnabled: false });
   expect(api.session.twoFactorEnrollmentRequired).toBe(true);
 
-  for (const path of ['/', '/users', '/account']) {
+  for (const path of ['/dashboard', '/users', '/account']) {
     await page.goto(path);
 
     await expect(page, path).toHaveURL('/two-factor/setup');
@@ -108,4 +108,18 @@ test('backup_codes_shown_exactly_once', async ({ page, api }) => {
 
   await expect(page.getByRole('heading').first()).toBeVisible();
   for (const code of BACKUP_CODES) await expect(page.getByText(code, { exact: true })).toHaveCount(0);
+});
+
+test('verify_success_goes_to_dashboard', async ({ page, api }) => {
+  await pendingLogin(page, api);
+  api.on('POST', '/api/auth/two-factor/verify', () => {
+    // a verificação aceita abre a sessão: o painel que vem depois já a encontra
+    api.session = sessionOf('admin');
+    return { status: 200, body: { status: 'authenticated' } };
+  });
+
+  await page.getByLabel('Código de 6 dígitos').fill('123456');
+  await page.getByRole('button', { name: 'Verificar' }).click();
+
+  await expect(page).toHaveURL('/dashboard');
 });

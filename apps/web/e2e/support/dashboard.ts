@@ -10,6 +10,7 @@ export const ALL_ROLES: Role[] = ['admin', 'hr_finance', 'reception', 'instructo
 export const CARD_TITLES = [
   'Alunos',
   'Check-ins de hoje',
+  'Check-ins da semana',
   'Matrículas',
   'Vencimentos nos próximos 7 dias',
   'Pagamentos',
@@ -35,6 +36,12 @@ export function expiringOf(overrides: Partial<ExpiringEnrollment> = {}): Expirin
 
 type Enrollments = NonNullable<DashboardResponse['enrollments']>;
 
+/** O card de check-ins com a série semanal (dukfit-app, door 2): o último dia é hoje, com `count`. */
+export function checkInsOf(count: number, before: number[] = [3, 0, 7, 10, 5, 2]): NonNullable<DashboardResponse['checkIns']> {
+  const counts = [...before, count];
+  return { count, lastSevenDays: counts.map((value, index) => ({ day: `2026-10-0${index + 1}`, count: value })) };
+}
+
 /**
  * A resposta de cinco chaves, com números que não coincidem entre si nem com o que a máquina
  * calcularia das listas: a tela só mostra o que recebe.
@@ -51,7 +58,7 @@ export function dashboardOf(overrides: Partial<DashboardResponse> = {}, enrollme
       ...enrollments,
     },
     payments: { pending: 9, overdue: 4 },
-    checkIns: { count: 12 },
+    checkIns: checkInsOf(12),
     ...overrides,
   };
 }

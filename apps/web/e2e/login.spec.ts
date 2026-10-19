@@ -11,7 +11,7 @@ async function submitLogin(page: Page, email = 'marina@exemplo.com', password = 
 test('login_page_shows_form_in_pt_br', async ({ page }) => {
   await page.goto('/login');
 
-  await expect(page.getByRole('heading', { name: 'Entrar', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo de volta', exact: true })).toBeVisible();
   await expect(page.getByLabel('E-mail')).toBeVisible();
   await expect(page.getByLabel('Senha')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
@@ -19,11 +19,12 @@ test('login_page_shows_form_in_pt_br', async ({ page }) => {
 });
 
 test('home_shows_name_and_role_label_for_four_roles', async ({ page, api }) => {
+  // o cabeçalho DukFit mostra o perfil como "Perfil: <perfil>" (dukfit-app, AC 2)
   const labels: Record<Role, string> = {
-    admin: 'Administrador',
-    reception: 'Recepção',
-    hr_finance: 'RH/Financeiro',
-    instructor: 'Instrutor',
+    admin: 'Perfil: Administrador',
+    reception: 'Perfil: Recepção',
+    hr_finance: 'Perfil: RH/Financeiro',
+    instructor: 'Perfil: Instrutor',
   };
 
   for (const [role, label] of Object.entries(labels) as Array<[Role, string]>) {
@@ -37,8 +38,8 @@ test('home_shows_name_and_role_label_for_four_roles', async ({ page, api }) => {
 
     await submitLogin(page);
 
-    await expect(page, role).toHaveURL('/');
-    await expect(page.getByRole('heading', { name: 'Gestão de Academia' }), role).toBeVisible();
+    await expect(page, role).toHaveURL('/dashboard');
+    await expect(page.getByRole('heading', { name: 'DukFit' }), role).toBeVisible();
     await expect(page.getByText(name, { exact: true }), role).toBeVisible();
     await expect(page.getByText(label, { exact: true }), role).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sair' }), role).toBeVisible();

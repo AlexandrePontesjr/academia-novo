@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
@@ -80,4 +81,42 @@ test('only_the_manrope_asset_and_its_ofl_license_are_new', () => {
     'OFL.txt',
     'manrope-variable.woff2',
   ]);
+});
+
+// dukfit-app: a landing lê o texto só de `site-content.ts` (door 4) e a feature não traz pacote npm (AC 50)
+
+const SITE_CONTENT = 'apps/web/src/app/site-content.ts';
+const LANDING = 'apps/web/src/app/page.tsx';
+/** O commit do plano da dukfit-app, antes de qualquer código: a base contra a qual "nenhum pacote novo" vale. */
+const DUKFIT_BASE = 'de214e2';
+
+test('site_content_is_the_only_source_of_landing_copy', () => {
+  const content = read(SITE_CONTENT);
+  for (const key of ['name', 'tagline', 'address', 'phone', 'whatsapp', 'hours', 'highlights', 'modalities']) {
+    expect(content, key).toMatch(new RegExp(`^  ${key}: `, 'm'));
+  }
+  expect(content).toMatch(/^export const SITE = \{$/m);
+  expect(content).toContain("  name: 'DukFit',");
+
+  const landing = read(LANDING);
+  expect(landing).toContain("from './site-content.ts';");
+  // a única leitura de servidor é a sessão, para o CTA; nada de API de academia, planos ou painel
+  const imports = [...landing.matchAll(/from '([^']+)';/g)].map((match) => match[1]);
+  expect(imports.filter((path) => path!.includes('/lib/'))).toEqual(['../lib/session.ts']);
+  expect(landing).not.toMatch(/fetchApi|loadDashboard|\/api\//);
+});
+
+test('dukfit_adds_no_npm_dependency', () => {
+  const manifests = execFileSync('git', ['ls-files', '*package.json'], { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter((path) => path && !path.includes('node_modules'));
+  expect(manifests.length).toBeGreaterThan(5);
+  const deps = (json: string) => {
+    const manifest = JSON.parse(json) as Record<string, Record<string, string> | undefined>;
+    return Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies }).sort();
+  };
+  for (const path of manifests) {
+    const before = execFileSync('git', ['show', `${DUKFIT_BASE}:${path}`], { cwd: ROOT, encoding: 'utf8' });
+    expect(deps(read(path)), path).toEqual(deps(before));
+  }
 });

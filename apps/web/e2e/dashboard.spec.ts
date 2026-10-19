@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import {
   ALL_ROLES,
+  checkInsOf,
   card,
   CARD_TITLES,
   cardTitles,
@@ -19,6 +20,8 @@ import { expect, problem, sessionOf, test } from './support/fake-api.ts';
 const EXPIRING = 'Vencimentos nos próximos 7 dias';
 const BY_PLAN = 'Matrículas ativas por plano';
 const CHECK_INS = 'Check-ins de hoje';
+/** O card da série semanal (dukfit-app, AC 15): acompanha o de check-ins de hoje. */
+const WEEK = 'Check-ins da semana';
 const LOAD_ERROR = 'Não foi possível carregar o painel.';
 const greeting = (page: Page) => page.getByText('Olá, Marina Duarte.', { exact: true });
 const painel = (page: Page) => page.getByRole('heading', { name: 'Painel', exact: true });
@@ -27,7 +30,7 @@ test('home_shows_greeting_painel_title_and_situation_date_from_the_response', as
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ today: '2026-03-05' })));
   expect(api.session!.user.name).toBe('Marina Duarte');
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   await expect(greeting(page)).toBeVisible();
   await expect(painel(page)).toBeVisible();
@@ -38,7 +41,7 @@ test('home_shows_greeting_painel_title_and_situation_date_from_the_response', as
 test('students_card_three_labelled_counts_zeros_and_ver_alunos_link', async ({ page, api }) => {
   serveDashboard(api, 'instructor');
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const students = card(page, 'Alunos');
   await expect(students).toBeVisible();
@@ -51,7 +54,7 @@ test('students_card_three_labelled_counts_zeros_and_ver_alunos_link', async ({ p
 
   // contagem zero é o número `0`, não um vazio
   serveDashboard(api, 'instructor', { today: '2026-10-07', students: { active: 0, inactive: 0, suspended: 0 } });
-  await page.goto('/');
+  await page.goto('/dashboard');
   for (const label of ['Ativos', 'Inativos', 'Suspensos']) {
     await expect(under(card(page, 'Alunos'), label), label).toHaveText('0');
   }
@@ -60,7 +63,7 @@ test('students_card_three_labelled_counts_zeros_and_ver_alunos_link', async ({ p
 test('enrollments_card_ativas_and_agendadas', async ({ page, api }) => {
   serveDashboard(api, 'reception');
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const enrollments = card(page, 'Matrículas');
   await expect(enrollments).toBeVisible();
@@ -78,7 +81,7 @@ test('expiring_card_title_from_days_three_columns_in_api_order', async ({ page, 
   ];
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { expiringSoon: { days: 7, items } })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const seven = card(page, EXPIRING);
   await expect(seven).toBeVisible();
@@ -88,7 +91,7 @@ test('expiring_card_title_from_days_three_columns_in_api_order', async ({ page, 
 
   // o número do título é o de `expiringSoon.days`
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { expiringSoon: { days: 5, items } })));
-  await page.goto('/');
+  await page.goto('/dashboard');
   await expect(card(page, 'Vencimentos nos próximos 5 dias')).toBeVisible();
   await expect(card(page, EXPIRING)).toHaveCount(0);
 });
@@ -98,7 +101,7 @@ test('expiring_row_formats_name_link_plan_and_date', async ({ page, api }) => {
   const items = [expiringOf({ student: { id, name: 'Ana Souza' }, plan: planOf(2, 'Mensal Plus', 'monthly'), endsAt: '2026-10-14' })];
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { expiringSoon: { days: 7, items } })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const expiring = card(page, EXPIRING);
   await expect(expiring.locator('tbody tr')).toHaveCount(1);
@@ -110,7 +113,7 @@ test('expiring_row_formats_name_link_plan_and_date', async ({ page, api }) => {
 test('expiring_card_empty_state_replaces_table', async ({ page, api }) => {
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { expiringSoon: { days: 7, items: [] } })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const expiring = card(page, EXPIRING);
   await expect(expiring.getByText('Nenhum vencimento nos próximos 7 dias.', { exact: true })).toBeVisible();
@@ -120,7 +123,7 @@ test('expiring_card_empty_state_replaces_table', async ({ page, api }) => {
 test('payments_card_counts_link_to_the_filtered_payments_page', async ({ page, api }) => {
   serveDashboard(api, 'hr_finance');
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const payments = card(page, 'Pagamentos');
   await expect(payments).toBeVisible();
@@ -139,7 +142,7 @@ test('by_plan_card_two_columns_in_api_order_with_plan_and_period', async ({ page
   ];
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { byPlan })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const plans = card(page, BY_PLAN);
   await expect(plans).toBeVisible();
@@ -151,7 +154,7 @@ test('by_plan_card_two_columns_in_api_order_with_plan_and_period', async ({ page
 test('by_plan_card_empty_state_replaces_table', async ({ page, api }) => {
   serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({}, { byPlan: [] })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const plans = card(page, BY_PLAN);
   await expect(plans.getByText('Nenhuma matrícula ativa.', { exact: true })).toBeVisible();
@@ -162,7 +165,7 @@ test('instructor_sees_only_the_students_card', async ({ page, api }) => {
   serveDashboard(api, 'instructor');
   expect(Object.keys(dashboardFor('instructor')).sort()).toEqual(['students', 'today']);
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   await expect(card(page, 'Alunos')).toBeVisible();
   expect(await cardTitles(page)).toEqual(['Alunos']);
@@ -181,7 +184,7 @@ test('load_failure_500_and_403_shows_retry_keeps_greeting_and_menu_and_retry_sho
     let down = true;
     api.on('GET', '/api/dashboard', () => (down ? failure : { status: 200, body: dashboardOf() }));
 
-    await page.goto('/');
+    await page.goto('/dashboard');
 
     await expect(page.getByText(LOAD_ERROR, { exact: true }), String(status)).toBeVisible();
     const retry = page.getByRole('button', { name: 'Tentar novamente', exact: true });
@@ -207,7 +210,7 @@ test('anonymous_home_redirects_to_login_without_dashboard_request', async ({ pag
   expect(api.session).toBeUndefined();
   api.on('GET', '/api/dashboard', { status: 200, body: dashboardOf() });
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   await expect(page).toHaveURL('/login');
   expect(dashboardRequests(api)).toHaveLength(0);
@@ -216,14 +219,14 @@ test('anonymous_home_redirects_to_login_without_dashboard_request', async ({ pag
 test('cards_follow_the_response_keys_not_the_session_role', async ({ page, api }) => {
   // sessão de `admin`, resposta sem `payments` (a da Recepção, com `checkIns`)
   serveDashboard(api, 'admin', dashboardFor('reception'));
-  await page.goto('/');
+  await page.goto('/dashboard');
   for (const title of ['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN]) await expect(card(page, title), title).toBeVisible();
   await expect(card(page, 'Pagamentos')).toHaveCount(0);
-  expect(await cardTitles(page)).toEqual(['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN]);
+  expect(await cardTitles(page)).toEqual(['Alunos', CHECK_INS, WEEK, 'Matrículas', EXPIRING, BY_PLAN]);
 
   // sessão de `admin`, resposta sem `enrollments` e sem `payments`
   serveDashboard(api, 'admin', dashboardFor('instructor'));
-  await page.goto('/');
+  await page.goto('/dashboard');
   await expect(card(page, 'Alunos')).toBeVisible();
   expect(await cardTitles(page)).toEqual(['Alunos']);
 });
@@ -237,7 +240,7 @@ test('student_and_plan_name_markup_shown_as_literal_text_in_both_tables', async 
     dashboardFor('reception', dashboardOf({}, { expiringSoon: { days: 7, items }, byPlan: [{ plan, active: 8 }] })),
   );
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const expiring = card(page, EXPIRING);
   expect(await column(expiring, 1).allTextContents()).toEqual(['<b>Ana</b>']);
@@ -253,7 +256,7 @@ test('home_requests_the_dashboard_once_and_no_other_data_route_for_four_roles', 
     serveDashboard(api, role);
     api.requests = [];
 
-    await page.goto('/');
+    await page.goto('/dashboard');
     await expect(card(page, 'Alunos'), role).toBeVisible();
     await page.waitForLoadState('networkidle');
 
@@ -267,9 +270,9 @@ test('home_requests_the_dashboard_once_and_no_other_data_route_for_four_roles', 
 });
 
 test('check_ins_card_count_zero_and_link_to_the_report', async ({ page, api }) => {
-  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: { count: 13 } })));
+  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: checkInsOf(13) })));
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   const checkIns = card(page, CHECK_INS);
   await expect(checkIns).toBeVisible();
@@ -278,8 +281,8 @@ test('check_ins_card_count_zero_and_link_to_the_report', async ({ page, api }) =
   await expect(checkIns.getByRole('link')).toHaveCount(1);
 
   // contagem zero é o número `0`, não um vazio
-  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: { count: 0 } })));
-  await page.goto('/');
+  serveDashboard(api, 'reception', dashboardFor('reception', dashboardOf({ checkIns: checkInsOf(0) })));
+  await page.goto('/dashboard');
   await expect(card(page, CHECK_INS).getByText('0', { exact: true })).toBeVisible();
   await expect(card(page, CHECK_INS).getByText('13', { exact: true })).toHaveCount(0);
 });
@@ -288,38 +291,40 @@ test('six_cards_in_order_and_check_ins_card_follows_its_key', async ({ page, api
   serveDashboard(api, 'admin', dashboardOf());
   expect(Object.keys(dashboardOf()).sort()).toEqual(['checkIns', 'enrollments', 'payments', 'students', 'today']);
 
-  await page.goto('/');
+  await page.goto('/dashboard');
 
   await expect(card(page, 'Alunos')).toBeVisible();
   expect(await cardTitles(page)).toEqual([
     'Alunos',
     'Check-ins de hoje',
+    WEEK,
     'Matrículas',
     'Vencimentos nos próximos 7 dias',
     'Pagamentos',
     'Matrículas ativas por plano',
   ]);
-  await expect(page.getByRole('region')).toHaveCount(6);
+  await expect(page.getByRole('region')).toHaveCount(7);
 
   // sem `checkIns`, o card some e os outros mantêm a ordem
   const withoutCheckIns = dashboardOf();
   delete withoutCheckIns.checkIns;
   serveDashboard(api, 'admin', withoutCheckIns);
-  await page.goto('/');
+  await page.goto('/dashboard');
   await expect(card(page, 'Alunos')).toBeVisible();
   expect(await cardTitles(page)).toEqual(['Alunos', 'Matrículas', EXPIRING, 'Pagamentos', BY_PLAN]);
   await expect(card(page, CHECK_INS)).toHaveCount(0);
+  await expect(card(page, WEEK)).toHaveCount(0);
 
   // a chave decide, não o perfil da sessão: `hr_finance` com `checkIns` na resposta vê o card
   serveDashboard(api, 'hr_finance', dashboardOf());
-  await page.goto('/');
+  await page.goto('/dashboard');
   await expect(card(page, CHECK_INS)).toBeVisible();
 });
 
 test('cards_by_role_six_five_five_one', async ({ page, api }) => {
   const expected: Record<string, string[]> = {
     admin: CARD_TITLES,
-    reception: ['Alunos', CHECK_INS, 'Matrículas', EXPIRING, BY_PLAN],
+    reception: ['Alunos', CHECK_INS, WEEK, 'Matrículas', EXPIRING, BY_PLAN],
     hr_finance: ['Alunos', 'Matrículas', EXPIRING, 'Pagamentos', BY_PLAN],
     instructor: ['Alunos'],
   };
@@ -327,7 +332,7 @@ test('cards_by_role_six_five_five_one', async ({ page, api }) => {
   for (const role of ALL_ROLES) {
     serveDashboard(api, role);
 
-    await page.goto('/');
+    await page.goto('/dashboard');
 
     await expect(card(page, 'Alunos'), role).toBeVisible();
     expect(await cardTitles(page), role).toEqual(expected[role]);
@@ -339,8 +344,8 @@ test('cards_by_role_six_five_five_one', async ({ page, api }) => {
   }
   // a Recepção não tem o link "Pagamentos" no menu
   serveDashboard(api, 'reception');
-  await page.goto('/');
+  await page.goto('/dashboard');
   await expect(page.getByRole('link', { name: 'Pagamentos', exact: true })).toHaveCount(0);
-  expect(Object.values(expected).map((titles) => titles.length)).toEqual([6, 5, 5, 1]);
+  expect(Object.values(expected).map((titles) => titles.length)).toEqual([7, 6, 5, 1]);
   expect(ALL_ROLES).toHaveLength(4);
 });
