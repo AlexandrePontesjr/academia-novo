@@ -92,8 +92,14 @@ const DUKFIT_BASE = 'de214e2';
 
 test('site_content_is_the_only_source_of_landing_copy', () => {
   const content = read(SITE_CONTENT);
-  for (const key of ['name', 'tagline', 'address', 'phone', 'whatsapp', 'hours', 'highlights', 'modalities']) {
+  // a forma da door 3 da dukfit-landing, que supersede a lista de chaves da dukfit-app
+  const keys = ['name', 'legalName', 'eyebrow', 'tagline', 'intro', 'proof', 'about', 'structure', 'gallery', 'hours'];
+  for (const key of [...keys, 'address', 'neighborhood', 'routes', 'instagram', 'logo', 'hero']) {
     expect(content, key).toMatch(new RegExp(`^  ${key}: `, 'm'));
+  }
+  // o texto de exemplo saiu, e a academia não tem telefone nem WhatsApp no conteúdo (AC 11, AC 12)
+  for (const placeholder of ['EXEMPLO', 'Rua Exemplo', '0000-0000', 'whatsapp', 'phone']) {
+    expect(content.toLowerCase(), placeholder).not.toContain(placeholder.toLowerCase());
   }
   expect(content).toMatch(/^export const SITE = \{$/m);
   expect(content).toContain("  name: 'DukFit',");
@@ -119,4 +125,28 @@ test('dukfit_adds_no_npm_dependency', () => {
     const before = execFileSync('git', ['show', `${DUKFIT_BASE}:${path}`], { cwd: ROOT, encoding: 'utf8' });
     expect(deps(read(path)), path).toEqual(deps(before));
   }
+});
+
+// dukfit-landing: as imagens da academia são arquivos estáticos pré-convertidos (door 1) e públicos (door 2)
+
+const IMAGES = 'apps/web/public/dukfit';
+const DUKFIT_IMAGES = [
+  'amanhecer-440.webp',
+  'cardio-440.webp',
+  'logo-dukfit-512.webp',
+  'logo-dukfit-96.webp',
+  'musculacao-440.webp',
+  'salao-cardio-1600.webp',
+  'salao-cardio-800.webp',
+];
+
+test('dukfit_images_are_the_seven_light_webp_files', () => {
+  expect(readdirSync(join(ROOT, IMAGES)).sort()).toEqual(DUKFIT_IMAGES);
+  for (const file of DUKFIT_IMAGES) {
+    const bytes = readFileSync(join(ROOT, IMAGES, file));
+    expect(bytes.subarray(0, 4).toString('latin1'), file).toBe('RIFF');
+    expect(bytes.subarray(8, 12).toString('latin1'), file).toBe('WEBP');
+    expect(bytes.length, file).toBeLessThanOrEqual(400 * 1024);
+  }
+  expect(read('apps/web/src/proxy.ts')).toContain("matcher: ['/((?!api/|_next/|favicon.ico|dukfit/).*)'],");
 });

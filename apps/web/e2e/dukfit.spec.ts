@@ -31,6 +31,9 @@ const namesOf = (scope: Locator) =>
 
 const SHELL_SCREENS = SCREENS.filter((screen) => screen.shell);
 
+/** O slogan da landing, as três linhas lidas como um nome só (dukfit-landing, door 3). */
+const TAGLINE = SITE.tagline.join(' ');
+
 const dashboardWith = (checkIns: DashboardResponse['checkIns'], overrides: Partial<DashboardResponse> = {}) =>
   dashboardOf({ checkIns, ...overrides });
 
@@ -549,38 +552,29 @@ test('landing_is_public_200_without_redirect', async ({ page, api }) => {
   expect(response?.status()).toBe(200);
   expect(response?.request().redirectedFrom()).toBeNull();
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { level: 1, name: SITE.tagline })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: TAGLINE })).toBeVisible();
 });
 
 test('landing_sections_in_order_from_site_content', async ({ page }) => {
   await page.goto('/');
   const main = page.getByRole('main');
 
-  const headings = await main.locator('h1, h2').allTextContents();
-  expect(headings).toEqual([SITE.tagline, 'Por que a DukFit', 'Modalidades', 'Horários', 'Contato']);
-
-  const highlights = main.getByRole('region', { name: 'Por que a DukFit' }).locator('[data-slot="highlights"] > li');
-  await expect(highlights).toHaveCount(SITE.highlights.length);
-  for (const [index, item] of SITE.highlights.entries()) {
-    await expect(highlights.nth(index).getByRole('heading', { name: item.title })).toBeVisible();
-    await expect(highlights.nth(index)).toContainText(item.text);
-  }
-  const modalities = main.getByRole('region', { name: 'Modalidades' });
-  for (const modality of SITE.modalities) await expect(modalities.getByText(modality, { exact: true })).toBeVisible();
-  const hours = main.getByRole('region', { name: 'Horários' });
-  for (const slot of SITE.hours) {
-    // a lista de horários (o medidor repete o primeiro, ver `landing_hours_use_the_gauge`)
-    const list = hours.locator('dl');
-    await expect(list.getByText(slot.days)).toBeVisible();
-    await expect(list.getByText(`${slot.opens} - ${slot.closes}`)).toBeVisible();
-  }
-  const contact = main.getByRole('region', { name: 'Contato' });
-  await expect(contact.getByText(SITE.address, { exact: true })).toBeVisible();
-  await expect(contact.getByText(SITE.phone, { exact: true })).toBeVisible();
-  await expect(contact.getByRole('link', { name: 'Chamar no WhatsApp' })).toHaveAttribute(
-    'href',
-    `https://wa.me/${SITE.whatsapp.replace(/\D/g, '')}`,
+  // as seções da landing com o conteúdo real da academia (dukfit-landing, AC 3), cada uma nomeada pelo rótulo
+  const regions = await main.locator('section[aria-labelledby]').evaluateAll((sections) =>
+    sections.map((section) => document.getElementById(section.getAttribute('aria-labelledby')!)!.textContent!.trim()),
   );
+  expect(regions).toEqual([TAGLINE, 'Sobre a Dukfit', 'O que você encontra', 'Nossa estrutura', 'Horário', 'Onde estamos']);
+
+  const cards = main.getByRole('region', { name: 'O que você encontra' }).locator('[data-slot="highlights"] > li');
+  await expect(cards).toHaveCount(SITE.structure.length);
+  for (const [index, item] of SITE.structure.entries()) {
+    await expect(cards.nth(index).getByRole('heading', { name: item.title })).toBeVisible();
+    await expect(cards.nth(index)).toContainText(item.text);
+  }
+  const location = main.getByRole('region', { name: 'Onde estamos' });
+  await expect(location.locator('address')).toContainText(SITE.address.street);
+  await expect(location.locator('address')).toContainText(SITE.address.district);
+  await expect(page.locator('footer')).toBeVisible();
 });
 
 test('landing_cta_depends_on_session', async ({ page, api }) => {
@@ -640,7 +634,7 @@ test('pending_two_factor_sees_landing_and_is_sent_to_setup_from_dashboard', asyn
 
   await page.goto('/');
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { level: 1, name: SITE.tagline })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: TAGLINE })).toBeVisible();
 
   await page.goto('/dashboard');
   await expect(page).toHaveURL('/two-factor/setup');
@@ -820,8 +814,8 @@ test('breakpoints_switch_at_768_and_1024', async ({ page, api }) => {
 
 test('landing_hours_use_the_gauge', async ({ page }) => {
   await page.goto('/');
-  const hours = page.getByRole('main').getByRole('region', { name: 'Horários' });
-  const [first] = SITE.hours;
+  const hours = page.getByRole('main').getByRole('region', { name: 'Horário' });
+  const first = SITE.hours;
   const gauge = hours.locator('[data-slot="gauge"]');
   await expect(gauge).toHaveCount(1);
   await expect(gauge.locator('[data-slot="gauge-value"]')).toHaveText(`${first.opens} - ${first.closes}`);
@@ -837,7 +831,7 @@ test('landing_hours_use_the_gauge', async ({ page }) => {
     await page.goto('/');
     const crossed = await page
       .getByRole('main')
-      .getByRole('region', { name: 'Horários' })
+      .getByRole('region', { name: 'Horário' })
       .locator('[data-slot="gauge"]')
       .evaluate((root) => {
         const value = root.querySelector('[data-slot="gauge-value"]')!;
