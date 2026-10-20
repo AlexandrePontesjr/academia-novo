@@ -3,18 +3,22 @@
  * tudo vem daqui. Conteúdo trazido da landing do projeto anterior da academia.
  */
 
-const ADDRESS = 'DUK FIT Academia, Rua Uberaba, Av. Duque de Caxias, 135, Conjunto Flores, Manaus-AM, 69093-000';
-const DESTINATION = encodeURIComponent(ADDRESS);
-
 export const SITE = {
   name: 'DukFit',
   legalName: 'DUK FIT Academia',
+  cta: { guest: 'Acesso da equipe', member: 'Ir para o painel' },
+  sections: {
+    about: { eyebrow: 'Sobre a Dukfit', title: 'Treino de verdade. Presença todos os dias.' },
+    structure: { eyebrow: 'O que você encontra', title: 'Estrutura para um treino completo.' },
+    gallery: { eyebrow: 'Nossa estrutura', title: 'A Dukfit por dentro.' },
+    hours: { eyebrow: 'Horário', title: 'Todos os dias, das 06:00 às 22:00.' },
+    location: { eyebrow: 'Onde estamos', title: 'Perto da sua rotina. Em Flores, Manaus.' },
+  },
   eyebrow: 'Academia em Flores, Manaus',
   tagline: ['Seu corpo.', 'Seu ritmo.', 'Sua evolução.'],
   intro: 'Musculação, acompanhamento e um ambiente próximo para você construir consistência no seu tempo.',
   proof: { value: '10+', label: 'Anos fazendo parte da rotina de Flores' },
   about: {
-    title: 'Treino de verdade. Presença todos os dias.',
     text: 'Uma academia familiar e old school no Conjunto Duque de Caxias, com estrutura de musculação e orientação próxima para você manter o treino em movimento.',
     highlight: {
       title: 'Treine com consistência',
@@ -76,11 +80,15 @@ export const SITE = {
     district: 'Conjunto Flores, Manaus–AM, 69093-000',
   },
   neighborhood: 'Conjunto Flores',
+  // as URLs de rota da landing anterior, literais (dukfit-landing, door 5)
   routes: {
-    google: `https://www.google.com/maps/dir/?api=1&destination=${DESTINATION}&travelmode=driving`,
-    waze: `https://waze.com/ul?q=${DESTINATION}&navigate=yes`,
-    uber: `https://m.uber.com/looking?pickup=my_location&dropoff%5Bnickname%5D=${encodeURIComponent('DUK FIT Academia')}&dropoff%5Bformatted_address%5D=${DESTINATION}`,
+    google:
+      'https://www.google.com/maps/dir/?api=1&destination=DUK%20FIT%20Academia%2C%20Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000&travelmode=driving&dir_action=navigate',
+    waze: 'https://waze.com/ul?q=DUK%20FIT%20Academia%2C%20Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000&navigate=yes&utm_source=dukfit',
+    uber: 'https://m.uber.com/looking?pickup=my_location&dropoff%5Bnickname%5D=DUK%20FIT%20Academia&dropoff%5Bformatted_address%5D=Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000',
   },
+  routeLabels: { google: 'Google Maps', waze: 'Waze', uber: 'Uber' },
+  labels: { hours: 'Horário', neighborhood: 'Bairro' },
   instagram: { handle: '@dukfitacademia', url: 'https://www.instagram.com/dukfitacademia/' },
   footer: 'Musculação e acompanhamento em Flores, Manaus.',
   logo: { src: '/dukfit/logo-dukfit-512.webp', small: '/dukfit/logo-dukfit-96.webp', alt: 'DUK FIT Academia' },

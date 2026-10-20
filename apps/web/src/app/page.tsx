@@ -79,11 +79,11 @@ export default async function LandingPage() {
               </span>
               {session ? (
                 <Link href="/dashboard" className={CTA}>
-                  Ir para o painel
+                  {SITE.cta.member}
                 </Link>
               ) : (
                 <Link href="/login" className={CTA}>
-                  Acesso da equipe
+                  {SITE.cta.guest}
                 </Link>
               )}
             </div>
@@ -110,7 +110,7 @@ export default async function LandingPage() {
                 <p className="text-lg">{SITE.intro}</p>
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ClockIcon className="size-4 text-primary" />
-                  {hours.days}, {hours.opens}–{hours.closes}
+                  {`${hours.days}, ${hours.opens}–${hours.closes}`}
                 </p>
               </div>
             </div>
@@ -118,7 +118,7 @@ export default async function LandingPage() {
         </section>
 
         <div className="mx-auto grid w-full max-w-6xl gap-16 px-4 lg:gap-24 lg:px-8">
-          <Section id="academia" eyebrow="Sobre a Dukfit" title={SITE.about.title}>
+          <Section id="academia" {...SITE.sections.about}>
             <p className="max-w-prose text-lg text-muted-foreground">{SITE.about.text}</p>
             <div className="grid gap-4 md:grid-cols-3">
               <Photo photo={SITE.about.photos[0]} className="aspect-square" />
@@ -130,7 +130,7 @@ export default async function LandingPage() {
             </div>
           </Section>
 
-          <Section id="encontra" eyebrow="O que você encontra" title="Estrutura para um treino completo.">
+          <Section id="encontra" {...SITE.sections.structure}>
             <ul className="grid gap-4 lg:grid-cols-3" data-slot="highlights">
               {SITE.structure.map((item, index) => (
                 <li key={item.title} className={`grid content-start gap-3 ${PANEL}`} data-slot="structure-card">
@@ -142,7 +142,7 @@ export default async function LandingPage() {
             </ul>
           </Section>
 
-          <Section id="estrutura" eyebrow="Nossa estrutura" title="A Dukfit por dentro.">
+          <Section id="estrutura" {...SITE.sections.gallery}>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {SITE.gallery.map((photo, index) => (
                 <figure key={photo.caption} className="grid gap-2" data-slot="gallery-item">
@@ -155,7 +155,7 @@ export default async function LandingPage() {
             </div>
           </Section>
 
-          <Section id="horario" eyebrow="Horário" title={`${hours.days}, das ${hours.opens} às ${hours.closes}.`}>
+          <Section id="horario" {...SITE.sections.hours}>
             {/* o medidor da referência ("Training Schedule"): as horas abertas do dia sobre 24 (de-para) */}
             <div className={PANEL}>
               <Gauge
@@ -168,7 +168,7 @@ export default async function LandingPage() {
             </div>
           </Section>
 
-          <Section id="localizacao" eyebrow="Onde estamos" title="Perto da sua rotina. Em Flores, Manaus.">
+          <Section id="localizacao" {...SITE.sections.location}>
             <div className={`grid gap-6 ${PANEL}`}>
               <address className="flex gap-3 text-lg not-italic">
                 <PinIcon className="mt-1 text-primary" />
@@ -180,26 +180,20 @@ export default async function LandingPage() {
               </address>
               <dl className="flex flex-wrap gap-8">
                 <div>
-                  <dt className="text-sm text-muted-foreground">Horário</dt>
-                  <dd className="font-semibold">
-                    {hours.days}, {hours.opens}–{hours.closes}
-                  </dd>
+                  <dt className="text-sm text-muted-foreground">{SITE.labels.hours}</dt>
+                  <dd className="font-semibold">{`${hours.days}, ${hours.opens}–${hours.closes}`}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-muted-foreground">Bairro</dt>
+                  <dt className="text-sm text-muted-foreground">{SITE.labels.neighborhood}</dt>
                   <dd className="font-semibold">{SITE.neighborhood}</dd>
                 </div>
               </dl>
               <div className="flex flex-wrap gap-3">
-                <a href={SITE.routes.google} {...EXTERNAL} className={CTA}>
-                  Google Maps
-                </a>
-                <a href={SITE.routes.waze} {...EXTERNAL} className={OUTLINE}>
-                  Waze
-                </a>
-                <a href={SITE.routes.uber} {...EXTERNAL} className={OUTLINE}>
-                  Uber
-                </a>
+                {(['google', 'waze', 'uber'] as const).map((route, index) => (
+                  <a key={route} href={SITE.routes[route]} {...EXTERNAL} className={index === 0 ? CTA : OUTLINE}>
+                    {SITE.routeLabels[route]}
+                  </a>
+                ))}
               </div>
             </div>
           </Section>
