@@ -194,6 +194,7 @@ test('anonymous_401_unauthorized', async () => {
   const response = await stack.client().get('/api/dashboard');
 
   expect(response.status).toBe(401);
+  expect(response.headers.get('content-type')).toMatch(/^application\/problem\+json/);
   const body = (await response.clone().json()) as Record<string, unknown>;
   expect((await problem(response)).code).toBe('unauthorized');
   for (const key of DASHBOARD_KEYS) expect(Object.keys(body)).not.toContain(key);

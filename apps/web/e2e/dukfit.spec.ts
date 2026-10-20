@@ -81,6 +81,23 @@ test('header_shows_avatar_initials_name_and_profile_for_four_roles', async ({ pa
   api.session = sessionOf('reception', { name: 'Ana' });
   await page.goto('/students');
   await expect(page.locator('[data-slot="avatar"]')).toHaveText('A');
+
+  // a disposição da referência: avatar e nome à esquerda, o botão quadrado de 44 px e raio 12 px à direita
+  for (const size of [MOBILE, DESKTOP]) {
+    await page.setViewportSize(size);
+    await page.goto('/students');
+    const avatar = (await page.locator('[data-slot="avatar"]').boundingBox())!;
+    const name = (await page.getByRole('banner').getByText('Ana', { exact: true }).boundingBox())!;
+    const menu = page.getByRole('banner').getByRole('button', { name: 'Menu', exact: true });
+    const button = (await menu.boundingBox())!;
+    expect(avatar.x, `${size.width}`).toBeLessThan(name.x);
+    expect(name.x + name.width, `${size.width}`).toBeLessThan(button.x);
+    expect(Math.abs(avatar.y + avatar.height / 2 - (button.y + button.height / 2)), `${size.width}`).toBeLessThanOrEqual(4);
+    expect([Math.round(button.width), Math.round(button.height)], `${size.width}`).toEqual([44, 44]);
+    expect((await styleOf(menu, 'border-radius')).raw, `${size.width}`).toBe('12px');
+    const main = (await page.getByRole('main').boundingBox())!;
+    expect(button.x + button.width, `${size.width}`).toBeGreaterThanOrEqual(main.x + main.width - 40);
+  }
 });
 
 test('mobile_shows_the_fixed_bottom_nav_with_five_items_and_no_side_nav', async ({ page, api }) => {
@@ -233,6 +250,14 @@ test('fab_links_to_check_in_for_admin_and_reception', async ({ page, api }) => {
       expect([Math.round(box.width), Math.round(box.height)], role).toEqual([56, 56]);
       expect((await styleOf(button, 'background-color')).rgb, role).toBe(LIME);
       expect((await styleOf(button, 'border-radius')).raw, role).toBe('16px');
+      // flutua no canto inferior direito; no celular, acima da barra inferior
+      expect((await styleOf(button, 'position')).raw, role).toBe('fixed');
+      expect(size.width - (box.x + box.width), `${role} ${size.width}`).toBeLessThanOrEqual(32);
+      if (size === MOBILE) {
+        expect(box.y + box.height, role).toBeLessThanOrEqual((await tabs(page).boundingBox())!.y);
+      } else {
+        expect(size.height - (box.y + box.height), role).toBeLessThanOrEqual(32);
+      }
     }
   }
 });
@@ -296,6 +321,9 @@ test('dashboard_panels_follow_the_response_with_dark_surface_and_24_radius', asy
       const region = card(page, title);
       expect((await styleOf(region, 'background-color')).rgb, `${role} ${title}`).toBe(CARD);
       expect((await styleOf(region, 'border-radius')).raw, `${role} ${title}`).toBe('24px');
+      const heading = region.getByRole('heading', { level: 3, name: title, exact: true });
+      expect((await styleOf(heading, 'font-size')).raw, `${role} ${title}`).toBe('20px');
+      expect((await styleOf(heading, 'font-weight')).raw, `${role} ${title}`).toBe('600');
     }
   }
 });
@@ -334,6 +362,29 @@ test('gauge_lights_ticks_in_proportion_to_the_week_max', async ({ page, api }) =
   expect(ticks.slice(0, 16).every((stroke) => stroke === LIME)).toBe(true);
   await expect(panel.locator('[data-slot="gauge-value"]')).toHaveText('4');
   await expect(panel.locator('[data-slot="gauge-pill"]')).toHaveText('07/10/2026');
+
+  // o arranjo: as marcas formam um semicírculo (pontas embaixo, meio no alto) e o número fica no centro
+  const centers = await panel
+    .locator('[data-slot="gauge-tick"]')
+    .evaluateAll((lines) =>
+      lines.map((line) => line.getBoundingClientRect()).map((r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 })),
+    );
+  const [left, middle, right] = [centers[0]!, centers[19]!, centers[39]!];
+  expect(Math.abs(left.y - right.y)).toBeLessThanOrEqual(2);
+  expect(left.y - middle.y).toBeGreaterThan(60);
+  // em volta do centro do arco, o ângulo de cada marca anda de 180° a 0° e a distância fica constante
+  const center = { x: (left.x + right.x) / 2, y: left.y };
+  const polar = centers.map(({ x, y }) => ({ angle: (Math.atan2(center.y - y, x - center.x) * 180) / Math.PI, radius: Math.hypot(x - center.x, y - center.y) }));
+  for (let index = 1; index < polar.length; index += 1) expect(polar[index]!.angle).toBeLessThan(polar[index - 1]!.angle);
+  expect(polar[0]!.angle).toBeGreaterThan(170);
+  expect(polar.at(-1)!.angle).toBeLessThan(10);
+  const radii = polar.map((point) => point.radius);
+  expect(Math.max(...radii) / Math.min(...radii)).toBeLessThan(1.15);
+  const value = (await panel.locator('[data-slot="gauge-value"]').boundingBox())!;
+  expect(Math.abs(value.x + value.width / 2 - (left.x + right.x) / 2)).toBeLessThanOrEqual(6);
+  // dentro do arco: abaixo da marca do alto e acima das pontas
+  expect(value.y + value.height / 2).toBeGreaterThan(middle.y);
+  expect(value.y + value.height / 2).toBeLessThan(left.y);
 
   serveDashboard(api, 'admin', dashboardWith(week([0, 0, 0, 0, 0, 0, 0])));
   await page.goto('/dashboard');
@@ -398,6 +449,7 @@ test('students_panel_main_number_and_two_pills', async ({ page, api }) => {
     await expect(pill.locator('dt')).toHaveText(label);
     await expect(pill.locator('dd')).toHaveText(value);
     expect((await styleOf(pill, 'background-color')).rgb, label).toBe(HEADER);
+    expect(Number.parseFloat((await styleOf(pill, 'border-radius')).raw), label).toBeGreaterThanOrEqual(9999);
     expect((await styleOf(pill.locator('[data-slot="stat-pill-dot"]'), 'background-color')).rgb, label).toBe(LIME);
   }
 });
@@ -416,6 +468,8 @@ test('metric_tiles_for_enrollments_and_payments', async ({ page, api }) => {
     await expect(tile, label).toHaveCount(1);
     expect((await styleOf(tile, 'background-color')).rgb, label).toBe(TILE);
     expect((await styleOf(tile.locator('dt'), 'color')).rgb, label).toBe(LIME);
+    expect((await styleOf(tile, 'border-radius')).raw, label).toBe('16px');
+    expect((await styleOf(tile.locator('dt'), 'font-size')).raw, label).toBe('12px');
     const number = tile.locator('dd');
     await expect(number, label).toHaveText(value);
     expect((await styleOf(number, 'font-size')).raw, label).toBe('24px');
@@ -515,8 +569,10 @@ test('landing_sections_in_order_from_site_content', async ({ page }) => {
   for (const modality of SITE.modalities) await expect(modalities.getByText(modality, { exact: true })).toBeVisible();
   const hours = main.getByRole('region', { name: 'Horários' });
   for (const slot of SITE.hours) {
-    await expect(hours.getByText(slot.days)).toBeVisible();
-    await expect(hours.getByText(`${slot.opens} - ${slot.closes}`)).toBeVisible();
+    // a lista de horários (o medidor repete o primeiro, ver `landing_hours_use_the_gauge`)
+    const list = hours.locator('dl');
+    await expect(list.getByText(slot.days)).toBeVisible();
+    await expect(list.getByText(`${slot.opens} - ${slot.closes}`)).toBeVisible();
   }
   const contact = main.getByRole('region', { name: 'Contato' });
   await expect(contact.getByText(SITE.address, { exact: true })).toBeVisible();
@@ -713,4 +769,55 @@ test('dashboard_load_error_keeps_the_shell', async ({ page, api }) => {
   await expect(page.getByText('Não foi possível carregar o painel.')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'DukFit' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Menu principal' })).toBeVisible();
+});
+
+// rodada 2 da verificação: as bordas dos pontos de virada e os horários no medidor
+
+test('breakpoints_switch_at_768_and_1024', async ({ page, api }) => {
+  serveWorld(api, 'admin');
+  serveDashboard(api, 'admin');
+  const at = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/dashboard');
+    const expiring = card(page, 'Vencimentos nos próximos 7 dias');
+    return {
+      tabs: await tabs(page).isVisible(),
+      side: await side(page).isVisible(),
+      grid: await page
+        .locator('[data-slot="dashboard-grid"]')
+        .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length),
+      table: await expiring.locator('table').isVisible(),
+      rows: await expiring.locator('[data-slot="panel-rows"]').isVisible(),
+    };
+  };
+  expect(await at(767)).toEqual({ tabs: true, side: false, grid: 1, table: false, rows: true });
+  expect(await at(768)).toEqual({ tabs: true, side: false, grid: 2, table: true, rows: false });
+  expect(await at(1023)).toEqual({ tabs: true, side: false, grid: 2, table: true, rows: false });
+  expect(await at(1024)).toEqual({ tabs: false, side: true, grid: 3, table: true, rows: false });
+
+  api.session = undefined;
+  const highlights = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+    return page
+      .locator('[data-slot="highlights"]')
+      .evaluate((list) => getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length);
+  };
+  expect(await highlights(767)).toBe(1);
+  expect(await highlights(1023)).toBe(1);
+  expect(await highlights(1024)).toBe(3);
+});
+
+test('landing_hours_use_the_gauge', async ({ page }) => {
+  await page.goto('/');
+  const hours = page.getByRole('main').getByRole('region', { name: 'Horários' });
+  const [first] = SITE.hours;
+  const gauge = hours.locator('[data-slot="gauge"]');
+  await expect(gauge).toHaveCount(1);
+  await expect(gauge.locator('[data-slot="gauge-value"]')).toHaveText(`${first.opens} - ${first.closes}`);
+  await expect(gauge.locator('[data-slot="gauge-pill"]')).toHaveText(first.days);
+  const ticks = await ticksOf(hours);
+  expect(ticks).toHaveLength(40);
+  // 06:00 a 22:00 são 16 de 24 horas: 27 das 40 marcas acesas
+  expect(ticks.filter((stroke) => stroke === LIME)).toHaveLength(27);
 });
