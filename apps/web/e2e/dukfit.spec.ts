@@ -790,6 +790,16 @@ test('breakpoints_switch_at_768_and_1024', async ({ page, api }) => {
       rows: await expiring.locator('[data-slot="panel-rows"]').isVisible(),
     };
   };
+  // o gutter do conteúdo acompanha a barra: 16 px abaixo de 1024 px, 32 px a partir dele (AC 10)
+  const gutter = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/dashboard');
+    const main = page.getByRole('main');
+    return [(await styleOf(main, 'padding-left')).raw, (await styleOf(main, 'padding-right')).raw];
+  };
+  expect(await gutter(1023)).toEqual(['16px', '16px']);
+  expect(await gutter(1024)).toEqual(['32px', '32px']);
+
   expect(await at(767)).toEqual({ tabs: true, side: false, grid: 1, table: false, rows: true });
   expect(await at(768)).toEqual({ tabs: true, side: false, grid: 2, table: true, rows: false });
   expect(await at(1023)).toEqual({ tabs: true, side: false, grid: 2, table: true, rows: false });
@@ -820,4 +830,25 @@ test('landing_hours_use_the_gauge', async ({ page }) => {
   expect(ticks).toHaveLength(40);
   // 06:00 a 22:00 são 16 de 24 horas: 27 das 40 marcas acesas
   expect(ticks.filter((stroke) => stroke === LIME)).toHaveLength(27);
+
+  // o horário cabe no arco: a caixa do texto não cruza nenhuma marca, no celular estreito e no computador
+  for (const size of [NARROW, MOBILE, DESKTOP]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const crossed = await page
+      .getByRole('main')
+      .getByRole('region', { name: 'Horários' })
+      .locator('[data-slot="gauge"]')
+      .evaluate((root) => {
+        const value = root.querySelector('[data-slot="gauge-value"]')!;
+        // a caixa do texto em si, não a do parágrafo que ocupa a linha inteira
+        const range = document.createRange();
+        range.selectNodeContents(value);
+        const text = range.getBoundingClientRect();
+        return [...root.querySelectorAll('[data-slot="gauge-tick"]')]
+          .map((tick) => tick.getBoundingClientRect())
+          .filter((tick) => tick.right > text.left && tick.left < text.right && tick.bottom > text.top && tick.top < text.bottom).length;
+      });
+    expect(crossed, `${size.width}`).toBe(0);
+  }
 });
