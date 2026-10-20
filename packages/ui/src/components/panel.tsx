@@ -76,12 +76,15 @@ export function Gauge({
   max,
   pill,
   label,
+  display,
   ticks = 40,
 }: {
   value: number;
   max: number;
   pill: ReactNode;
   label: string;
+  /** O que o centro mostra no lugar do número, como o horário da landing. */
+  display?: ReactNode;
   ticks?: number;
 }) {
   const lit = litTicks(ticks, value, max);
@@ -124,7 +127,7 @@ export function Gauge({
       </svg>
       <div className="-mt-12 grid justify-items-center gap-3">
         <p className="text-4xl font-semibold tabular-nums" data-slot="gauge-value">
-          {value}
+          {display ?? value}
         </p>
         <p className="rounded-full bg-muted px-4 py-1.5 text-sm text-muted-foreground tabular-nums" data-slot="gauge-pill">
           {pill}

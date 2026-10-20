@@ -1,4 +1,4 @@
-import { BoltIcon, ClockIcon, DumbbellIcon, PANEL, PhoneIcon, PinIcon } from '@academia/ui';
+import { BoltIcon, ClockIcon, DumbbellIcon, Gauge, PANEL, PhoneIcon, PinIcon } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { Wordmark } from '../components/wordmark.tsx';
@@ -23,9 +23,16 @@ function SectionTitle({ id, children }: { id: string; children: string }) {
  * A landing pública da DukFit (dukfit-app, S4): apresenta a academia a qualquer visitante, sem shell.
  * Só o CTA depende da sessão: a equipe com sessão vai direto ao painel.
  */
+/** Quantas horas um horário de `HH:MM` a `HH:MM` fica aberto. */
+const openHours = ({ opens, closes }: { opens: string; closes: string }) => {
+  const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+  return (minutes(closes) - minutes(opens)) / 60;
+};
+
 export default async function LandingPage() {
   const { session } = await readSession(await headers());
   const whatsapp = `https://wa.me/${SITE.whatsapp.replace(/\D/g, '')}`;
+  const [main] = SITE.hours;
 
   return (
     <div className="min-h-dvh overflow-x-hidden">
@@ -103,6 +110,16 @@ export default async function LandingPage() {
 
         <section aria-labelledby="hours-title" className="grid gap-6">
           <SectionTitle id="hours-title">Horários</SectionTitle>
+          {/* o medidor da referência ("Training Schedule"): as horas abertas do dia sobre 24 (de-para) */}
+          <div className={PANEL}>
+            <Gauge
+              value={openHours(main)}
+              max={24}
+              display={`${main.opens} - ${main.closes}`}
+              pill={main.days}
+              label={`${main.days}: aberto das ${main.opens} às ${main.closes}`}
+            />
+          </div>
           <dl className="grid gap-3 md:grid-cols-3">
             {SITE.hours.map((slot) => (
               <div key={slot.days} className={`grid gap-2 ${PANEL}`}>

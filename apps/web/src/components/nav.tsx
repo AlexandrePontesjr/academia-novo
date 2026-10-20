@@ -113,7 +113,7 @@ export function MoreMenu({ role, trigger, alert }: { role: Role; trigger: 'tab' 
         type="button"
         aria-label="Menu"
         aria-describedby={alert ? 'menu-alert' : undefined}
-        className="relative flex size-11 items-center justify-center rounded-xl border bg-card"
+        className="relative flex size-11 items-center justify-center rounded-md border bg-card"
         onClick={() => setOpen(true)}
       >
         <MenuIcon />
