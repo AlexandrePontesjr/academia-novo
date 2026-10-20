@@ -39,6 +39,7 @@ test('hero_shows_logo_eyebrow_three_line_title_intro_and_proof', async ({ page }
   expect(boxes[2]!).toBeGreaterThan(boxes[1]!);
 
   await expect(hero.getByText(SITE.intro, { exact: true })).toBeVisible();
+  await expect(hero.getByText('Todos os dias, 06:00–22:00', { exact: true })).toBeVisible();
   const proof = hero.locator('[data-slot="proof"]');
   await expect(proof.locator('strong')).toHaveText('10+');
   await expect(proof).toContainText('Anos fazendo parte da rotina de Flores');
@@ -107,6 +108,8 @@ test('about_section_has_title_text_and_two_photos', async ({ page }) => {
   const about = region(page, 'Sobre a Dukfit');
   await expect(about.getByRole('heading', { level: 2 })).toHaveText('Treino de verdade. Presença todos os dias.');
   await expect(about.getByText(SITE.about.text, { exact: true })).toBeVisible();
+  await expect(about.getByRole('heading', { level: 3 })).toHaveText('Treine com consistência');
+  await expect(about.getByText('Equipamentos para musculação e cardio, ambiente próximo e uma equipe preparada para acompanhar sua rotina.', { exact: true })).toBeVisible();
   expect(SITE.about.text).toContain('Conjunto Duque de Caxias');
   const photos = about.getByRole('img');
   await expect(photos).toHaveCount(2);
@@ -120,6 +123,7 @@ test('about_section_has_title_text_and_two_photos', async ({ page }) => {
 
 test('structure_cards_are_the_three_numbered_panels', async ({ page }) => {
   await page.goto('/');
+  await expect(region(page, 'O que você encontra').getByRole('heading', { level: 2 })).toHaveText('Estrutura para um treino completo.');
   const cards = region(page, 'O que você encontra').locator('[data-slot="structure-card"]');
   await expect(cards).toHaveCount(3);
   const expected = [
@@ -144,6 +148,7 @@ test('structure_cards_are_the_three_numbered_panels', async ({ page }) => {
 
 test('gallery_shows_four_captioned_photos_in_order', async ({ page }) => {
   await page.goto('/');
+  await expect(region(page, 'Nossa estrutura').getByRole('heading', { level: 2 })).toHaveText('A Dukfit por dentro.');
   const figures = region(page, 'Nossa estrutura').locator('figure');
   await expect(figures).toHaveCount(4);
   const expected = [
@@ -169,14 +174,15 @@ test('location_has_address_neighborhood_and_three_route_links', async ({ page })
   await expect(address).toContainText('Conjunto Flores, Manaus–AM, 69093-000');
   await expect(location.getByText('Conjunto Flores', { exact: true })).toBeVisible();
 
-  for (const [name, key, prefix] of [
-    ['Google Maps', 'google', 'https://www.google.com/maps/'],
-    ['Waze', 'waze', 'https://waze.com/ul'],
-    ['Uber', 'uber', 'https://m.uber.com/'],
+  await expect(location.getByRole('heading', { level: 2 })).toHaveText('Perto da sua rotina. Em Flores, Manaus.');
+  await expect(location.locator('dl')).toContainText('Todos os dias, 06:00–22:00');
+  // as URLs literais da landing anterior (fonte binding), não a cópia de `SITE`
+  for (const [name, href] of [
+    ['Google Maps', 'https://www.google.com/maps/dir/?api=1&destination=DUK%20FIT%20Academia%2C%20Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000&travelmode=driving&dir_action=navigate'],
+    ['Waze', 'https://waze.com/ul?q=DUK%20FIT%20Academia%2C%20Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000&navigate=yes&utm_source=dukfit'],
+    ['Uber', 'https://m.uber.com/looking?pickup=my_location&dropoff%5Bnickname%5D=DUK%20FIT%20Academia&dropoff%5Bformatted_address%5D=Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000'],
   ] as const) {
-    const link = location.getByRole('link', { name, exact: true });
-    await expect(link).toHaveAttribute('href', SITE.routes[key]);
-    expect(SITE.routes[key].startsWith(prefix), name).toBe(true);
+    await expect(location.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
   }
 });
 

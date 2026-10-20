@@ -150,3 +150,42 @@ test('dukfit_images_are_the_seven_light_webp_files', () => {
   }
   expect(read('apps/web/src/proxy.ts')).toContain("matcher: ['/((?!api/|_next/|favicon.ico|dukfit/).*)'],");
 });
+
+// dukfit-landing, verificação 1: todo texto da landing vem de `SITE` (AC 12) na forma das doors 3 e 5
+
+test('landing_page_has_no_literal_text_in_jsx', () => {
+  const landing = read(LANDING);
+  // texto entre tags: o que sobra de `>texto<` que não é expressão nem espaço
+  const between = [...landing.matchAll(/>([^<>{}]*)</g)].map((match) => match[1]!.trim()).filter((text) => /[A-Za-zÀ-ú]/.test(text));
+  expect(between).toEqual([]);
+  // linhas de JSX que são texto puro (nem tag, nem expressão, nem código)
+  const jsxText = landing
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^[A-Za-zÀ-ú@][^=();<>{}]*$/.test(line) && !line.startsWith('//') && !/^(return|const|export|import|type|interface)\b/.test(line));
+  expect(jsxText).toEqual([]);
+  // atributos que a pessoa lê: nenhum literal
+  expect(landing).not.toMatch(/(?:alt|aria-label|title|placeholder)="[^"]+"/);
+});
+
+test('site_content_has_the_door_five_shape', async () => {
+  const { SITE } = await import('../../apps/web/src/app/site-content.ts');
+  const keysOf = (value: object) => Object.keys(value).sort();
+  expect(keysOf(SITE)).toEqual(
+    [
+      'about', 'address', 'cta', 'eyebrow', 'footer', 'gallery', 'hero', 'hours', 'instagram', 'intro',
+      'labels', 'legalName', 'logo', 'name', 'neighborhood', 'proof', 'routeLabels', 'routes', 'sections',
+      'structure', 'tagline',
+    ].sort(),
+  );
+  expect(keysOf(SITE.sections)).toEqual(['about', 'gallery', 'hours', 'location', 'structure']);
+  for (const section of Object.values(SITE.sections)) expect(keysOf(section)).toEqual(['eyebrow', 'title']);
+  expect(keysOf(SITE.address)).toEqual(['district', 'street']);
+  expect(keysOf(SITE.about)).toEqual(['highlight', 'photos', 'text']);
+  expect(keysOf(SITE.logo)).toEqual(['alt', 'small', 'src']);
+  expect(keysOf(SITE.routes)).toEqual(['google', 'uber', 'waze']);
+  expect(keysOf(SITE.routeLabels)).toEqual(['google', 'uber', 'waze']);
+  expect(keysOf(SITE.cta)).toEqual(['guest', 'member']);
+  expect(keysOf(SITE.hours)).toEqual(['closes', 'days', 'opens']);
+  for (const photo of [...SITE.gallery, ...SITE.about.photos]) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
+});

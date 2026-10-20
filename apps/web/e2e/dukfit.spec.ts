@@ -818,8 +818,10 @@ test('landing_hours_use_the_gauge', async ({ page }) => {
   const first = SITE.hours;
   const gauge = hours.locator('[data-slot="gauge"]');
   await expect(gauge).toHaveCount(1);
-  await expect(gauge.locator('[data-slot="gauge-value"]')).toHaveText(`${first.opens} - ${first.closes}`);
-  await expect(gauge.locator('[data-slot="gauge-pill"]')).toHaveText(first.days);
+  await expect(gauge.locator('[data-slot="gauge-value"]')).toHaveText('06:00 - 22:00');
+  await expect(gauge.locator('[data-slot="gauge-pill"]')).toHaveText('Todos os dias');
+  await expect(hours.getByRole('heading', { level: 2 })).toHaveText('Todos os dias, das 06:00 às 22:00.');
+  expect(first).toEqual({ days: 'Todos os dias', opens: '06:00', closes: '22:00' });
   const ticks = await ticksOf(hours);
   expect(ticks).toHaveLength(40);
   // 06:00 a 22:00 são 16 de 24 horas: 27 das 40 marcas acesas
