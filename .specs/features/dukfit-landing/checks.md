@@ -3,7 +3,7 @@
 Profile: ui
 Plan: `.specs/features/dukfit-landing/plan.md`
 
-18 checks in 3 slices · 4 one-way doors · 2 open, of which 0 block.
+20 checks in 3 slices · 5 one-way doors · 2 open, of which 0 block.
 
 Scope guard: the checks below are the plan's AC 1 to AC 22, the four doors of `Landing`, the route of
 `Surface` and every row of `Observable`. Nada fora disso entra no build.
@@ -98,12 +98,29 @@ Proof: `E2E e2e/landing.spec.ts -g "logo_sits_before_the_wordmark_on_login_and_d
 Proof: `pnpm verify`
 Proof: `REPO identidade.test.ts -t "dukfit_adds_no_npm_dependency"`
 
+### Rodada 2 - lacunas da verificação 1 (acréscimo; nenhum check acima mudou de texto)
+
+**C19** - `page.tsx` has no letter-bearing text between JSX tags, no line of bare JSX text, and no literal `alt`/`aria-label`/`title`/`placeholder`; every landing text comes from `SITE` (AC 12, first clause; door 5)
+Proof: `REPO identidade.test.ts -t "landing_page_has_no_literal_text_in_jsx"`
+
+**C20** - `SITE` has exactly the top-level keys of door 5, and `sections` (five, each `{ eyebrow, title }`), `address` (`street`, `district`), `about`, `logo`, `routes`, `routeLabels`, `cta` and `hours` have exactly their door 5 keys (door 3, door 5)
+Proof: `REPO identidade.test.ts -t "site_content_has_the_door_five_shape"`
+
+Asserções acrescentadas às provas existentes, com o valor literal da fonte binding:
+
+- C1 - a linha do horário do hero, "Todos os dias, 06:00–22:00" (`hero_shows_logo_eyebrow_three_line_title_intro_and_proof`)
+- C4 - o destaque "Treine com consistência" e o texto dele (`about_section_has_title_text_and_two_photos`)
+- C5 - o título "Estrutura para um treino completo." (`structure_cards_are_the_three_numbered_panels`)
+- C6 - o título "A Dukfit por dentro." (`gallery_shows_four_captioned_photos_in_order`)
+- C7 - "06:00 - 22:00", "Todos os dias" e o título "Todos os dias, das 06:00 às 22:00." como literais, e `SITE.hours` igual à faixa da fonte (`landing_hours_use_the_gauge`)
+- C8 - as três URLs de rota iguais, caractere a caractere, às da landing anterior (com `dir_action=navigate` e `utm_source=dukfit`), o título "Perto da sua rotina. Em Flores, Manaus." e o horário da lista (`location_has_address_neighborhood_and_three_route_links`)
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
 | `GET /dukfit/<arquivo>.webp` statuses (2) | 200 C12 · 404 C12 | - |
-| Landing doors (4) | door 1 C13 · door 2 C12 C13 · door 3 C11 · door 4 C17 | - |
+| Landing doors (5) | door 1 C13 · door 2 C12 C13 · door 3 C11 C20 · door 4 C17 · door 5 C19 C20 | - |
 | landing sections (7) | hero C1 C2 · Sobre C4 · O que você encontra C5 · Nossa estrutura C6 · Horário C7 · Onde estamos C8 · footer C9 | - |
 | image files (7) | `logo-dukfit-512` C1 C13 · `logo-dukfit-96` C9 C13 C17 · `salao-cardio-1600` C2 C13 · `salao-cardio-800` C6 C13 · `musculacao-440` C4 C6 C13 · `cardio-440` C4 C6 C13 · `amanhecer-440` C6 C13 | - |
 | external links (4) | Google Maps C8 C10 · Waze C8 C10 · Uber C8 C10 · Instagram C9 C10 | - |
@@ -142,3 +159,4 @@ Evidence:
 
 - S1-S3 ≈ 10k tokens of code plus ~1 MB of binary assets that are copied, not read - under the 150k budget - one builder
 - Mechanism: one builder (under budget, no ask)
+- **Boundary (rodada 2):** C19-C20 e as asserções literais. O código mudou em dois pontos: as URLs de rota voltaram às literais da fonte (a versão montada perdia `dir_action=navigate` e `utm_source=dukfit`), e todo texto que `page.tsx` escrevia direto (títulos, rótulos, CTA, nomes dos links de rota) foi para `SITE`, na forma registrada como door 5 no plano antes do código. A prova da C19 falha quando um "Bairro" literal volta à página
