@@ -19,16 +19,16 @@ function SectionTitle({ id, children }: { id: string; children: string }) {
   );
 }
 
-/**
- * A landing pública da DukFit (dukfit-app, S4): apresenta a academia a qualquer visitante, sem shell.
- * Só o CTA depende da sessão: a equipe com sessão vai direto ao painel.
- */
 /** Quantas horas um horário de `HH:MM` a `HH:MM` fica aberto. */
 const openHours = ({ opens, closes }: { opens: string; closes: string }) => {
   const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
   return (minutes(closes) - minutes(opens)) / 60;
 };
 
+/**
+ * A landing pública da DukFit (dukfit-app, S4): apresenta a academia a qualquer visitante, sem shell.
+ * Só o CTA depende da sessão: a equipe com sessão vai direto ao painel.
+ */
 export default async function LandingPage() {
   const { session } = await readSession(await headers());
   const whatsapp = `https://wa.me/${SITE.whatsapp.replace(/\D/g, '')}`;

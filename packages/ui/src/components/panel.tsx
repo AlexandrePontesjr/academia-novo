@@ -126,7 +126,8 @@ export function Gauge({
         ))}
       </svg>
       <div className="-mt-12 grid justify-items-center gap-3">
-        <p className="text-4xl font-semibold tabular-nums" data-slot="gauge-value">
+        {/* um texto no centro, como um horário, é mais largo que um número: desce de tamanho para caber no arco */}
+        <p className={`${display === undefined ? 'text-4xl' : 'text-2xl'} font-semibold tabular-nums`} data-slot="gauge-value">
           {display ?? value}
         </p>
         <p className="rounded-full bg-muted px-4 py-1.5 text-sm text-muted-foreground tabular-nums" data-slot="gauge-pill">
