@@ -1,6 +1,7 @@
-import { BoltIcon, ClockIcon, DumbbellIcon, Gauge, PANEL, PhoneIcon, PinIcon } from '@academia/ui';
+import { ArrowUpRightIcon, ClockIcon, Gauge, PANEL, PinIcon } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Wordmark } from '../components/wordmark.tsx';
 import { readSession } from '../lib/session.ts';
 import { SITE } from './site-content.ts';
@@ -9,13 +10,36 @@ import { SITE } from './site-content.ts';
 export const dynamic = 'force-dynamic';
 
 const CTA = 'inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90';
+const OUTLINE = 'inline-flex h-12 items-center justify-center gap-2 rounded-full border px-5 font-semibold hover:bg-muted';
+const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
-/** O título de uma seção da landing, no peso das telas de onboarding da referência. */
-function SectionTitle({ id, children }: { id: string; children: string }) {
+/** Uma seção da landing: o rótulo pequeno (o nome da região) e o título forte, como no projeto anterior. */
+function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <h2 id={id} className="text-2xl font-bold sm:text-3xl">
+    <section id={id} aria-labelledby={`${id}-eyebrow`} className="grid gap-6">
+      <div className="grid gap-2">
+        <p id={`${id}-eyebrow`} className="inline-flex items-center gap-2 text-sm text-primary">
+          <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+          {eyebrow}
+        </p>
+        <h2 className="text-2xl font-bold sm:text-3xl">{title}</h2>
+      </div>
       {children}
-    </h2>
+    </section>
+  );
+}
+
+/** Uma foto da academia, sempre com tamanho, `alt` e carregamento preguiçoso fora da primeira dobra. */
+function Photo({ photo, className }: { photo: { src: string; alt: string; width: number; height: number }; className?: string }) {
+  return (
+    <img
+      src={photo.src}
+      alt={photo.alt}
+      width={photo.width}
+      height={photo.height}
+      loading="lazy"
+      className={`h-full w-full rounded-3xl object-cover${className ? ` ${className}` : ''}`}
+    />
   );
 }
 
@@ -26,39 +50,33 @@ const openHours = ({ opens, closes }: { opens: string; closes: string }) => {
 };
 
 /**
- * A landing pública da DukFit (dukfit-app, S4): apresenta a academia a qualquer visitante, sem shell.
- * Só o CTA depende da sessão: a equipe com sessão vai direto ao painel.
+ * A landing pública da DukFit (dukfit-app S4, dukfit-landing): apresenta a academia a qualquer
+ * visitante, sem shell. Só o CTA depende da sessão: a equipe com sessão vai direto ao painel.
  */
 export default async function LandingPage() {
   const { session } = await readSession(await headers());
-  const whatsapp = `https://wa.me/${SITE.whatsapp.replace(/\D/g, '')}`;
-  const [main] = SITE.hours;
+  const { hours } = SITE;
 
   return (
     <div className="min-h-dvh overflow-x-hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6 lg:px-8">
-        <Wordmark />
-        <a href="#contato" className="text-sm text-muted-foreground hover:text-foreground">
-          Contato
-        </a>
-      </div>
-
-      <main className="mx-auto grid max-w-6xl gap-16 px-4 pb-16 lg:gap-24 lg:px-8">
-        <section aria-labelledby="hero-title" className="relative grid gap-6 pt-8 lg:grid-cols-2 lg:items-center lg:pt-16">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-24 left-1/2 -z-10 size-[28rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(205_247_32/0.22),transparent_65%)] lg:left-3/4"
+      <main className="grid gap-16 pb-16 lg:gap-24">
+        <section aria-labelledby="hero-title" className="relative isolate overflow-hidden" data-slot="hero">
+          <img
+            src={SITE.hero.src}
+            alt={SITE.hero.alt}
+            width={SITE.hero.width}
+            height={SITE.hero.height}
+            fetchPriority="high"
+            className="absolute inset-0 -z-20 h-full w-full object-cover"
+            data-slot="hero-photo"
           />
-          <div className="grid gap-6">
-            <p className="inline-flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
-              <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
-              Academia de bairro
-            </p>
-            <h1 id="hero-title" className="text-4xl leading-tight font-extrabold sm:text-5xl lg:text-6xl">
-              {SITE.tagline}
-            </h1>
-            <p className="max-w-prose text-lg text-muted-foreground">{SITE.intro}</p>
-            <div className="flex flex-wrap gap-3">
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[rgb(10_10_10/0.78)]" data-slot="hero-overlay" />
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-6 lg:px-8 lg:pb-20">
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-3">
+                <img src={SITE.logo.src} alt={SITE.logo.alt} width={56} height={56} className="size-14" data-slot="hero-logo" />
+                <Wordmark />
+              </span>
               {session ? (
                 <Link href="/dashboard" className={CTA}>
                   Ir para o painel
@@ -68,91 +86,137 @@ export default async function LandingPage() {
                   Acesso da equipe
                 </Link>
               )}
-              <a href={whatsapp} className="inline-flex h-12 items-center justify-center rounded-full border px-6 font-semibold hover:bg-muted">
-                Fale com a gente
-              </a>
+            </div>
+            <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+              <div className="grid gap-6">
+                <p className="inline-flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+                  <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+                  {SITE.eyebrow}
+                </p>
+                <h1 id="hero-title" className="text-5xl leading-tight font-extrabold sm:text-6xl lg:text-7xl">
+                  {SITE.tagline.map((line, index) => (
+                    <span key={line} className={`block${index === 1 ? ' text-primary' : ''}`} data-slot="tagline-line">
+                      {line}
+                      {index < SITE.tagline.length - 1 ? ' ' : ''}
+                    </span>
+                  ))}
+                </h1>
+                <p className="flex items-center gap-3" data-slot="proof">
+                  <strong className="text-3xl font-extrabold text-primary">{SITE.proof.value}</strong>
+                  <span className="max-w-40 text-sm text-muted-foreground">{SITE.proof.label}</span>
+                </p>
+              </div>
+              <div className="grid gap-4">
+                <p className="text-lg">{SITE.intro}</p>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ClockIcon className="size-4 text-primary" />
+                  {hours.days}, {hours.opens}–{hours.closes}
+                </p>
+              </div>
             </div>
           </div>
-          <div aria-hidden="true" className={`hidden ${PANEL} lg:grid lg:justify-items-center lg:gap-4 lg:py-16`}>
-            <span className="flex size-24 items-center justify-center rounded-3xl bg-primary text-primary-foreground">
-              <BoltIcon className="size-12" />
-            </span>
-            <p className="text-6xl font-extrabold tracking-tight">
-              Duk<span className="text-primary">Fit</span>
-            </p>
-          </div>
         </section>
 
-        <section aria-labelledby="highlights-title" className="grid gap-6">
-          <SectionTitle id="highlights-title">Por que a DukFit</SectionTitle>
-          <ul className="grid gap-4 lg:grid-cols-3" data-slot="highlights">
-            {SITE.highlights.map((item, index) => (
-              <li key={item.title} className={`grid content-start gap-3 ${PANEL}`}>
-                <span className="text-sm font-semibold text-primary tabular-nums">0{index + 1}</span>
-                <h3 className="text-xl font-semibold">{item.title}</h3>
-                <p className="text-muted-foreground">{item.text}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section aria-labelledby="modalities-title" className="grid gap-6">
-          <SectionTitle id="modalities-title">Modalidades</SectionTitle>
-          <ul className="flex flex-wrap gap-3">
-            {SITE.modalities.map((modality) => (
-              <li key={modality} className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2">
-                <DumbbellIcon className="size-4 text-primary" />
-                {modality}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section aria-labelledby="hours-title" className="grid gap-6">
-          <SectionTitle id="hours-title">Horários</SectionTitle>
-          {/* o medidor da referência ("Training Schedule"): as horas abertas do dia sobre 24 (de-para) */}
-          <div className={PANEL}>
-            <Gauge
-              value={openHours(main)}
-              max={24}
-              display={`${main.opens} - ${main.closes}`}
-              pill={main.days}
-              label={`${main.days}: aberto das ${main.opens} às ${main.closes}`}
-            />
-          </div>
-          <dl className="grid gap-3 md:grid-cols-3">
-            {SITE.hours.map((slot) => (
-              <div key={slot.days} className={`grid gap-2 ${PANEL}`}>
-                <dt className="flex items-center gap-2 text-sm text-primary">
-                  <ClockIcon className="size-4" />
-                  {slot.days}
-                </dt>
-                <dd className="text-2xl font-semibold tabular-nums">
-                  {slot.opens} - {slot.closes}
-                </dd>
+        <div className="mx-auto grid w-full max-w-6xl gap-16 px-4 lg:gap-24 lg:px-8">
+          <Section id="academia" eyebrow="Sobre a Dukfit" title={SITE.about.title}>
+            <p className="max-w-prose text-lg text-muted-foreground">{SITE.about.text}</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Photo photo={SITE.about.photos[0]} className="aspect-square" />
+              <div className={`grid content-center gap-3 ${PANEL}`}>
+                <h3 className="text-xl font-semibold">{SITE.about.highlight.title}</h3>
+                <p className="text-muted-foreground">{SITE.about.highlight.text}</p>
               </div>
-            ))}
-          </dl>
-        </section>
+              <Photo photo={SITE.about.photos[1]} className="aspect-square" />
+            </div>
+          </Section>
 
-        <section id="contato" aria-labelledby="contact-title" className={`grid gap-4 ${PANEL}`}>
-          <SectionTitle id="contact-title">Contato</SectionTitle>
-          <p className="flex items-center gap-3">
-            <PinIcon className="text-primary" />
-            {SITE.address}
-          </p>
-          <p className="flex items-center gap-3">
-            <PhoneIcon className="text-primary" />
-            {SITE.phone}
-          </p>
-          <a href={whatsapp} className={`${CTA} w-full sm:w-fit`}>
-            Chamar no WhatsApp
-          </a>
-        </section>
+          <Section id="encontra" eyebrow="O que você encontra" title="Estrutura para um treino completo.">
+            <ul className="grid gap-4 lg:grid-cols-3" data-slot="highlights">
+              {SITE.structure.map((item, index) => (
+                <li key={item.title} className={`grid content-start gap-3 ${PANEL}`} data-slot="structure-card">
+                  <span className="text-sm font-semibold text-primary tabular-nums">0{index + 1}</span>
+                  <h3 className="text-xl font-semibold">{item.title}</h3>
+                  <p className="text-muted-foreground">{item.text}</p>
+                </li>
+              ))}
+            </ul>
+          </Section>
+
+          <Section id="estrutura" eyebrow="Nossa estrutura" title="A Dukfit por dentro.">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {SITE.gallery.map((photo, index) => (
+                <figure key={photo.caption} className="grid gap-2" data-slot="gallery-item">
+                  <Photo photo={photo} className="aspect-[4/5]" />
+                  <figcaption className="text-sm text-muted-foreground">
+                    <span className="text-primary tabular-nums">0{index + 1}</span> {photo.caption}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Section>
+
+          <Section id="horario" eyebrow="Horário" title={`${hours.days}, das ${hours.opens} às ${hours.closes}.`}>
+            {/* o medidor da referência ("Training Schedule"): as horas abertas do dia sobre 24 (de-para) */}
+            <div className={PANEL}>
+              <Gauge
+                value={openHours(hours)}
+                max={24}
+                display={`${hours.opens} - ${hours.closes}`}
+                pill={hours.days}
+                label={`${hours.days}: aberto das ${hours.opens} às ${hours.closes}`}
+              />
+            </div>
+          </Section>
+
+          <Section id="localizacao" eyebrow="Onde estamos" title="Perto da sua rotina. Em Flores, Manaus.">
+            <div className={`grid gap-6 ${PANEL}`}>
+              <address className="flex gap-3 text-lg not-italic">
+                <PinIcon className="mt-1 text-primary" />
+                <span>
+                  {SITE.address.street}
+                  <br />
+                  {SITE.address.district}
+                </span>
+              </address>
+              <dl className="flex flex-wrap gap-8">
+                <div>
+                  <dt className="text-sm text-muted-foreground">Horário</dt>
+                  <dd className="font-semibold">
+                    {hours.days}, {hours.opens}–{hours.closes}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Bairro</dt>
+                  <dd className="font-semibold">{SITE.neighborhood}</dd>
+                </div>
+              </dl>
+              <div className="flex flex-wrap gap-3">
+                <a href={SITE.routes.google} {...EXTERNAL} className={CTA}>
+                  Google Maps
+                </a>
+                <a href={SITE.routes.waze} {...EXTERNAL} className={OUTLINE}>
+                  Waze
+                </a>
+                <a href={SITE.routes.uber} {...EXTERNAL} className={OUTLINE}>
+                  Uber
+                </a>
+              </div>
+            </div>
+          </Section>
+        </div>
       </main>
 
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        {SITE.name} · {SITE.address}
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 lg:px-8">
+          <span className="flex items-center gap-3">
+            <img src={SITE.logo.small} alt={SITE.logo.alt} width={40} height={40} loading="lazy" className="size-10" />
+            <span className="text-sm text-muted-foreground">{SITE.footer}</span>
+          </span>
+          <a href={SITE.instagram.url} {...EXTERNAL} className="inline-flex items-center gap-2 text-sm hover:text-primary">
+            {SITE.instagram.handle}
+            <ArrowUpRightIcon className="size-4" />
+          </a>
+        </div>
       </footer>
     </div>
   );

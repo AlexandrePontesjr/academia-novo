@@ -6,7 +6,7 @@ import { canCheckIn } from '../lib/check-ins.ts';
 import { ROLE_LABELS } from '../lib/roles.ts';
 import { BottomNav, MoreMenu, SideNav } from './nav.tsx';
 import { SignOutButton } from './sign-out-button.tsx';
-import { Wordmark } from './wordmark.tsx';
+import { Brand } from './brand.tsx';
 
 /** As iniciais do avatar: a primeira letra do primeiro e do último nome, em maiúscula (AC 2). */
 export function initialsOf(name: string) {
@@ -27,7 +27,8 @@ export function Shell({ session, alert, children }: { session: SessionResponse; 
     <div className="min-h-dvh lg:pl-64 print:pl-0">
       <header className="lg:contents print:hidden">
         <h1 className="max-lg:sr-only print:hidden lg:fixed lg:top-0 lg:left-0 lg:z-40 lg:flex lg:h-20 lg:w-64 lg:items-center lg:px-6">
-          <Wordmark />
+          {/* no celular o cabeçalho da referência não tem logo: só a barra lateral do computador o mostra */}
+          <Brand logoClassName="max-lg:hidden" />
         </h1>
         <aside
           className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:justify-between lg:border-r lg:bg-card lg:px-4 lg:pt-20 lg:pb-6 print:hidden"

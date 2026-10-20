@@ -68,5 +68,6 @@ export function contentSecurityPolicy(nonce: string): string {
 }
 
 export const config = {
-  matcher: ['/((?!api/|_next/|favicon.ico).*)'],
+  // as imagens da landing (`public/dukfit`) são públicas e não passam por sessão nem nonce (dukfit-landing, door 2)
+  matcher: ['/((?!api/|_next/|favicon.ico|dukfit/).*)'],
 };
