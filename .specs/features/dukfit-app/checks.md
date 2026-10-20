@@ -218,6 +218,11 @@ Asserções acrescentadas às provas existentes, com o valor do De-para:
 - C18 - `MetricTile` raio 16 px e rótulo 12 px (`metric_tiles_for_enrollments_and_payments`)
 - C28 - `content-type` `application/problem+json` (`anonymous_401_unauthorized`)
 
+Rodada 3 - as duas lacunas da rodada 2 (acréscimo de asserção, nenhum texto de check mudou):
+
+- C45 - a caixa do texto do centro não cruza nenhuma marca a 360, 390 e 1440 px; o `Gauge` usa `text-2xl` quando recebe `display` (`landing_hours_use_the_gauge`)
+- C46 - `main` com padding de 16 px a 1023 px e 32 px a 1024 px, a borda do AC 10 (`breakpoints_switch_at_768_and_1024`)
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -233,7 +238,7 @@ Asserções acrescentadas às provas existentes, com o valor do De-para:
 | `lastSevenDays` window edges (4) | today-6 C24 · today C24 C26 · today-7 out C25 · today+1 out C25 | - |
 | viewports (3) | 360 C11 · 390 C3 C10 C19 C22 C33 C42 · 1440 C7 C11 C19 C22 C33 | - |
 | De-para rows implemented (13; the 14th, "não reproduzidos", is Out of scope) | cabeçalho C2 · ponto C23 · barra inferior C3 C4 C5 · lateral C7 · FAB C8 C9 · `Panel` C12 C13 · `Gauge` C14 · `StatPill` C17 · `MetricTile` C18 · `WeekBars` C15 C16 · `ListRow`/`Table` C19 · login C39 · landing C30 C45 | - |
-| breakpoint edges (2) | 767/768 C46 · 1023/1024 C46 | - |
+| breakpoint edges (2) | 767/768 C46 · 1023/1024 C46 (inclui o gutter do AC 10) | - |
 | landing sections (5) | hero C30 · Por que a DukFit C30 · Modalidades C30 · Horários C30 · Contato C30 | - |
 | landing CTA states (2) | sem sessão C31 · com sessão C31 | - |
 | destinos que eram `/` (6) | login C35 · 2FA C35 · `/login` logado C36 · Início C40 · 404 C40 · proxy `/` público C29 | - |
@@ -278,3 +283,4 @@ Evidence:
 - **Settled mid-build:** C3 precisado para "for the admin" antes de qualquer teste (o instrutor tem 3 abas pela C4); a prova da C20 aponta o nome real do teste existente (`load_failure_500_and_403`); o "Continuar" do cadastro de 2FA também ia para `/` e passou a `/dashboard` (Impact atualizado); `Table` ganhou `relative min-w-0` porque o texto `sr-only` das células escapava da rolagem e alargava `/users` a 564 px em 360 px; `icons.tsx` entrou no `@source` do Tailwind (sem isso os ícones da navegação tinham 0 px e a C7 passava), e as provas da C4 e da C7 passaram a medir 20×20 px - com o `@source` removido as duas falham
 - **Abandoned:** nada
 - **Boundary (rodada 2):** C45-C46 e as asserções acrescentadas; o código mudou em dois pontos que as provas novas pegaram: os horários da landing passaram ao `Gauge` (que ganhou `display`) e o botão de menu passou de `rounded-xl` (16 px no tema) a `rounded-md` (12 px)
+- **Boundary (rodada 3):** o texto do centro do `Gauge` com `display` desceu de `text-4xl` a `text-2xl` (a 360 px cruzava 12 marcas, e a prova nova falha com o tamanho antigo); gutter do AC 10 provado na borda de 1024 px
