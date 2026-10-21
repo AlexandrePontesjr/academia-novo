@@ -78,6 +78,11 @@ test('api_dev_script_watches_and_reloads_the_built_api', () => {
   expect(build).toMatch(
     /build\.onEnd\(\(result\) => \{\s*if \(result\.errors\.length === 0\) start\(\);/,
   );
+  // reiniciar é matar o processo anterior antes de subir outro
+  expect(build.indexOf('api?.kill()')).toBeGreaterThan(-1);
+  expect(build.indexOf('api?.kill()')).toBeLessThan(
+    build.indexOf("spawn(process.execPath, ['dist/main.js']"),
+  );
   expect(build).not.toContain("['--watch'");
 });
 
@@ -88,7 +93,8 @@ test('web_dev_script_runs_next_dev_with_the_root_env_file', () => {
 
   // o lançador carrega o `.env` da raiz no processo e o `next dev` herda o ambiente
   const launcher = read('scripts/dev-web.mjs');
-  expect(launcher).toContain('loadEnvFile');
+  expect(launcher).toContain("const envFile = join(repoRoot, '.env')");
+  expect(launcher).toContain('loadEnvFile(envFile)');
   expect(launcher).toContain("'dev', '-p', '3000'");
   expect(launcher).toContain('cwd: appDir');
   expect(launcher).toContain('env: process.env');
@@ -104,16 +110,16 @@ test('dev_script_runs_the_api_in_green_and_the_web_in_blue', () => {
   expect(dev).toContain('node scripts/dev.mjs');
 
   const orchestrator = read('scripts/dev.mjs');
-  expect(orchestrator).toContain("'dev:api'");
-  expect(orchestrator).toContain("'dev:web'");
-  expect(orchestrator).toContain("label: '[api]'");
-  expect(orchestrator).toContain("label: '[web]'");
-  expect(orchestrator).toContain('\\u001b[32m');
-  expect(orchestrator).toContain('\\u001b[34m');
+  // cada processo é pareado com o seu rótulo e a sua cor, nas duas pontas
+  expect(orchestrator).toContain("const GREEN = '\\u001b[32m'");
+  expect(orchestrator).toContain("const BLUE = '\\u001b[34m'");
+  expect(orchestrator).toMatch(/\{ script: 'dev:api', label: '\[api\]', color: GREEN \}/);
+  expect(orchestrator).toMatch(/\{ script: 'dev:web', label: '\[web\]', color: BLUE \}/);
   // sobe os scripts pelo pnpm que chamou o orquestrador, sem shell no meio
   expect(orchestrator).toContain('npm_execpath');
-  // um processo saindo derruba o outro, e o Ctrl+C encerra os dois
+  // um processo saindo derruba os dois, e o Ctrl+C encerra os dois
   expect(orchestrator).toMatch(/child\.on\('exit', \(code\) => stop\(code \?\? 0\)\)/);
+  expect(orchestrator).toMatch(/for \(const child of children\) kill\(child\)/);
   expect(orchestrator).toContain("'taskkill'");
 });
 
@@ -134,8 +140,8 @@ test('readme_documents_the_local_development_commands', () => {
   for (const name of ['setup', 'dev', 'dev:db', 'dev:api', 'dev:web']) {
     expect(named, `README cita "pnpm ${name}"`).toContain(name);
   }
-  // o modo separa o que fica em container do que roda na máquina, e nas portas da API e do web
+  // o modo separa o que fica em container do que roda na máquina, e cada porta tem o seu papel
   expect(text).toMatch(/container/);
-  expect(text).toContain('3001');
-  expect(text).toContain('3000');
+  expect(text).toContain('- web: http://localhost:3000');
+  expect(text).toContain('- API: http://localhost:3001/health');
 });
