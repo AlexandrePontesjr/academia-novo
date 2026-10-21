@@ -47,6 +47,9 @@ test('dev_setup_installs_and_creates_the_env_file_once', () => {
   expect(check).toBeGreaterThan(-1);
   expect(copy).toBeGreaterThan(check);
   expect(setup).toContain("'.env.example'");
+  expect(setup).toMatch(
+    /if \(existsSync\(envFile\)\) \{\s*(?:\/\/[^\n]*\n\s*)?\} else \{\s*copyFileSync\(exampleFile, envFile\)/,
+  );
 });
 
 test('dev_db_starts_only_the_database_and_storage', () => {
@@ -71,7 +74,10 @@ test('api_dev_script_watches_and_reloads_the_built_api', () => {
   expect(build).toContain('await ctx.watch()');
   expect(build).toContain('build.onEnd(');
   expect(build).toContain("spawn(process.execPath, ['dist/main.js']");
-  // o reinício segue o bundle do esbuild, não um watcher do Node sobre node_modules
+  // o watcher reinicia pela recompilação bem-sucedida, não por um watcher do Node em node_modules
+  expect(build).toMatch(
+    /build\.onEnd\(\(result\) => \{\s*if \(result\.errors\.length === 0\) start\(\);/,
+  );
   expect(build).not.toContain("['--watch'");
 });
 
@@ -107,7 +113,7 @@ test('dev_script_runs_the_api_in_green_and_the_web_in_blue', () => {
   // sobe os scripts pelo pnpm que chamou o orquestrador, sem shell no meio
   expect(orchestrator).toContain('npm_execpath');
   // um processo saindo derruba o outro, e o Ctrl+C encerra os dois
-  expect(orchestrator).toContain("child.on('exit'");
+  expect(orchestrator).toMatch(/child\.on\('exit', \(code\) => stop\(code \?\? 0\)\)/);
   expect(orchestrator).toContain("'taskkill'");
 });
 
