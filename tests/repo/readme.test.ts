@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,6 +86,13 @@ test('readme_relative_links_resolve_to_existing_paths', () => {
 
   for (const target of targets) {
     expect(existsSync(join(ROOT, target)), `link relativo quebrado: ${target}`).toBe(true);
+
+    // o link tem de resolver num clone limpo: um arquivo só no working tree quebra o link
+    const tracked = spawnSync('git', ['ls-files', '--error-unmatch', '--', target], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+    expect(tracked.status, `link para caminho fora do git: ${target}`).toBe(0);
   }
   for (const required of REQUIRED_LINKS) {
     expect(targets, `o README precisa linkar ${required}`).toContain(required);
@@ -99,8 +107,13 @@ test('readme_documents_the_ports_of_the_env_example', () => {
   expect(webPort, 'WEB_PORT').toBeDefined();
   expect(apiPort, 'PORT').toBeDefined();
 
-  expect(readme()).toContain(`http://localhost:${webPort!}`);
-  expect(readme()).toContain(`http://localhost:${apiPort!}/health`);
+  const text = readme();
+  expect(text).toContain(`http://localhost:${webPort!}`);
+  expect(text).toContain(`http://localhost:${apiPort!}/health`);
+
+  // o primeiro passo da subida também é afirmado aqui, não só as portas
+  expect(text).toContain('cp .env.example .env');
+  expect(text).toContain('docker compose up --build --wait');
 });
 
 test('readme_documents_the_first_administrator_command', () => {

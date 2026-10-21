@@ -38,12 +38,13 @@ declara em `engines.node` (24) e `packageManager` (12.9.1): o teste lê os dois 
 os valores no texto (Intent)
 Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_states_the_node_and_pnpm_versions_from_the_manifests"`
 
-**C4** - Todo link relativo do README aponta para um caminho que existe no repositório, e o README
-linka o PRD, `.specs/ROADMAP.md`, `.specs/STATE.md`, `deploy/README.md` e `.env.example` (Intent)
+**C4** - Todo link relativo do README aponta para um caminho versionado no git, e o README linka o
+PRD, `.specs/ROADMAP.md`, `.specs/STATE.md`, `deploy/README.md` e `.env.example` (Intent)
 Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_relative_links_resolve_to_existing_paths"`
 
 **C5** - O README cita `http://localhost:3000` e `http://localhost:3001/health`, com as portas
-iguais a `WEB_PORT` e `PORT` do `.env.example` (Intent)
+iguais a `WEB_PORT` e `PORT` do `.env.example`, e documenta o primeiro passo da subida
+(`cp .env.example .env` e `docker compose up --build --wait`) (Intent)
 Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_documents_the_ports_of_the_env_example"`
 
 **C6** - O README documenta o primeiro Administrador pelo comando real (`docker compose exec` com
@@ -51,7 +52,7 @@ Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_d
 Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_documents_the_first_administrator_command"`
 
 **C7** - O README cita todo diretório de workspace do `pnpm-workspace.yaml` e o `deploy/`, e cada
-caminho citado existe no repositório (Intent)
+um desses caminhos existe no repositório (Intent)
 Proof: `pnpm --filter "./tests/repo" exec vitest run readme.test.ts -t "readme_covers_every_workspace_directory"`
 
 ### S2 - prova do README · 1 file · ~6 KB · ~1,5k

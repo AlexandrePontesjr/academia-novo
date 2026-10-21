@@ -118,9 +118,8 @@ pnpm db:migrate                             # aplica no banco apontado por DATAB
 
 ## Testes
 
-- **Unidade e integração** - Vitest em `apps/api/test`, `packages/contracts/test`,
-  `packages/database/test` e `apps/web/test`. A integração usa Postgres real em container, nunca um
-  banco simulado.
+- **Unidade e integração** - Vitest em `apps/api/test`, `packages/contracts/test` e
+  `packages/database/test`. A integração usa Postgres real em container, nunca um banco simulado.
 - **Tela** - Playwright em `apps/web/e2e`, contra um build de produção do web e uma API falsa; não
   precisa da stack de pé. `pnpm --filter @academia/web test` instala o Chromium e roda.
 - **Stack** - Vitest em `tests/stack`: sobe o Compose num projeto próprio, aplica migrações e prova
@@ -154,8 +153,6 @@ Código e identificadores em inglês; texto de interface e documentação em pt-
   obrigação tem a prova que a fecha.
 - [deploy/README.md](deploy/README.md) - runbook da homologação: subida, atualização, drill de
   restauração, resposta a alerta e rollback.
-- [CLAUDE.md](CLAUDE.md) - as regras de trabalho da sessão, incluindo o "Próximo passo" a cada
-  entrega.
 - [.env.example](.env.example) - todas as chaves obrigatórias, com valores só de desenvolvimento;
   o `.env` não entra no git.
 
