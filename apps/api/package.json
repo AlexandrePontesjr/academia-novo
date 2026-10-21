@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "build": "node build.mjs",
+    "dev": "node ../../scripts/dev-setup.mjs && node --env-file-if-exists=../../.env build.mjs --watch",
     "start": "node dist/main.js",
     "users:create-admin": "node --env-file-if-exists=../../.env dist/create-admin.js"
   },

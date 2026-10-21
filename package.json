@@ -7,6 +7,11 @@
   },
   "scripts": {
     "verify": "turbo run lint typecheck test build",
+    "setup": "pnpm install && pnpm dev:db",
+    "dev": "pnpm dev:db && node scripts/dev.mjs",
+    "dev:db": "node scripts/dev-setup.mjs && docker compose up -d --wait postgres storage && docker compose run --rm storage-init && pnpm db:migrate",
+    "dev:api": "pnpm --filter @academia/api dev",
+    "dev:web": "pnpm --filter @academia/web dev",
     "db:migrate": "pnpm --filter @academia/database migrate",
     "users:create-admin": "pnpm --filter @academia/api run users:create-admin",
     "test:stack": "pnpm --filter @academia/stack-tests test:stack"

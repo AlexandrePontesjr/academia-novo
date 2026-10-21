@@ -9,7 +9,7 @@
     "test": "playwright install chromium && playwright test",
     "build": "next build",
     "start": "next start",
-    "dev": "next dev"
+    "dev": "node ../../scripts/dev-setup.mjs && node ../../scripts/dev-web.mjs"
   },
   "dependencies": {
     "@academia/contracts": "workspace:*",

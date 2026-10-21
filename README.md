@@ -90,6 +90,32 @@ requisição.
 5. Para parar: `docker compose down`. Com `-v`, os volumes `postgres-data` e `rustfs-data` também
    são apagados - o banco e as fotos vão junto.
 
+## Desenvolvimento local
+
+Para iterar no código, o banco e o armazenamento sobem em container e só a API e o web rodam na
+máquina, em watch, com a saída colorida (API em verde, web em azul):
+
+```bash
+pnpm setup   # primeira vez: dependências, .env a partir do .env.example e banco/bucket prontos
+pnpm dev     # dia a dia: garante a infraestrutura e roda a API e o web em watch
+```
+
+Cada peça também roda separada:
+
+```bash
+pnpm dev:db    # Postgres e RustFS em container, bucket criado e migrações aplicadas
+pnpm dev:api   # API na máquina, em watch, na porta 3001
+pnpm dev:web   # web na máquina, em watch, na porta 3000
+```
+
+No `pnpm dev`, o esbuild recompila a API a cada mudança em `apps/api/src` e em `packages/` e
+reinicia o processo; o `next dev` recarrega a página. Os containers de `postgres` e `storage`
+publicam portas só em `127.0.0.1`, e os serviços `api` e `web` da stack não sobem nesse modo. O
+`pnpm dev:db` é idempotente: pode rodar de novo com a infraestrutura já de pé.
+
+Se a stack completa já estiver no ar, pare-a antes (`docker compose down`), porque o modo de
+desenvolvimento usa as mesmas portas 3000 e 3001.
+
 ## Comandos do dia a dia
 
 ```bash
