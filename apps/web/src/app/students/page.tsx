@@ -32,7 +32,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Alunos</h2>
+        <h2 className="text-3xl font-medium">Alunos</h2>
         {canWriteStudents(session.user.role) && (
           <Button asChild>
             <Link href="/students/new">Novo aluno</Link>

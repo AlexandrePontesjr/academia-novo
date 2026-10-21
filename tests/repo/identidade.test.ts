@@ -13,22 +13,22 @@ const LAYOUT = 'apps/web/src/app/layout.tsx';
 const FONT = 'apps/web/src/fonts/manrope-variable.woff2';
 const LICENSE = 'apps/web/src/fonts/OFL.txt';
 
-/** A forma literal da door 1 do plano, token por token. */
+/** Os tokens da referência visual de 2026-10-21 (preto puro e o amarelo #fcf43c), token por token. */
 const TOKENS: Array<[name: string, value: string]> = [
-  ['--background', 'oklch(0.145 0 0)'],
-  ['--foreground', 'oklch(0.970 0 0)'],
-  ['--card', 'oklch(0.191 0 0)'],
-  ['--muted', 'oklch(0.239 0 0)'],
-  ['--muted-foreground', 'oklch(0.715 0 0)'],
-  ['--border', 'oklch(0.269 0 0)'],
-  ['--input', 'oklch(0.285 0 0)'],
-  ['--ring', 'oklch(0.914 0.2148 121.5)'],
-  ['--primary', 'oklch(0.914 0.2148 121.5)'],
-  ['--primary-foreground', 'oklch(0.145 0 0)'],
-  ['--secondary', 'oklch(0.239 0 0)'],
-  ['--secondary-foreground', 'oklch(0.970 0 0)'],
-  ['--destructive', 'oklch(0.577 0.215 27.3)'],
-  ['--destructive-foreground', 'oklch(0.985 0 0)'],
+  ['--background', '#000000'],
+  ['--foreground', '#fafafa'],
+  ['--card', '#0f0f0f'],
+  ['--muted', '#1a1a1a'],
+  ['--muted-foreground', '#a3a3a3'],
+  ['--border', '#262626'],
+  ['--input', '#2a2a2a'],
+  ['--ring', '#fcf43c'],
+  ['--primary', '#fcf43c'],
+  ['--primary-foreground', '#000000'],
+  ['--secondary', '#1a1a1a'],
+  ['--secondary-foreground', '#fafafa'],
+  ['--destructive', '#dc2626'],
+  ['--destructive-foreground', '#fafafa'],
   ['--radius', '1rem'],
 ];
 
@@ -173,19 +173,19 @@ test('site_content_has_the_door_five_shape', async () => {
   const keysOf = (value: object) => Object.keys(value).sort();
   expect(keysOf(SITE)).toEqual(
     [
-      'about', 'address', 'cta', 'eyebrow', 'footer', 'gallery', 'hero', 'hours', 'instagram', 'intro',
-      'labels', 'legalName', 'logo', 'name', 'neighborhood', 'proof', 'routeLabels', 'routes', 'sections',
-      'structure', 'tagline',
+      'about', 'address', 'closing', 'cta', 'eyebrow', 'footer', 'gallery', 'galleryLabels', 'hero', 'hours',
+      'instagram', 'intro', 'labels', 'legalName', 'logo', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
+      'proof', 'rights', 'routeLabels', 'routes', 'scroll', 'sections', 'structure', 'tagline', 'why',
     ].sort(),
   );
-  expect(keysOf(SITE.sections)).toEqual(['about', 'gallery', 'hours', 'location', 'structure']);
+  expect(keysOf(SITE.sections)).toEqual(['about', 'gallery', 'hours', 'location', 'plans', 'structure', 'why']);
   for (const section of Object.values(SITE.sections)) expect(keysOf(section)).toEqual(['eyebrow', 'title']);
   expect(keysOf(SITE.address)).toEqual(['district', 'street']);
-  expect(keysOf(SITE.about)).toEqual(['highlight', 'photos', 'text']);
+  expect(keysOf(SITE.about)).toEqual(['badge', 'highlight', 'lead', 'photo', 'text']);
   expect(keysOf(SITE.logo)).toEqual(['alt', 'small', 'src']);
   expect(keysOf(SITE.routes)).toEqual(['google', 'uber', 'waze']);
   expect(keysOf(SITE.routeLabels)).toEqual(['google', 'uber', 'waze']);
-  expect(keysOf(SITE.cta)).toEqual(['guest', 'member']);
+  expect(keysOf(SITE.cta)).toEqual(['guest', 'join', 'member', 'visit']);
   expect(keysOf(SITE.hours)).toEqual(['closes', 'days', 'opens']);
-  for (const photo of [...SITE.gallery, ...SITE.about.photos]) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
+  for (const photo of [...SITE.gallery, SITE.about.photo, SITE.why.photo]) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
 });

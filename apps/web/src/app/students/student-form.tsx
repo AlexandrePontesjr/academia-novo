@@ -152,7 +152,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
         )}
       </div>
       {showGuardian && (
-        <fieldset className="grid gap-4 rounded-md border p-4">
+        <fieldset className="grid gap-4 rounded-xl border p-4">
           <legend className="px-1 text-sm font-medium">Responsável legal</legend>
           {errors.guardian?.message && <p className="text-sm text-[#f87171]">{errors.guardian.message}</p>}
           <TextField
@@ -221,7 +221,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
           rows={4}
           aria-invalid={errors.healthNotes ? true : undefined}
           aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
-          className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground aria-invalid:border-[#f87171]"
+          className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-[#f87171]"
           {...form.register('healthNotes')}
         />
         {errors.healthNotes && (

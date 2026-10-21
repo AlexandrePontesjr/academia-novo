@@ -16,7 +16,7 @@ export default async function PrivacyPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Privacidade</h2>
+      <h2 className="text-3xl font-medium">Privacidade</h2>
       <div className={PAGE_BODY}>
         {!allowed ? (
           <p>Você não tem permissão para acessar esta página.</p>

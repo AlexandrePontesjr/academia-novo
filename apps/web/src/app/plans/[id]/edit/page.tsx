@@ -20,7 +20,7 @@ export default async function EditPlanPage({ params }: { params: Promise<{ id: s
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Editar plano</h2>
+        <h2 className="text-3xl font-medium">Editar plano</h2>
         {plan && <PlanStatusActions id={plan.id} name={plan.name} status={plan.status} />}
       </div>
       <div className={PAGE_BODY}>

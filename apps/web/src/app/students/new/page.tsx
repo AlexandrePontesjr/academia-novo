@@ -11,7 +11,7 @@ export default async function NewStudentPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Novo aluno</h2>
+      <h2 className="text-3xl font-medium">Novo aluno</h2>
       <div className={PAGE_BODY}>
         {/* quem não cadastra não chega ao formulário; a API recusaria de qualquer forma */}
         {canWriteStudents(session.user.role) ? (

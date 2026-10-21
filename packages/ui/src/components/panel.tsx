@@ -1,12 +1,12 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
-/** A superfície da referência: cartão #141414, borda do tema e raio de 24 px (dukfit-app, de-para). */
-export const PANEL = 'rounded-3xl border bg-card p-5';
+/** A superfície da referência: cartão #0f0f0f, borda do tema e raio de 16 px. */
+export const PANEL = 'rounded-2xl border bg-card p-5';
 
-/** O botão quadrado ↗ do canto do `Panel`: 32 px, borda #262626, ícone no texto secundário. */
+/** O botão redondo ↗ do canto do `Panel`: 32 px, borda #262626, ícone no texto secundário. */
 export const PANEL_ARROW =
-  'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-primary';
+  'inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:border-primary hover:text-primary';
 
 /**
  * Um cartão com título por nome (a região se chama como o título) e, opcionalmente, a ação do canto -
@@ -28,7 +28,7 @@ export function Panel({
   return (
     <section aria-labelledby={id} className={cn('grid content-start gap-4', PANEL, className)}>
       <div className="flex items-start justify-between gap-3">
-        <h3 id={id} className="text-xl font-semibold">
+        <h3 id={id} className="text-xl font-medium">
           {title}
         </h3>
         {action}
@@ -41,9 +41,9 @@ export function Panel({
 /** Um bloco de métrica ("Target Weight" da referência): rótulo lime, número de 24 px, legenda opcional. */
 export function MetricTile({ label, value, caption }: { label: string; value: ReactNode; caption?: string }) {
   return (
-    <div className="grid content-start gap-2 rounded-2xl bg-[#1a1a1a] p-4" data-slot="metric-tile">
+    <div className="grid content-start gap-2 rounded-xl bg-muted p-4" data-slot="metric-tile">
       <dt className="text-xs font-medium text-primary">{label}</dt>
-      <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
+      <dd className="text-2xl font-medium tabular-nums">{value}</dd>
       {caption && <p className="text-xs text-muted-foreground">{caption}</p>}
     </div>
   );
@@ -60,7 +60,7 @@ export function StatPill({ label, value }: { label: string; value: ReactNode }) 
   );
 }
 
-const LIME = '#cdf720';
+const LIME = '#fcf43c';
 const ORANGE = '#f59e0b';
 const OFF = '#404040';
 
@@ -156,7 +156,7 @@ export const weekdayOf = (day: string) => WEEKDAYS[new Date(`${day}T00:00:00Z`).
 export function WeekBars({ days, label, ...props }: { days: Array<{ day: string; count: number }>; label: string } & ComponentProps<'ol'>) {
   const max = Math.max(0, ...days.map((item) => item.count));
   return (
-    <ol aria-label={label} className="grid grid-cols-7 gap-2 rounded-2xl bg-[#1a1a1a] p-3" {...props}>
+    <ol aria-label={label} className="grid grid-cols-7 gap-2 rounded-xl bg-muted p-3" {...props}>
       {days.map(({ day, count }) => {
         const color = barColor(count, max);
         const height = max === 0 ? 6 : Math.max(6, Math.round((100 * count) / max));

@@ -9,20 +9,21 @@
 
 :root {
   color-scheme: dark;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.970 0 0);
-  --card: oklch(0.191 0 0);
-  --muted: oklch(0.239 0 0);
-  --muted-foreground: oklch(0.715 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.285 0 0);
-  --ring: oklch(0.914 0.2148 121.5);
-  --primary: oklch(0.914 0.2148 121.5);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.239 0 0);
-  --secondary-foreground: oklch(0.970 0 0);
-  --destructive: oklch(0.577 0.215 27.3);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* a referência visual de 2026-10-21: preto puro, cartões quase pretos e o amarelo do acento */
+  --background: #000000;
+  --foreground: #fafafa;
+  --card: #0f0f0f;
+  --muted: #1a1a1a;
+  --muted-foreground: #a3a3a3;
+  --border: #262626;
+  --input: #2a2a2a;
+  --ring: #fcf43c;
+  --primary: #fcf43c;
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #fafafa;
+  --destructive: #dc2626;
+  --destructive-foreground: #fafafa;
   --radius: 1rem;
 }
 
@@ -69,10 +70,39 @@
     }
   }
 
+  /* os títulos da referência: peso médio, entreletra fechada */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+  }
+
   /* o anel de foco do tema vale para todo elemento interativo (AC 20) */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+}
+
+/* As fotos da academia no tom da referência: preto e branco com contraste. */
+@utility photo-mono {
+  filter: grayscale(1) contrast(1.08);
+}
+
+/* O selo circular que gira devagar ao lado da foto (landing); parado com movimento reduzido. */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-slow {
+    animation: none;
   }
 }
 

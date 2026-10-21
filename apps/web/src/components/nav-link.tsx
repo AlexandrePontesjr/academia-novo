@@ -9,9 +9,9 @@ export type NavVariant = 'tab' | 'side' | 'menu';
 
 const VARIANTS: Record<NavVariant, string> = {
   // a aba da referência: só o ícone, o texto fica para a leitura de tela
-  tab: 'flex size-12 items-center justify-center rounded-2xl text-muted-foreground',
-  side: 'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground',
-  menu: 'flex items-center gap-3 rounded-2xl px-3 py-3 text-foreground hover:bg-muted',
+  tab: 'flex size-12 items-center justify-center rounded-full text-muted-foreground',
+  side: 'flex items-center gap-3 rounded-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground',
+  menu: 'flex items-center gap-3 rounded-full px-4 py-3 text-foreground hover:bg-muted',
 };
 
 /** Um link do menu: o da rota aberta fica com o fundo #1f1f1f e o ícone no acento (dukfit-app, AC 5). */

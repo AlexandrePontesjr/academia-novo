@@ -54,7 +54,7 @@ export function PrivacyBlock({ subject, id, name }: { subject: Subject; id: stri
   }
 
   return (
-    <section aria-labelledby="privacy-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="privacy-heading" className="grid gap-4 rounded-2xl border bg-card p-5">
       <h3 id="privacy-heading" className="text-lg font-semibold">
         Privacidade
       </h3>

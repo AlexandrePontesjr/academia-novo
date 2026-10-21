@@ -8,7 +8,7 @@ export function ConsentsLoadError() {
   const router = useRouter();
 
   return (
-    <section aria-labelledby="consents-error-heading" className="grid justify-items-start gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="consents-error-heading" className="grid justify-items-start gap-4 rounded-2xl border bg-card p-5">
       <h3 id="consents-error-heading" className="text-lg font-semibold">
         Responsável e consentimentos
       </h3>

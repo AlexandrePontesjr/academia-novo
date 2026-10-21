@@ -60,17 +60,17 @@ test('cards_are_layered_surfaces_with_sixteen_radius', async ({ page, api }) => 
   expect((await styleOf(alunos, 'background-color')).rgb).toBe(CARD);
   expect((await styleOf(alunos, 'border-top-color')).rgb).toBe(BORDER);
   expect((await styleOf(alunos, 'border-bottom-color')).rgb).toBe(BORDER);
-  // o cartão do painel virou o `Panel` da referência, com 24 px (dukfit-app, AC 12)
-  expect((await styleOf(alunos, 'border-radius')).raw).toBe('24px');
+  // o cartão do painel é o `Panel` da referência de 2026-10-21, com 16 px
+  expect((await styleOf(alunos, 'border-radius')).raw).toBe('16px');
 });
 
 test('shell_header_and_active_link_match_the_identity', async ({ page, api }) => {
   serveWorld(api, 'admin');
   await page.goto('/students');
 
-  // no computador o shell é a barra lateral #141414 com a borda do tema (dukfit-app, AC 7)
+  // no computador o shell é a barra lateral no preto do fundo, com a borda do tema
   const side = page.locator('[data-slot="side-nav"]');
-  expect((await styleOf(side, 'background-color')).rgb).toBe(CARD);
+  expect((await styleOf(side, 'background-color')).rgb).toBe(DARK);
   expect((await styleOf(side, 'border-right-color')).rgb).toBe(BORDER);
 
   // o ativo tem o ícone no acento (dukfit-app, AC 5)
@@ -167,12 +167,12 @@ test('lime_accent_only_on_primary_actions_links_and_focus', async ({ page, api }
       const backgrounds: string[] = [];
       const texts: string[] = [];
       // as marcas lime do de-para da dukfit-app: pontos, rótulos de métrica, marca, ícone ativo e gráficos
-      const DE_PARA = '[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="wordmark"] *, [data-slot="nav-icon"], [data-slot="nav-icon"] *, [data-slot="metric-tile"] > dt, [data-slot="week-column"] *, [data-slot="gauge"] *';
+      const DE_PARA = '[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="eyebrow-dot"], [data-slot="wordmark"], [data-slot="wordmark"] *, [data-slot="nav-icon"], [data-slot="nav-icon"] *, [data-slot="metric-tile"] > dt, [data-slot="week-column"] *, [data-slot="gauge"] *';
       for (const element of [document.body, ...Array.from(document.querySelectorAll('body *'))]) {
         if (element.matches(DE_PARA)) continue;
         const style = getComputedStyle(element);
-        if (rgb(style.backgroundColor) === '205,247,32') backgrounds.push(element.tagName);
-        if (rgb(style.color) === '205,247,32') texts.push(element.tagName);
+        if (rgb(style.backgroundColor) === '252,244,60') backgrounds.push(element.tagName);
+        if (rgb(style.color) === '252,244,60') texts.push(element.tagName);
       }
       return { backgrounds, texts };
     });
@@ -274,7 +274,7 @@ test('dialog_overlay_and_content_use_the_identity', async ({ page, api }) => {
 
   const overlay = page.locator('[data-slot="dialog-overlay"]');
   await expect(overlay).toBeVisible();
-  expect((await styleOf(overlay, 'background-color')).raw).toBe('rgba(0, 0, 0, 0.7)');
+  expect((await styleOf(overlay, 'background-color')).raw).toBe('rgba(0, 0, 0, 0.8)');
 
   const content = page.locator('[data-slot="dialog-content"]');
   await expect(content).toBeVisible();
@@ -504,7 +504,7 @@ test('four_profiles_never_render_a_surface_lighter_than_the_limit', async ({ pag
           const tag = element.tagName;
           if (['IMG', 'VIDEO', 'CANVAS', 'SVG', 'PATH', 'PICTURE', 'SOURCE', 'BUTTON', 'A'].includes(tag)) continue;
           // pontos e barras de gráfico do de-para da dukfit-app são marcas, não superfícies
-          if (element.matches('[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="week-column"] *')) continue;
+          if (element.matches('[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="eyebrow-dot"], [data-slot="week-column"] *')) continue;
           const color = getComputedStyle(element).backgroundColor;
           if (!opaque(color)) continue;
           if (luminance(rgb(color)) > limit + 0.0001) offenders.push({ tag, color });

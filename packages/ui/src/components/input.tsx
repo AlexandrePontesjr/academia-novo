@@ -7,7 +7,7 @@ export function Input({ className, ...props }: ComponentProps<'input'>) {
   return (
     <input
       className={cn(
-        'h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground disabled:opacity-50 aria-invalid:border-[#f87171]',
+        'h-11 w-full rounded-xl border border-input bg-card px-4 text-sm text-foreground disabled:opacity-50 aria-invalid:border-[#f87171]',
         className,
       )}
       {...props}
@@ -19,7 +19,7 @@ export function Select({ className, ...props }: ComponentProps<'select'>) {
   return (
     <select
       className={cn(
-        'h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground disabled:opacity-50 aria-invalid:border-[#f87171]',
+        'h-11 w-full rounded-xl border border-input bg-card px-4 text-sm text-foreground disabled:opacity-50 aria-invalid:border-[#f87171]',
         className,
       )}
       {...props}

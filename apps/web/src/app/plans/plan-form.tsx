@@ -119,7 +119,7 @@ export function PlanForm({ plan }: { plan?: Plan }) {
           rows={4}
           aria-invalid={errors.rules ? true : undefined}
           aria-describedby={errors.rules ? `${rulesId}-error` : undefined}
-          className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground aria-invalid:border-[#f87171]"
+          className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-[#f87171]"
           {...form.register('rules')}
         />
         {errors.rules && (

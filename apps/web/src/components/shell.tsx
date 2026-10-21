@@ -31,7 +31,7 @@ export function Shell({ session, alert, children }: { session: SessionResponse; 
           <Brand logoClassName="max-lg:hidden" />
         </h1>
         <aside
-          className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:justify-between lg:border-r lg:bg-card lg:px-4 lg:pt-20 lg:pb-6 print:hidden"
+          className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:justify-between lg:border-r lg:bg-background lg:px-4 lg:pt-20 lg:pb-6 print:hidden"
           data-slot="side-nav"
         >
           <SideNav role={user.role} />
@@ -47,7 +47,7 @@ export function Shell({ session, alert, children }: { session: SessionResponse; 
               {initialsOf(user.name)}
             </span>
             <p className="grid">
-              <span className="font-semibold">{user.name}</span>
+              <span className="font-medium">{user.name}</span>
               <span className="text-sm text-muted-foreground">Perfil: {ROLE_LABELS[user.role]}</span>
             </p>
           </div>
@@ -61,7 +61,7 @@ export function Shell({ session, alert, children }: { session: SessionResponse; 
           href="/check-in"
           prefetch={false}
           aria-label="Registrar check-in"
-          className="fixed right-4 bottom-28 z-30 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg lg:right-8 lg:bottom-8 print:hidden"
+          className="fixed right-4 bottom-28 z-30 flex size-14 items-center justify-center rounded-[50%] bg-primary text-primary-foreground shadow-lg lg:right-8 lg:bottom-8 print:hidden"
           data-slot="fab"
         >
           <CheckInIcon className="size-6" />

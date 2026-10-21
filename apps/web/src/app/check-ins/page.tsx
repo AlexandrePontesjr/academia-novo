@@ -48,7 +48,7 @@ export default async function CheckInsPage({ searchParams }: { searchParams: Pro
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Presenças</h2>
+      <h2 className="text-3xl font-medium">Presenças</h2>
       <div className={PAGE_BODY}>
         {!loaded ? (
           <p>Você não tem permissão para acessar esta página.</p>

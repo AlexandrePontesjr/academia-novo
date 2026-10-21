@@ -47,7 +47,7 @@ export function ConsentsBlock({
   const { guardian, items } = data;
 
   return (
-    <section aria-labelledby="consents-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="consents-heading" className="grid gap-4 rounded-2xl border bg-card p-5">
       <h3 id="consents-heading" className="text-lg font-semibold">
         Responsável e consentimentos
       </h3>
@@ -66,7 +66,7 @@ export function ConsentsBlock({
             <section
               key={purpose}
               aria-label={PURPOSE_LABELS[purpose]}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
             >
               <div>
                 <h4 className="font-medium">{PURPOSE_LABELS[purpose]}</h4>

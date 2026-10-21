@@ -47,7 +47,7 @@ export function PaymentsBlock({
   const [undoing, setUndoing] = useState<StudentPayment>();
 
   return (
-    <section aria-labelledby="payments-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="payments-heading" className="grid gap-4 rounded-2xl border bg-card p-5">
       <h3 id="payments-heading" className="text-lg font-semibold">
         Pagamentos
       </h3>

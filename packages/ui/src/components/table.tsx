@@ -8,14 +8,14 @@ import { cn } from '../cn.ts';
  */
 export function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
-    <div className="relative w-full min-w-0 overflow-x-auto rounded-lg border">
+    <div className="relative w-full min-w-0 overflow-x-auto rounded-xl border">
       <table className={cn('w-full text-left text-sm', className)} {...props} />
     </div>
   );
 }
 
 export function TableHead({ className, ...props }: ComponentProps<'th'>) {
-  return <th className={cn('bg-muted px-3 py-2 font-medium text-[#d4d4d4]', className)} {...props} />;
+  return <th className={cn('bg-muted px-3 py-2.5 text-xs font-medium tracking-wide text-[#d4d4d4] uppercase', className)} {...props} />;
 }
 
 export function TableRow({ className, ...props }: ComponentProps<'tr'>) {
@@ -23,5 +23,5 @@ export function TableRow({ className, ...props }: ComponentProps<'tr'>) {
 }
 
 export function TableCell({ className, ...props }: ComponentProps<'td'>) {
-  return <td className={cn('px-3 py-2 align-middle', className)} {...props} />;
+  return <td className={cn('px-3 py-2.5 align-middle', className)} {...props} />;
 }

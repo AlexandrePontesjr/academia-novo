@@ -87,7 +87,7 @@ export function BottomNav({ role }: { role: Role }) {
   return (
     <nav
       aria-label="Abas"
-      className="fixed inset-x-4 bottom-4 z-30 flex items-center justify-around rounded-3xl border bg-card px-2 py-2 lg:hidden print:hidden"
+      className="fixed inset-x-4 bottom-4 z-30 flex items-center justify-around rounded-[9999px] border bg-card px-2 py-2 lg:hidden print:hidden"
       data-slot="bottom-nav"
     >
       {tabsFor(role).map((item) => link(item, 'tab'))}
@@ -104,7 +104,7 @@ export function MoreMenu({ role, trigger, alert }: { role: Role; trigger: 'tab' 
   const [open, setOpen] = useState(false);
   const button =
     trigger === 'tab' ? (
-      <button type="button" className="flex size-12 items-center justify-center rounded-2xl text-muted-foreground" onClick={() => setOpen(true)}>
+      <button type="button" className="flex size-12 items-center justify-center rounded-full text-muted-foreground" onClick={() => setOpen(true)}>
         <MenuIcon />
         <span className="sr-only">Mais</span>
       </button>
@@ -113,7 +113,7 @@ export function MoreMenu({ role, trigger, alert }: { role: Role; trigger: 'tab' 
         type="button"
         aria-label="Menu"
         aria-describedby={alert ? 'menu-alert' : undefined}
-        className="relative flex size-11 items-center justify-center rounded-md border bg-card"
+        className="relative flex size-11 items-center justify-center rounded-[50%] border bg-card"
         onClick={() => setOpen(true)}
       >
         <MenuIcon />
@@ -131,7 +131,7 @@ export function MoreMenu({ role, trigger, alert }: { role: Role; trigger: 'tab' 
     <>
       {button}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="rounded-3xl">
+        <DialogContent>
           <DialogTitle>Menu</DialogTitle>
           <nav aria-label="Mais opções" className="grid gap-1" onClick={() => setOpen(false)}>
             {itemsFor(role).map((item) => link(item, 'menu'))}

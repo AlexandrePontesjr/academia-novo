@@ -112,7 +112,7 @@ export function CheckInDesk() {
               <button
                 type="button"
                 onClick={() => openCard(student.id)}
-                className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted"
+                className="flex w-full items-center gap-3 rounded-xl border p-2 text-left hover:bg-muted"
               >
                 <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
                 <span className="flex-1">{student.name}</span>
@@ -148,7 +148,7 @@ function StudentCard({
   const allowed = status.access === 'allowed';
 
   return (
-    <section aria-labelledby="check-in-card-heading" className="flex flex-wrap gap-6 rounded-lg border bg-card p-4">
+    <section aria-labelledby="check-in-card-heading" className="flex flex-wrap gap-6 rounded-2xl border bg-card p-4">
       <PersonPhoto name={student.name} photoUrl={status.photoUrl} shape="ficha" />
       <div className="grid content-start gap-3">
         <h3 id="check-in-card-heading" className="text-lg font-semibold">

@@ -198,3 +198,40 @@ export const BoltIcon = (props: IconProps) => (
     <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
   </Icon>
 );
+
+export const ArrowRightIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5 12h14" />
+    <path d="m13 6 6 6-6 6" />
+  </Icon>
+);
+
+export const CheckIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12 3 3 5-6" />
+  </Icon>
+);
+
+export const HeartIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+  </Icon>
+);
+
+export const CalendarIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="5" width="18" height="16" rx="2.5" />
+    <path d="M8 3v4" />
+    <path d="M16 3v4" />
+    <path d="M3 10h18" />
+  </Icon>
+);
+
+export const InstagramIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="3" width="18" height="18" rx="5" />
+    <circle cx="12" cy="12" r="4" />
+    <path d="M17.5 6.5h.01" />
+  </Icon>
+);

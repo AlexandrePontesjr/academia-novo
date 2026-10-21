@@ -12,11 +12,11 @@ export default async function AccountPage() {
   return (
     <Shell session={session}>
       <section className={`grid gap-4 md:max-w-md ${PANEL}`}>
-        <h2 className="text-2xl font-bold">Trocar senha</h2>
+        <h2 className="text-3xl font-medium">Trocar senha</h2>
         <ChangePasswordForm />
       </section>
       <section className={`grid gap-4 md:max-w-md ${PANEL}`}>
-        <h2 className="text-2xl font-bold">Verificação em duas etapas</h2>
+        <h2 className="text-3xl font-medium">Verificação em duas etapas</h2>
         <TwoFactorToggle enabled={session.user.twoFactorEnabled} />
       </section>
     </Shell>

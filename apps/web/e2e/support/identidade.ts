@@ -9,13 +9,13 @@ import { openPaymentOf, paymentsStateOf, periodOf, serveOpenPayments, servePayme
 import { attachment, staffExportOf, staffExportPath, studentExportOf, studentExportPath } from './privacy.ts';
 import { serveStaffAs, staffOf, STAFF_ID } from './staff.ts';
 
-export const DARK = 'rgb(10, 10, 10)';
-export const LIGHT = 'rgb(245, 245, 245)';
-export const CARD = 'rgb(20, 20, 20)';
-export const HEADER = 'rgb(31, 31, 31)';
+export const DARK = 'rgb(0, 0, 0)';
+export const LIGHT = 'rgb(250, 250, 250)';
+export const CARD = 'rgb(15, 15, 15)';
+export const HEADER = 'rgb(26, 26, 26)';
 export const BORDER = 'rgb(38, 38, 38)';
 export const INPUT = 'rgb(42, 42, 42)';
-export const LIME = 'rgb(205, 247, 32)';
+export const LIME = 'rgb(252, 244, 60)';
 export const RED = 'rgb(220, 38, 38)';
 export const DANGER = 'rgb(248, 113, 113)';
 

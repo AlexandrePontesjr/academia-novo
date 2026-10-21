@@ -11,7 +11,7 @@ export default async function CheckInPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Check-in</h2>
+      <h2 className="text-3xl font-medium">Check-in</h2>
       <div className={PAGE_BODY}>
         {/* quem não registra presença não chega a buscar aluno; a API recusaria de qualquer forma */}
         {canCheckIn(session.user.role) ? <CheckInDesk /> : <p>Você não tem permissão para acessar esta página.</p>}

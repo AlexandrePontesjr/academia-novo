@@ -18,9 +18,10 @@ const region = (page: Page, name: string) => page.getByRole('main').getByRole('r
 /** O caminho de um `src` de imagem, sem a origem. */
 const pathOf = (src: string | null) => (src ? new URL(src, 'http://x').pathname : null);
 
-// S1 - a landing com a academia real
+// S1 - a landing com a academia real, na disposição da referência visual de 2026-10-21
 
-test('hero_shows_logo_eyebrow_three_line_title_intro_and_proof', async ({ page }) => {
+test('hero_shows_logo_nav_eyebrow_two_line_title_intro_and_proof', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
   await page.goto('/');
   const hero = region(page, TAGLINE);
 
@@ -28,18 +29,18 @@ test('hero_shows_logo_eyebrow_three_line_title_intro_and_proof', async ({ page }
   await expect(logo).toBeVisible();
   expect(pathOf(await logo.getAttribute('src'))).toBe('/dukfit/logo-dukfit-512.webp');
   await expect(hero.getByText('Academia em Flores, Manaus', { exact: true })).toBeVisible();
+  const nav = hero.getByRole('navigation', { name: 'Seções' });
+  expect(await nav.getByRole('link').allTextContents()).toEqual(['Sobre', 'Modalidades', 'Estrutura', 'Planos', 'Contato']);
 
   const title = hero.getByRole('heading', { level: 1 });
   await expect(title).toHaveAccessibleName(TAGLINE);
   const lines = title.locator('[data-slot="tagline-line"]');
-  expect((await lines.allTextContents()).map((line) => line.trim())).toEqual(['Seu corpo.', 'Seu ritmo.', 'Sua evolução.']);
-  // uma linha cada: as três caixas empilhadas
+  expect((await lines.allTextContents()).map((line) => line.trim())).toEqual(['Treine', 'Todo Dia']);
   const boxes = await lines.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
   expect(boxes[1]!).toBeGreaterThan(boxes[0]!);
-  expect(boxes[2]!).toBeGreaterThan(boxes[1]!);
 
   await expect(hero.getByText(SITE.intro, { exact: true })).toBeVisible();
-  await expect(hero.getByText('Todos os dias, 06:00–22:00', { exact: true })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Quero treinar' })).toHaveAttribute('href', '#planos');
   const proof = hero.locator('[data-slot="proof"]');
   await expect(proof.locator('strong')).toHaveText('10+');
   await expect(proof).toContainText('Anos fazendo parte da rotina de Flores');
@@ -80,7 +81,7 @@ test('hero_photo_loads_first_under_a_dark_overlay', async ({ page }) => {
       return (light + 0.05) / (dark + 0.05);
     });
   });
-  expect(ratios).toHaveLength(3);
+  expect(ratios).toHaveLength(2);
   for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
 
@@ -92,8 +93,17 @@ test('sections_follow_the_approved_order', async ({ page }) => {
     .evaluateAll((sections) =>
       sections.map((section) => document.getElementById(section.getAttribute('aria-labelledby')!)!.textContent!.trim()),
     );
-  expect(names).toEqual([TAGLINE, 'Sobre a Dukfit', 'O que você encontra', 'Nossa estrutura', 'Horário', 'Onde estamos']);
-  expect(await page.getByRole('main').locator('h2').count()).toBe(5);
+  expect(names).toEqual([
+    TAGLINE,
+    'Sobre a Dukfit',
+    'O que você encontra',
+    'Por que a Dukfit',
+    'Nossa estrutura',
+    'Planos',
+    'Onde estamos',
+    'Horário',
+  ]);
+  expect(await page.getByRole('main').locator('h2').count()).toBe(7);
   // o rodapé vem depois do `main`
   const after = await page.evaluate(() => {
     const main = document.querySelector('main')!;
@@ -103,59 +113,58 @@ test('sections_follow_the_approved_order', async ({ page }) => {
   expect(after).toBe(true);
 });
 
-test('about_section_has_title_text_and_two_photos', async ({ page }) => {
+test('about_section_has_title_texts_photo_and_badge', async ({ page }) => {
   await page.goto('/');
   const about = region(page, 'Sobre a Dukfit');
-  await expect(about.getByRole('heading', { level: 2 })).toHaveText('Treino de verdade. Presença todos os dias.');
+  await expect(about.getByRole('heading', { level: 2 })).toHaveText(SITE.sections.about.title);
+  await expect(about.getByText(SITE.about.lead, { exact: true })).toBeVisible();
   await expect(about.getByText(SITE.about.text, { exact: true })).toBeVisible();
-  await expect(about.getByRole('heading', { level: 3 })).toHaveText('Treine com consistência');
-  await expect(about.getByText('Equipamentos para musculação e cardio, ambiente próximo e uma equipe preparada para acompanhar sua rotina.', { exact: true })).toBeVisible();
+  await expect(about).toContainText('Treine com consistência.');
   expect(SITE.about.text).toContain('Conjunto Duque de Caxias');
-  const photos = about.getByRole('img');
-  await expect(photos).toHaveCount(2);
-  expect([pathOf(await photos.nth(0).getAttribute('src')), pathOf(await photos.nth(1).getAttribute('src'))]).toEqual([
-    '/dukfit/musculacao-440.webp',
-    '/dukfit/cardio-440.webp',
-  ]);
-  await expect(photos.nth(0)).toHaveAttribute('alt', SITE.about.photos[0].alt);
-  await expect(photos.nth(1)).toHaveAttribute('alt', SITE.about.photos[1].alt);
+  const photo = about.getByRole('img', { name: SITE.about.photo.alt, exact: true });
+  expect(pathOf(await photo.getAttribute('src'))).toBe('/dukfit/musculacao-440.webp');
+  // o selo é decoração: fora da árvore de acessibilidade
+  await expect(about.locator('[data-slot="about-badge"]')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('structure_cards_are_the_three_numbered_panels', async ({ page }) => {
+test('modalities_are_the_three_uppercase_rows', async ({ page }) => {
   await page.goto('/');
-  await expect(region(page, 'O que você encontra').getByRole('heading', { level: 2 })).toHaveText('Estrutura para um treino completo.');
-  const cards = region(page, 'O que você encontra').locator('[data-slot="structure-card"]');
-  await expect(cards).toHaveCount(3);
-  const expected = [
-    ['01', 'Musculação'],
-    ['02', 'Acompanhamento'],
-    ['03', 'Cardio'],
-  ];
-  for (const [index, [number, title]] of expected.entries()) {
-    const card = cards.nth(index);
-    await expect(card.locator('span').first()).toHaveText(number!);
-    await expect(card.getByRole('heading', { level: 3 })).toHaveText(title!);
-    await expect(card).toContainText(SITE.structure[index]!.text);
-    // o `Panel` da referência: fundo #141414 e raio de 24 px
-    const style = await card.evaluate((element) => {
-      const computed = getComputedStyle(element);
-      return { radius: computed.borderTopLeftRadius, background: computed.backgroundColor };
-    });
-    expect(style.radius).toBe('24px');
-    expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
+  const section = region(page, 'O que você encontra');
+  await expect(section.getByRole('heading', { level: 2 })).toHaveText('Modalidades');
+  const rows = section.locator('[data-slot="structure-card"]');
+  await expect(rows).toHaveCount(3);
+  for (const [index, title] of ['Musculação', 'Acompanhamento', 'Cardio'].entries()) {
+    const row = rows.nth(index);
+    const heading = row.getByRole('heading', { level: 3 });
+    await expect(heading).toHaveText(title);
+    await expect(row).toContainText(SITE.structure[index]!.text);
+    expect(await heading.evaluate((element) => getComputedStyle(element).textTransform)).toBe('uppercase');
   }
 });
 
-test('gallery_shows_four_captioned_photos_in_order', async ({ page }) => {
+test('why_section_has_photo_and_six_cards', async ({ page }) => {
   await page.goto('/');
-  await expect(region(page, 'Nossa estrutura').getByRole('heading', { level: 2 })).toHaveText('A Dukfit por dentro.');
-  const figures = region(page, 'Nossa estrutura').locator('figure');
+  const section = region(page, 'Por que a Dukfit');
+  await expect(section.getByRole('img', { name: SITE.why.photo.alt, exact: true })).toBeVisible();
+  const cards = section.locator('[data-slot="why-card"]');
+  await expect(cards).toHaveCount(6);
+  for (const [index, item] of SITE.why.items.entries()) {
+    await expect(cards.nth(index).getByRole('heading', { level: 3 })).toHaveText(item.title);
+    await expect(cards.nth(index)).toContainText(item.text);
+  }
+});
+
+test('gallery_shows_four_captioned_photos_in_order_with_arrows', async ({ page }) => {
+  await page.goto('/');
+  const section = region(page, 'Nossa estrutura');
+  await expect(section.getByRole('heading', { level: 2 })).toHaveText(SITE.sections.gallery.title);
+  const figures = section.locator('figure');
   await expect(figures).toHaveCount(4);
   const expected = [
-    ['/dukfit/salao-cardio-800.webp', '01 Cardio e musculação'],
-    ['/dukfit/musculacao-440.webp', '02 Treino em movimento'],
-    ['/dukfit/cardio-440.webp', '03 Estrutura completa'],
-    ['/dukfit/amanhecer-440.webp', '04 Desde cedo com você'],
+    ['/dukfit/salao-cardio-800.webp', 'Cardio e musculação'],
+    ['/dukfit/musculacao-440.webp', 'Treino em movimento'],
+    ['/dukfit/cardio-440.webp', 'Estrutura completa'],
+    ['/dukfit/amanhecer-440.webp', 'Desde cedo com você'],
   ];
   for (const [index, [src, caption]] of expected.entries()) {
     const figure = figures.nth(index);
@@ -164,6 +173,29 @@ test('gallery_shows_four_captioned_photos_in_order', async ({ page }) => {
     await expect(image).toHaveAttribute('alt', SITE.gallery[index]!.alt);
     await expect(figure.locator('figcaption')).toHaveText(caption!);
   }
+
+  const list = section.locator('[data-slot="gallery"]');
+  const before = await list.evaluate((element) => element.scrollLeft);
+  await section.getByRole('button', { name: 'Próxima foto' }).click();
+  await expect.poll(() => list.evaluate((element) => element.scrollLeft)).toBeGreaterThan(before);
+  await expect(section.getByRole('button', { name: 'Foto anterior' })).toBeVisible();
+});
+
+test('plans_toggle_between_monthly_and_yearly', async ({ page }) => {
+  await page.goto('/');
+  const section = region(page, 'Planos');
+  const cards = section.locator('[data-slot="plan-card"]');
+  await expect(cards).toHaveCount(3);
+  const prices = () => section.locator('[data-slot="plan-price"]').allTextContents();
+  expect(await prices()).toEqual(SITE.plans.items.map((plan) => `R$ ${plan.price.monthly}/mês`));
+  await expect(section.getByRole('button', { name: 'Mensal' })).toHaveAttribute('aria-pressed', 'true');
+
+  await section.getByRole('button', { name: 'Anual' }).click();
+  await expect(section.getByRole('button', { name: 'Anual' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(prices).toEqual(SITE.plans.items.map((plan) => `R$ ${plan.price.yearly}/mês`));
+  // um plano em destaque, o do meio
+  await expect(cards.nth(1)).toHaveAttribute('data-featured', 'true');
+  await expect(section.locator('[data-featured]')).toHaveCount(1);
 });
 
 test('location_has_address_neighborhood_and_three_route_links', async ({ page }) => {
@@ -172,10 +204,10 @@ test('location_has_address_neighborhood_and_three_route_links', async ({ page })
   const address = location.locator('address');
   await expect(address).toContainText('Rua Uberaba, Av. Duque de Caxias, 135');
   await expect(address).toContainText('Conjunto Flores, Manaus–AM, 69093-000');
-  await expect(location.getByText('Conjunto Flores', { exact: true })).toBeVisible();
 
   await expect(location.getByRole('heading', { level: 2 })).toHaveText('Perto da sua rotina. Em Flores, Manaus.');
   await expect(location.locator('dl')).toContainText('Todos os dias, 06:00–22:00');
+  await expect(location.locator('dl')).toContainText('Conjunto Flores');
   // as URLs literais da landing anterior (fonte binding), não a cópia de `SITE`
   for (const [name, href] of [
     ['Google Maps', 'https://www.google.com/maps/dir/?api=1&destination=DUK%20FIT%20Academia%2C%20Rua%20Uberaba%2C%20Av.%20Duque%20de%20Caxias%2C%20135%2C%20Conjunto%20Flores%2C%20Manaus-AM%2C%2069093-000&travelmode=driving&dir_action=navigate'],
@@ -186,15 +218,26 @@ test('location_has_address_neighborhood_and_three_route_links', async ({ page })
   }
 });
 
-test('footer_has_small_logo_tagline_and_instagram', async ({ page }) => {
+test('closing_banner_shows_the_hours', async ({ page }) => {
+  await page.goto('/');
+  const closing = region(page, 'Horário');
+  await expect(closing.getByRole('heading', { level: 2 })).toHaveText(SITE.closing.title);
+  await expect(closing).toContainText('Todos os dias, das 06:00 às 22:00.');
+  await expect(closing.getByRole('link', { name: 'Como chegar' })).toHaveAttribute('href', SITE.routes.google);
+});
+
+test('footer_has_small_logo_tagline_wordmark_and_instagram', async ({ page }) => {
   await page.goto('/');
   const footer = page.locator('footer');
-  expect(pathOf(await footer.locator('img').getAttribute('src'))).toBe('/dukfit/logo-dukfit-96.webp');
+  expect(pathOf(await footer.getByRole('img', { name: 'DUK FIT Academia' }).getAttribute('src'))).toBe('/dukfit/logo-dukfit-96.webp');
   await expect(footer.getByText('Musculação e acompanhamento em Flores, Manaus.', { exact: true })).toBeVisible();
-  await expect(footer.getByRole('link', { name: '@dukfitacademia' })).toHaveAttribute(
-    'href',
-    'https://www.instagram.com/dukfitacademia/',
-  );
+  await expect(footer.locator('[data-slot="footer-wordmark"]')).toHaveText('DukFit');
+  await expect(footer).toContainText(`© ${new Date().getFullYear()} DukFit.`);
+  const instagram = footer.getByRole('link', { name: /@dukfitacademia/ });
+  await expect(instagram).toHaveCount(2);
+  for (const link of await instagram.all()) {
+    await expect(link).toHaveAttribute('href', 'https://www.instagram.com/dukfitacademia/');
+  }
 });
 
 test('external_links_open_in_a_new_tab_without_referrer', async ({ page }) => {
@@ -202,7 +245,8 @@ test('external_links_open_in_a_new_tab_without_referrer', async ({ page }) => {
   const links = await page.locator('a[href^="http"]').evaluateAll((anchors) =>
     anchors.map((anchor) => ({ target: anchor.getAttribute('target'), rel: anchor.getAttribute('rel') ?? '' })),
   );
-  expect(links).toHaveLength(4);
+  // as três rotas, a rota do banner de horário e o Instagram duas vezes no rodapé
+  expect(links).toHaveLength(6);
   for (const link of links) {
     expect(link.target).toBe('_blank');
     expect(link.rel.split(' ')).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
@@ -249,12 +293,14 @@ test('images_have_size_alt_and_lazy_loading', async ({ page }) => {
     })),
   );
   expect(images.length).toBeGreaterThanOrEqual(9);
+  // toda foto de conteúdo tem descrição; as decorativas têm `alt=""` explícito
+  expect(images.filter((image) => image.alt).length).toBeGreaterThanOrEqual(9);
   for (const image of images) {
     expect(image.width, JSON.stringify(image)).toBeTruthy();
     expect(image.height, JSON.stringify(image)).toBeTruthy();
-    expect(image.alt, JSON.stringify(image)).toBeTruthy();
+    expect(image.alt, JSON.stringify(image)).not.toBeNull();
     expect(image.natural, JSON.stringify(image)).toBeGreaterThan(0);
-    const firstFold = image.slot === 'hero-photo' || image.slot === 'hero-logo';
+    const firstFold = image.slot === 'hero-photo' || image.slot === 'hero-logo' || image.slot === 'hero-avatar';
     expect(image.loading, JSON.stringify(image)).toBe(firstFold ? null : 'lazy');
   }
 });
@@ -268,6 +314,8 @@ test('no_image_overflow_and_no_horizontal_scroll', async ({ page }) => {
       client: document.documentElement.clientWidth,
       overflowing: [...document.querySelectorAll('img')]
         .filter((image) => image.getAttribute('data-slot') !== 'hero-photo')
+        // a miniatura inclinada da primeira modalidade só aparece no computador
+        .filter((image) => image.getBoundingClientRect().width > 0)
         .filter((image) => {
           const box = image.getBoundingClientRect();
           const parent = image.parentElement!.getBoundingClientRect();

@@ -122,7 +122,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold">{student.name}</h2>
+            <h2 className="text-3xl font-medium">{student.name}</h2>
             {canWrite && (
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" asChild>

@@ -32,7 +32,7 @@ function ListOrTable({ head, rows }: { head: string[]; rows: Array<{ key: string
     <>
       <ul className="grid gap-2 md:hidden" data-slot="panel-rows">
         {rows.map(({ key, cells }) => (
-          <li key={key} className="grid gap-1 rounded-2xl bg-[#1a1a1a] p-3 text-sm">
+          <li key={key} className="grid gap-1 rounded-xl bg-muted p-3 text-sm">
             {cells.map((cell, index) => (
               <span key={head[index]} className={index === 0 ? 'font-semibold' : 'text-muted-foreground'}>
                 {cell}
@@ -178,7 +178,7 @@ export default async function DashboardPage() {
     <Shell session={session} {...(overdue > 0 ? { alert: 'Há pagamentos atrasados' } : {})}>
       <p>Olá, {session.user.name}.</p>
       <div>
-        <h2 className="text-2xl font-bold">Painel</h2>
+        <h2 className="text-3xl font-medium">Painel</h2>
         {dashboard && <p className="text-sm text-muted-foreground">Situação em {formatBirthDate(dashboard.today)}</p>}
       </div>
       {dashboard ? <Cards dashboard={dashboard} /> : <DashboardLoadError />}

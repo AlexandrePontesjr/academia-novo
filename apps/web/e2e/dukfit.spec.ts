@@ -85,7 +85,7 @@ test('header_shows_avatar_initials_name_and_profile_for_four_roles', async ({ pa
   await page.goto('/students');
   await expect(page.locator('[data-slot="avatar"]')).toHaveText('A');
 
-  // a disposição da referência: avatar e nome à esquerda, o botão quadrado de 44 px e raio 12 px à direita
+  // a disposição da referência: avatar e nome à esquerda, o botão redondo de 44 px à direita
   for (const size of [MOBILE, DESKTOP]) {
     await page.setViewportSize(size);
     await page.goto('/students');
@@ -97,7 +97,7 @@ test('header_shows_avatar_initials_name_and_profile_for_four_roles', async ({ pa
     expect(name.x + name.width, `${size.width}`).toBeLessThan(button.x);
     expect(Math.abs(avatar.y + avatar.height / 2 - (button.y + button.height / 2)), `${size.width}`).toBeLessThanOrEqual(4);
     expect([Math.round(button.width), Math.round(button.height)], `${size.width}`).toEqual([44, 44]);
-    expect((await styleOf(menu, 'border-radius')).raw, `${size.width}`).toBe('12px');
+    expect((await styleOf(menu, 'border-radius')).raw, `${size.width}`).toBe('50%');
     const main = (await page.getByRole('main').boundingBox())!;
     expect(button.x + button.width, `${size.width}`).toBeGreaterThanOrEqual(main.x + main.width - 40);
   }
@@ -115,7 +115,7 @@ test('mobile_shows_the_fixed_bottom_nav_with_five_items_and_no_side_nav', async 
   const box = (await nav.boundingBox())!;
   expect(MOBILE.height - (box.y + box.height)).toBeLessThanOrEqual(24);
   expect((await styleOf(nav, 'background-color')).rgb).toBe(CARD);
-  expect((await styleOf(nav, 'border-radius')).raw).toBe('24px');
+  expect((await styleOf(nav, 'border-radius')).raw).toBe('9999px');
   await expect(nav.locator('a, button')).toHaveCount(5);
   await expect(side(page)).toBeHidden();
 });
@@ -252,7 +252,7 @@ test('fab_links_to_check_in_for_admin_and_reception', async ({ page, api }) => {
       const box = (await button.boundingBox())!;
       expect([Math.round(box.width), Math.round(box.height)], role).toEqual([56, 56]);
       expect((await styleOf(button, 'background-color')).rgb, role).toBe(LIME);
-      expect((await styleOf(button, 'border-radius')).raw, role).toBe('16px');
+      expect((await styleOf(button, 'border-radius')).raw, role).toBe('50%');
       // flutua no canto inferior direito; no celular, acima da barra inferior
       expect((await styleOf(button, 'position')).raw, role).toBe('fixed');
       expect(size.width - (box.x + box.width), `${role} ${size.width}`).toBeLessThanOrEqual(32);
@@ -314,7 +314,7 @@ test('no_horizontal_scroll_on_shell_screens_at_360_and_1440', async ({ page, api
 
 // S2 - painel
 
-test('dashboard_panels_follow_the_response_with_dark_surface_and_24_radius', async ({ page, api }) => {
+test('dashboard_panels_follow_the_response_with_dark_surface_and_16_radius', async ({ page, api }) => {
   for (const role of ['instructor', 'admin'] as const) {
     serveDashboard(api, role);
     await page.goto('/dashboard');
@@ -323,10 +323,10 @@ test('dashboard_panels_follow_the_response_with_dark_surface_and_24_radius', asy
     for (const title of titles) {
       const region = card(page, title);
       expect((await styleOf(region, 'background-color')).rgb, `${role} ${title}`).toBe(CARD);
-      expect((await styleOf(region, 'border-radius')).raw, `${role} ${title}`).toBe('24px');
+      expect((await styleOf(region, 'border-radius')).raw, `${role} ${title}`).toBe('16px');
       const heading = region.getByRole('heading', { level: 3, name: title, exact: true });
       expect((await styleOf(heading, 'font-size')).raw, `${role} ${title}`).toBe('20px');
-      expect((await styleOf(heading, 'font-weight')).raw, `${role} ${title}`).toBe('600');
+      expect((await styleOf(heading, 'font-weight')).raw, `${role} ${title}`).toBe('500');
     }
   }
 });
@@ -563,7 +563,16 @@ test('landing_sections_in_order_from_site_content', async ({ page }) => {
   const regions = await main.locator('section[aria-labelledby]').evaluateAll((sections) =>
     sections.map((section) => document.getElementById(section.getAttribute('aria-labelledby')!)!.textContent!.trim()),
   );
-  expect(regions).toEqual([TAGLINE, 'Sobre a Dukfit', 'O que você encontra', 'Nossa estrutura', 'Horário', 'Onde estamos']);
+  expect(regions).toEqual([
+    TAGLINE,
+    'Sobre a Dukfit',
+    'O que você encontra',
+    'Por que a Dukfit',
+    'Nossa estrutura',
+    'Planos',
+    'Onde estamos',
+    'Horário',
+  ]);
 
   const cards = main.getByRole('region', { name: 'O que você encontra' }).locator('[data-slot="highlights"] > li');
   await expect(cards).toHaveCount(SITE.structure.length);
@@ -608,22 +617,28 @@ test('landing_has_no_shell_no_external_request_and_no_csp_violation', async ({ p
   });
 
   await expect(page.getByRole('banner')).toHaveCount(0);
-  await expect(page.getByRole('navigation')).toHaveCount(0);
+  // só as âncoras da própria página: nenhuma navegação do shell
+  expect(await page.getByRole('navigation').evaluateAll((navs) => navs.map((nav) => nav.getAttribute('aria-label')))).toEqual([
+    'Seções',
+    'Rodapé',
+  ]);
   await expect(page.getByRole('link', { name: 'Registrar check-in' })).toHaveCount(0);
   expect([...origins]).toEqual([new URL(baseURL!).origin]);
   expect(await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations)).toEqual([]);
 });
 
-test('landing_highlights_one_column_mobile_three_desktop', async ({ page }) => {
+test('landing_section_heads_one_column_mobile_two_desktop', async ({ page }) => {
   const columnsAt = async (size: { width: number; height: number }) => {
     await page.setViewportSize(size);
     await page.goto('/');
     return page
-      .locator('[data-slot="highlights"]')
-      .evaluate((list) => getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length);
+      .locator('[data-slot="section-head"]')
+      .first()
+      .evaluate((head) => getComputedStyle(head).gridTemplateColumns.split(' ').filter(Boolean).length);
   };
+  // o rótulo à esquerda e o título à direita só no computador, como na referência
   expect(await columnsAt(MOBILE)).toBe(1);
-  expect(await columnsAt(DESKTOP)).toBe(3);
+  expect(await columnsAt(DESKTOP)).toBe(2);
 });
 
 // S5 - rotas e entrada
@@ -679,15 +694,15 @@ test('inicio_goes_to_dashboard_and_not_found_links_to_root', async ({ page, api 
 
 // S6 - telas internas
 
-test('inner_screens_have_24_bold_title_and_dark_panels', async ({ page, api }) => {
+test('inner_screens_have_30_medium_title_and_dark_panels', async ({ page, api }) => {
   serveWorld(api, 'admin');
   api.session = sessionOf('admin');
   for (const path of ['/students', '/students/new', `/students/${STUDENT.id}`, '/plans', '/account', '/check-in', '/users']) {
     await page.goto(path);
     const title = page.getByRole('main').locator('h2').first();
     await expect(title, path).toBeVisible();
-    expect((await styleOf(title, 'font-size')).raw, path).toBe('24px');
-    expect((await styleOf(title, 'font-weight')).raw, path).toBe('700');
+    expect((await styleOf(title, 'font-size')).raw, path).toBe('30px');
+    expect((await styleOf(title, 'font-weight')).raw, path).toBe('500');
 
     // o bloco do conteúdo: o irmão seguinte da linha do título ou, na conta, a seção que o contém
     const panel = await title.evaluate((heading) => {
@@ -705,7 +720,7 @@ test('inner_screens_have_24_bold_title_and_dark_panels', async ({ page, api }) =
         radius: (await styleOf(blocks.nth(index), 'border-top-left-radius')).raw,
       });
     }
-    expect(styles, path).toContainEqual({ background: CARD, radius: '24px' });
+    expect(styles, path).toContainEqual({ background: CARD, radius: '16px' });
   }
 });
 
@@ -800,51 +815,15 @@ test('breakpoints_switch_at_768_and_1024', async ({ page, api }) => {
   expect(await at(1024)).toEqual({ tabs: false, side: true, grid: 3, table: true, rows: false });
 
   api.session = undefined;
-  const highlights = async (width: number) => {
+  const heads = async (width: number) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
     return page
-      .locator('[data-slot="highlights"]')
-      .evaluate((list) => getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length);
+      .locator('[data-slot="section-head"]')
+      .first()
+      .evaluate((head) => getComputedStyle(head).gridTemplateColumns.split(' ').filter(Boolean).length);
   };
-  expect(await highlights(767)).toBe(1);
-  expect(await highlights(1023)).toBe(1);
-  expect(await highlights(1024)).toBe(3);
-});
-
-test('landing_hours_use_the_gauge', async ({ page }) => {
-  await page.goto('/');
-  const hours = page.getByRole('main').getByRole('region', { name: 'Horário' });
-  const first = SITE.hours;
-  const gauge = hours.locator('[data-slot="gauge"]');
-  await expect(gauge).toHaveCount(1);
-  await expect(gauge.locator('[data-slot="gauge-value"]')).toHaveText('06:00 - 22:00');
-  await expect(gauge.locator('[data-slot="gauge-pill"]')).toHaveText('Todos os dias');
-  await expect(hours.getByRole('heading', { level: 2 })).toHaveText('Todos os dias, das 06:00 às 22:00.');
-  expect(first).toEqual({ days: 'Todos os dias', opens: '06:00', closes: '22:00' });
-  const ticks = await ticksOf(hours);
-  expect(ticks).toHaveLength(40);
-  // 06:00 a 22:00 são 16 de 24 horas: 27 das 40 marcas acesas
-  expect(ticks.filter((stroke) => stroke === LIME)).toHaveLength(27);
-
-  // o horário cabe no arco: a caixa do texto não cruza nenhuma marca, no celular estreito e no computador
-  for (const size of [NARROW, MOBILE, DESKTOP]) {
-    await page.setViewportSize(size);
-    await page.goto('/');
-    const crossed = await page
-      .getByRole('main')
-      .getByRole('region', { name: 'Horário' })
-      .locator('[data-slot="gauge"]')
-      .evaluate((root) => {
-        const value = root.querySelector('[data-slot="gauge-value"]')!;
-        // a caixa do texto em si, não a do parágrafo que ocupa a linha inteira
-        const range = document.createRange();
-        range.selectNodeContents(value);
-        const text = range.getBoundingClientRect();
-        return [...root.querySelectorAll('[data-slot="gauge-tick"]')]
-          .map((tick) => tick.getBoundingClientRect())
-          .filter((tick) => tick.right > text.left && tick.left < text.right && tick.bottom > text.top && tick.top < text.bottom).length;
-      });
-    expect(crossed, `${size.width}`).toBe(0);
-  }
+  expect(await heads(767)).toBe(1);
+  expect(await heads(1023)).toBe(1);
+  expect(await heads(1024)).toBe(2);
 });

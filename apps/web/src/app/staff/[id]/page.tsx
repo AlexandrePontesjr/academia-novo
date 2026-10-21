@@ -65,7 +65,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold">{staff.name}</h2>
+            <h2 className="text-3xl font-medium">{staff.name}</h2>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
                 <Link href={`/staff/${staff.id}/edit`}>Editar</Link>

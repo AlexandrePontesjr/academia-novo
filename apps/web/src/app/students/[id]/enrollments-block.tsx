@@ -81,7 +81,7 @@ export function EnrollmentsBlock({
     );
 
   return (
-    <section aria-labelledby="enrollments-heading" className="grid gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="enrollments-heading" className="grid gap-4 rounded-2xl border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h3 id="enrollments-heading" className="text-lg font-semibold">
           Matrículas

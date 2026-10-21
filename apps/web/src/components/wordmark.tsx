@@ -1,8 +1,8 @@
-/** O nome da academia como marca: "Duk" no texto, "Fit" no acento, Manrope 800 (dukfit-app, AC 1). */
+/** O nome da academia como marca, como o logotipo da referência: "Duk" e "Fit" no acento, peso médio. */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={`text-2xl font-extrabold tracking-tight${className ? ` ${className}` : ''}`} data-slot="wordmark">
-      Duk<span className="text-primary">Fit</span>
+    <span className={`text-2xl font-semibold tracking-tight text-primary${className ? ` ${className}` : ''}`} data-slot="wordmark">
+      Duk<span>Fit</span>
     </span>
   );
 }

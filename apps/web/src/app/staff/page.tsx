@@ -35,7 +35,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
   return (
     <Shell session={session}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Funcionários</h2>
+        <h2 className="text-3xl font-medium">Funcionários</h2>
         {allowed && (
           <Button asChild>
             <Link href="/staff/new">Novo funcionário</Link>

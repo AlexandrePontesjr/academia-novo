@@ -189,7 +189,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Auditoria</h2>
+      <h2 className="text-3xl font-medium">Auditoria</h2>
       <div className={PAGE_BODY}>
         {loaded.kind === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>

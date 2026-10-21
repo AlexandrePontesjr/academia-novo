@@ -23,7 +23,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Pagamentos</h2>
+      <h2 className="text-3xl font-medium">Pagamentos</h2>
       <div className={PAGE_BODY}>
         {!allowed ? (
           <p>Você não tem permissão para acessar esta página.</p>

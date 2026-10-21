@@ -30,7 +30,7 @@ export default async function UsersPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Usuários</h2>
+      <h2 className="text-3xl font-medium">Usuários</h2>
       <div className={PAGE_BODY}>
         {users === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>

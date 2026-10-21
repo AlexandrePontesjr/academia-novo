@@ -2,7 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
-const alertVariants = cva('rounded-md border px-4 py-3 text-sm', {
+const alertVariants = cva('rounded-xl border px-4 py-3 text-sm', {
   variants: {
     variant: {
       // o alerta padrão é uma superfície em camadas, com o texto secundário do tema (AC 13)

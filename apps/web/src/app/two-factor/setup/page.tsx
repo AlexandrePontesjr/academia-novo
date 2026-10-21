@@ -1,3 +1,4 @@
+import { AuthFrame } from '../../../components/auth-frame.tsx';
 import { requireSession } from '../../../lib/session.ts';
 import { TwoFactorSetup } from './two-factor-setup.tsx';
 
@@ -7,9 +8,11 @@ export default async function TwoFactorSetupPage() {
   await requireSession();
 
   return (
-    <main className="mx-auto grid max-w-md gap-6 p-6 pt-16">
-      <h1 className="text-2xl font-semibold">Ativar verificação em duas etapas</h1>
-      <TwoFactorSetup />
-    </main>
+    <AuthFrame>
+      <main className="grid w-full max-w-md gap-6 p-6 pt-16 lg:py-10">
+        <h1 className="text-3xl font-medium">Ativar verificação em duas etapas</h1>
+        <TwoFactorSetup />
+      </main>
+    </AuthFrame>
   );
 }

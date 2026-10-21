@@ -11,7 +11,7 @@ export default async function NewStaffPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-2xl font-bold">Novo funcionário</h2>
+      <h2 className="text-3xl font-medium">Novo funcionário</h2>
       <div className={PAGE_BODY}>
         {/* quem não cadastra não chega ao formulário; a API recusaria de qualquer forma */}
         {canAccessStaff(session.user.role) ? <StaffForm /> : <p>Você não tem permissão para acessar esta página.</p>}
