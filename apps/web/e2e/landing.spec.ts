@@ -25,12 +25,16 @@ test('hero_shows_logo_nav_eyebrow_two_line_title_intro_and_proof', async ({ page
   await page.goto('/');
   const hero = region(page, TAGLINE);
 
-  const logo = hero.getByRole('img', { name: 'DUK FIT Academia', exact: true });
+  // o logo e a navegação saíram do hero para o cabeçalho flutuante, o `banner` da página (motion, door 7)
+  const banner = page.getByRole('banner');
+  const logo = banner.getByRole('img', { name: 'DUK FIT Academia', exact: true });
   await expect(logo).toBeVisible();
   expect(pathOf(await logo.getAttribute('src'))).toBe('/dukfit/logo-dukfit-512.webp');
   await expect(hero.getByText('Academia em Flores, Manaus', { exact: true })).toBeVisible();
-  const nav = hero.getByRole('navigation', { name: 'Seções' });
+  const nav = banner.getByRole('navigation', { name: 'Seções' });
   expect(await nav.getByRole('link').allTextContents()).toEqual(['Sobre', 'Modalidades', 'Estrutura', 'Planos', 'Contato']);
+  await expect(hero.getByRole('navigation')).toHaveCount(0);
+  await expect(hero.getByRole('img', { name: 'DUK FIT Academia', exact: true })).toHaveCount(0);
 
   const title = hero.getByRole('heading', { level: 1 });
   await expect(title).toHaveAccessibleName(TAGLINE);

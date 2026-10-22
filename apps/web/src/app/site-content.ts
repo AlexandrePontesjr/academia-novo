@@ -149,6 +149,8 @@ export const SITE = {
   },
   routeLabels: { google: 'Google Maps', waze: 'Waze', uber: 'Uber' },
   labels: { hours: 'Horário', neighborhood: 'Bairro', address: 'Endereço', nav: 'Seções', footerNav: 'Rodapé' },
+  // o menu do celular do cabeçalho flutuante (motion, door 7)
+  menu: { open: 'Abrir menu', close: 'Fechar menu', title: 'Menu' },
   closing: {
     title: 'Seu treino começa hoje.',
     text: 'Venha conhecer a academia: a equipe recebe você na recepção, todos os dias, das 06:00 às 22:00.',

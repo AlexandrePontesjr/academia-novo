@@ -1,10 +1,9 @@
 import { ArrowRightIcon, ArrowUpRightIcon, BoltIcon, CheckIcon, ClockIcon, DumbbellIcon, HeartIcon, InstagramIcon, LayersIcon, PinIcon } from '@academia/ui';
 import { headers } from 'next/headers';
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { GalleryCarousel } from '../components/landing/gallery-carousel.tsx';
 import { PlansPricing } from '../components/landing/plans-pricing.tsx';
-import { Wordmark } from '../components/wordmark.tsx';
+import { SiteHeader } from '../components/landing/site-header.tsx';
 import { readSession } from '../lib/session.ts';
 import { SITE } from './site-content.ts';
 
@@ -47,7 +46,7 @@ function ArrowCta({ href, children, external }: { href: string; children: ReactN
  */
 function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-eyebrow`} className={`grid scroll-mt-8 gap-10 lg:gap-14 ${CONTAINER}`}>
+    <section id={id} aria-labelledby={`${id}-eyebrow`} className={`grid scroll-mt-24 gap-10 lg:gap-14 ${CONTAINER}`}>
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr] lg:gap-8" data-slot="section-head">
         <Eyebrow id={`${id}-eyebrow`}>{eyebrow}</Eyebrow>
         <h2 className="text-3xl leading-tight font-medium sm:text-4xl lg:text-5xl">{title}</h2>
@@ -100,6 +99,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-dvh overflow-x-hidden">
+      <SiteHeader session={Boolean(session)} />
       <main className="grid gap-24 lg:gap-36">
         <section aria-labelledby="hero-title" className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" data-slot="hero">
           <img
@@ -114,26 +114,6 @@ export default async function LandingPage() {
           {/* o véu liso garante o contraste do título em qualquer pixel; o degradê escurece a base */}
           <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[rgb(0_0_0/0.6)]" data-slot="hero-overlay" />
           <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-t from-black via-transparent to-transparent" />
-
-          <header className={`flex items-center justify-between gap-4 py-5 ${CONTAINER}`}>
-            <a href="#" className="flex items-center gap-3">
-              <img src={SITE.logo.src} alt={SITE.logo.alt} width={40} height={40} className="size-10" data-slot="hero-logo" />
-              <Wordmark />
-            </a>
-            <nav aria-label={SITE.labels.nav} className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur lg:flex">
-              {SITE.nav.map((item) => (
-                <a key={item.href} href={item.href} className="rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-            <Link
-              href={session ? '/dashboard' : '/login'}
-              className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {session ? SITE.cta.member : SITE.cta.guest}
-            </Link>
-          </header>
 
           <div className={`grid flex-1 content-end gap-10 pt-16 pb-10 lg:grid-cols-[1fr_auto] lg:items-end lg:pb-14 ${CONTAINER}`}>
             <div className="order-2 grid max-w-xs gap-6 lg:order-1">

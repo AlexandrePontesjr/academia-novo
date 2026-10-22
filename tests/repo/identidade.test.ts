@@ -177,7 +177,7 @@ test('site_content_has_the_door_five_shape', async () => {
   expect(keysOf(SITE)).toEqual(
     [
       'about', 'address', 'closing', 'cta', 'eyebrow', 'footer', 'gallery', 'galleryLabels', 'hero', 'hours',
-      'instagram', 'intro', 'labels', 'legalName', 'logo', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
+      'instagram', 'intro', 'labels', 'legalName', 'logo', 'menu', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
       'proof', 'rights', 'routeLabels', 'routes', 'scroll', 'sections', 'structure', 'tagline', 'why',
     ].sort(),
   );
@@ -190,5 +190,7 @@ test('site_content_has_the_door_five_shape', async () => {
   expect(keysOf(SITE.routeLabels)).toEqual(['google', 'uber', 'waze']);
   expect(keysOf(SITE.cta)).toEqual(['guest', 'join', 'member', 'visit']);
   expect(keysOf(SITE.hours)).toEqual(['closes', 'days', 'opens']);
+  // o menu do celular do cabeçalho flutuante (motion, door 7)
+  expect(SITE.menu).toEqual({ open: 'Abrir menu', close: 'Fechar menu', title: 'Menu' });
   for (const photo of [...SITE.gallery, SITE.about.photo, SITE.why.photo]) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
 });

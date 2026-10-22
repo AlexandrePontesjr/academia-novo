@@ -120,6 +120,13 @@ export const MenuIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const CloseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M6 6l12 12" />
+    <path d="M18 6 6 18" />
+  </Icon>
+);
+
 export const BellIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2Z" />

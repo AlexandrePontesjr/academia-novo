@@ -616,13 +616,21 @@ test('landing_has_no_shell_no_external_request_and_no_csp_violation', async ({ p
     await document.fonts.ready;
   });
 
-  await expect(page.getByRole('banner')).toHaveCount(0);
+  // o único `banner` é o cabeçalho flutuante da landing (motion, door 7), não o do shell
+  await expect(page.getByRole('banner')).toHaveCount(1);
+  await expect(page.getByRole('banner')).toHaveAttribute('data-slot', 'site-header');
   // só as âncoras da própria página: nenhuma navegação do shell
-  expect(await page.getByRole('navigation').evaluateAll((navs) => navs.map((nav) => nav.getAttribute('aria-label')))).toEqual([
-    'Seções',
-    'Rodapé',
-  ]);
+  const navigations = () => page.getByRole('navigation').evaluateAll((navs) => navs.map((nav) => nav.getAttribute('aria-label')));
+  expect(await navigations()).toEqual(['Seções', 'Rodapé']);
   await expect(page.getByRole('link', { name: 'Registrar check-in' })).toHaveCount(0);
+
+  // no celular as seções ficam no menu do cabeçalho
+  await page.setViewportSize(MOBILE);
+  expect(await navigations()).toEqual(['Rodapé']);
+  await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('navigation', { name: 'Seções', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+
   expect([...origins]).toEqual([new URL(baseURL!).origin]);
   expect(await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations)).toEqual([]);
 });

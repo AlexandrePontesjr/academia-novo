@@ -204,3 +204,21 @@ test('action_animations_touch_only_opacity_transform_background', () => {
   }
 });
 
+// S7 - menu flutuante da landing
+
+test('site_header_reads_every_text_from_site', () => {
+  const header = read('apps/web/src/components/landing/site-header.tsx');
+  expect(header).toContain("import { SITE } from '../../app/site-content.ts';");
+  // texto entre tags: o que sobra de `>texto<` que não é expressão nem espaço (o `>` de uma `=>` não fecha tag)
+  const between = [...header.matchAll(/(?<!=)>([^<>{}]*)</g)].map((match) => match[1]!.trim()).filter((text) => /[A-Za-zÀ-ú]/.test(text));
+  expect(between).toEqual([]);
+  // linhas de JSX que são texto puro (nem tag, nem expressão, nem código)
+  const jsxText = header
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^[A-Za-zÀ-ú@][^=();<>{}]*$/.test(line) && !line.startsWith('//') && !/^(return|const|export|import|type|interface|if|for)\b/.test(line));
+  expect(jsxText).toEqual([]);
+  // atributos que a pessoa lê: nenhum literal
+  expect(header).not.toMatch(/(?:alt|aria-label|title|placeholder)="[^"]+"/);
+  for (const key of ['SITE.menu.open', 'SITE.menu.close', 'SITE.menu.title', 'SITE.labels.nav', 'SITE.logo.alt']) expect(header, key).toContain(key);
+});
