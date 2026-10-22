@@ -71,9 +71,16 @@ export function translateYOf(transform: string) {
   return transform.startsWith('matrix3d') ? values[13]! : values[5]!;
 }
 
-/** Espera a tela assentar: rede parada e nenhuma animação finita rodando. */
+/**
+ * Espera a tela assentar: rede parada, o `main` hidratado (um clique antes disso é uma navegação de
+ * documento, não a do app) e nenhuma animação finita rodando.
+ */
 export async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => {
+    const element = document.querySelector('main') ?? document.body.firstElementChild;
+    return element !== null && Object.keys(element).some((key) => key.startsWith('__reactProps'));
+  });
   await page.waitForFunction(() =>
     document
       .getAnimations()

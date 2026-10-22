@@ -653,6 +653,7 @@ test('hired_at_follows_the_sao_paulo_day_not_the_browser_clock_on_both_forms', a
 
     for (const path of ['/staff/new', `/staff/${STAFF_ID}/edit`]) {
       await page.goto(path);
+      await formHydrated(page);
       if (path === '/staff/new') {
         await page.getByLabel('Nome completo', { exact: true }).fill('Funcionária Do Dia');
         await page.getByLabel('CPF', { exact: true }).fill('529.982.247-25');

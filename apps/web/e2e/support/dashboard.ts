@@ -21,6 +21,7 @@ const id = (group: string, n: number) => `018f0000-0000-7000-8000-000000000${gro
 
 export const planOf = (n: number, name: string, period: PlanPeriod = 'monthly') => ({ id: id('9', n), name, period });
 
+// o contador vai ao id em dois dígitos: volta a 00 depois de 99, para o id continuar um UUID válido
 let expiring = 0;
 /** O contador dos ids de vencimento, lido e reposto pela prova que compara com um baseline (motion, C39). */
 export const expiringIds = { get: () => expiring, set: (value: number) => void (expiring = value) };
@@ -28,8 +29,8 @@ export const expiringIds = { get: () => expiring, set: (value: number) => void (
 export function expiringOf(overrides: Partial<ExpiringEnrollment> = {}): ExpiringEnrollment {
   expiring += 1;
   return {
-    enrollmentId: id('e', expiring),
-    student: { id: id('6', expiring), name: 'Ana Souza' },
+    enrollmentId: id('e', expiring % 100),
+    student: { id: id('6', expiring % 100), name: 'Ana Souza' },
     plan: planOf(1, 'Mensal'),
     endsAt: '2026-10-10',
     ...overrides,

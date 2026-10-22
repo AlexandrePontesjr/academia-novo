@@ -23,6 +23,7 @@ export function planOf(overrides: Partial<Plan> = {}): Plan {
   return { id: PLAN_ID, name: 'Mensal', period: 'monthly', priceCents: 9990, rules: null, status: 'active', ...overrides };
 }
 
+// o contador vai ao id em dois dígitos: volta a 00 depois de 99, para o id continuar um UUID válido
 let enrollments = 0;
 /** O contador dos ids de matrícula, lido e reposto pela prova que compara com um baseline (motion, C39). */
 export const enrollmentIds = { get: () => enrollments, set: (value: number) => void (enrollments = value) };
@@ -30,7 +31,7 @@ export const enrollmentIds = { get: () => enrollments, set: (value: number) => v
 export function enrollmentOf(overrides: Partial<Enrollment> = {}): Enrollment {
   enrollments += 1;
   return {
-    id: `018f0000-0000-7000-8000-000000000a${String(enrollments).padStart(2, '0')}`,
+    id: `018f0000-0000-7000-8000-000000000a${String(enrollments % 100).padStart(2, '0')}`,
     plan: { id: PLAN_ID, name: 'Mensal', period: 'monthly' },
     startsAt: '2026-10-07',
     endsAt: '2026-11-06',

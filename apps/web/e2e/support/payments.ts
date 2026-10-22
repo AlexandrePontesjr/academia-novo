@@ -8,6 +8,7 @@ export { NO_PERMISSION, spaced, STUDENT_ID, textsOf } from './plans.ts';
 export const PAYMENT_ROLES: Role[] = ['admin', 'hr_finance'];
 export const NO_PAYMENT_ROLES: Role[] = ['reception', 'instructor'];
 
+// os ids levam o contador em dois dígitos: ele volta a 00 depois de 99, para o id continuar um UUID válido
 let periods = 0;
 /** Os contadores de ids deste arquivo, lidos e repostos pela prova que compara com um baseline (motion, C39). */
 export const paymentIds = {
@@ -21,7 +22,7 @@ export function periodOf(overrides: Partial<StudentPayment> = {}): StudentPaymen
   periods += 1;
   const startsAt = overrides.startsAt ?? '2026-10-07';
   return {
-    enrollmentId: `018f0000-0000-7000-8000-000000000b${String(periods).padStart(2, '0')}`,
+    enrollmentId: `018f0000-0000-7000-8000-000000000b${String(periods % 100).padStart(2, '0')}`,
     plan: { id: PLAN_ID, name: 'Mensal', period: 'monthly' },
     startsAt,
     endsAt: '2026-11-06',
@@ -37,7 +38,7 @@ let confirmations = 0;
 /** A confirmação viva de um período. */
 export function confirmationOf(createdAt = '2026-10-07T15:00:00.000Z') {
   confirmations += 1;
-  return { id: `018f0000-0000-7000-8000-000000000c${String(confirmations).padStart(2, '0')}`, createdAt };
+  return { id: `018f0000-0000-7000-8000-000000000c${String(confirmations % 100).padStart(2, '0')}`, createdAt };
 }
 
 /** Um período por pagar da lista geral, de `Ana Souza`, no "Mensal", vencido em `2026-10-07`. */
@@ -46,8 +47,8 @@ export function openPaymentOf(overrides: Partial<OpenPayment> = {}): OpenPayment
   openIds += 1;
   const startsAt = overrides.startsAt ?? '2026-10-07';
   return {
-    enrollmentId: `018f0000-0000-7000-8000-000000000d${String(openIds).padStart(2, '0')}`,
-    student: { id: `018f0000-0000-7000-8000-0000000006${String(openIds).padStart(2, '0')}`, name: 'Ana Souza' },
+    enrollmentId: `018f0000-0000-7000-8000-000000000d${String(openIds % 100).padStart(2, '0')}`,
+    student: { id: `018f0000-0000-7000-8000-0000000006${String(openIds % 100).padStart(2, '0')}`, name: 'Ana Souza' },
     plan: { id: PLAN_ID, name: 'Mensal', period: 'monthly' },
     startsAt,
     endsAt: '2026-11-06',
