@@ -11,6 +11,27 @@ import { type Baseline, baselineOf, DESKTOP, MOBILE, settle } from './support/mo
 
 const SHELL_PATHS = SCREENS.filter((screen) => screen.shell).map((screen) => screen.path);
 
+// S1 - fundação
+
+test('motion_provider_adds_no_element_to_the_body', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  serveWorld(api, 'admin');
+  await page.goto('/dashboard');
+  await settle(page);
+  // fora o que o Next põe no `body` (scripts, o anunciador de rota e o `<div hidden>` dos metadados),
+  // o único filho é a raiz da Shell: o provider não acrescenta elemento entre ela e o `body`
+  const children = await page.evaluate(() =>
+    [...document.body.children]
+      .filter((element) => !['SCRIPT', 'NEXT-ROUTE-ANNOUNCER'].includes(element.tagName))
+      .filter((element) => !(element.tagName === 'DIV' && element.hasAttribute('hidden') && element.children.length === 0))
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        shell: element.querySelector(':scope > header [data-slot="avatar"]') !== null,
+      })),
+  );
+  expect(children).toEqual([{ tag: 'div', shell: true }]);
+});
+
 // S6 - C39: cópia, nomes acessíveis e ordem de foco iguais ao baseline gravado em `7471232`
 
 const BASELINE_DIR = join(import.meta.dirname, 'fixtures', 'motion-baseline');

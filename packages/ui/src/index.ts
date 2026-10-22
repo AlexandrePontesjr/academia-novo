@@ -6,3 +6,4 @@ export * from './components/input.tsx';
 export * from './components/table.tsx';
 export * from './components/panel.tsx';
 export * from './icons.tsx';
+export * from './motion.tsx';

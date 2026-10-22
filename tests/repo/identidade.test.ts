@@ -83,12 +83,10 @@ test('only_the_manrope_asset_and_its_ofl_license_are_new', () => {
   ]);
 });
 
-// dukfit-app: a landing lê o texto só de `site-content.ts` (door 4) e a feature não traz pacote npm (AC 50)
+// dukfit-app: a landing lê o texto só de `site-content.ts` (door 4)
 
 const SITE_CONTENT = 'apps/web/src/app/site-content.ts';
 const LANDING = 'apps/web/src/app/page.tsx';
-/** O commit do plano da dukfit-app, antes de qualquer código: a base contra a qual "nenhum pacote novo" vale. */
-const DUKFIT_BASE = 'de214e2';
 
 test('site_content_is_the_only_source_of_landing_copy', () => {
   const content = read(SITE_CONTENT);
@@ -112,19 +110,24 @@ test('site_content_is_the_only_source_of_landing_copy', () => {
   expect(landing).not.toMatch(/fetchApi|loadDashboard|\/api\//);
 });
 
-test('dukfit_adds_no_npm_dependency', () => {
+// motion: o único pacote novo é o `motion`, no catálogo e em dois manifestos (door 6, que substitui a AC 50 da dukfit-app)
+
+test('motion_is_the_only_added_dependency', () => {
   const manifests = execFileSync('git', ['ls-files', '*package.json'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n')
     .filter((path) => path && !path.includes('node_modules'));
   expect(manifests.length).toBeGreaterThan(5);
-  const deps = (json: string) => {
-    const manifest = JSON.parse(json) as Record<string, Record<string, string> | undefined>;
-    return Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies }).sort();
-  };
-  for (const path of manifests) {
-    const before = execFileSync('git', ['show', `${DUKFIT_BASE}:${path}`], { cwd: ROOT, encoding: 'utf8' });
-    expect(deps(read(path)), path).toEqual(deps(before));
-  }
+  const declaring = manifests.filter((path) => {
+    const manifest = JSON.parse(read(path)) as Record<string, Record<string, string> | undefined>;
+    const deps = { ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies };
+    if ('motion' in deps) expect(deps.motion, path).toBe('catalog:');
+    return 'motion' in deps;
+  });
+  expect(declaring.sort()).toEqual(['apps/web/package.json', 'packages/ui/package.json']);
+
+  const workspace = read('pnpm-workspace.yaml');
+  expect(workspace).toMatch(/^catalog:\n(?: {2}.+\n)*? {2}motion: \^14\.5\.0\n/m);
+  expect(read('pnpm-lock.yaml')).toContain('motion@14.5.0');
 });
 
 // dukfit-landing: as imagens da academia são arquivos estáticos pré-convertidos (door 1) e públicos (door 2)

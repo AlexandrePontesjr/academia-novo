@@ -16,6 +16,7 @@
     "@academia/ui": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "motion": "catalog:",
     "next": "^16.3.8",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
