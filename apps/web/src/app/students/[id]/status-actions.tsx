@@ -66,7 +66,7 @@ export function StatusActions({ id, name, status }: { id: string; name: string; 
       {status !== 'active' && (
         <Button
           variant="outline"
-          disabled={pending}
+          busy={pending}
           onClick={() => send(() => callApi('PATCH', `/api/students/${id}`, { status: 'active' }))}
         >
           Reativar
@@ -92,7 +92,7 @@ export function StatusActions({ id, name, status }: { id: string; name: string; 
                 <DialogClose asChild>
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
-                <Button variant="destructive" disabled={pending} onClick={confirm}>
+                <Button variant="destructive" busy={pending} onClick={confirm}>
                   {COPY[asking].verb}
                 </Button>
               </DialogFooter>

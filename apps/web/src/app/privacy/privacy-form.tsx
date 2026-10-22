@@ -90,8 +90,12 @@ export function PrivacyForm({ initial }: { initial: PrivacySettings }) {
           </p>
         )}
       </div>
-      {message && <Alert variant={message.kind === 'saved' ? 'default' : 'destructive'}>{message.text}</Alert>}
-      <Button type="submit" disabled={pending} className="justify-self-start">
+      {message && (
+        <Alert variant={message.kind === 'saved' ? 'default' : 'destructive'} {...(message.kind === 'saved' ? { 'data-motion': 'feedback' } : {})}>
+          {message.text}
+        </Alert>
+      )}
+      <Button type="submit" busy={pending} className="justify-self-start">
         Salvar
       </Button>
     </form>

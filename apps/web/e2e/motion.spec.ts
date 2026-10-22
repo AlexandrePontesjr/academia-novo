@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { expect, type FakeApi, problem, test } from './support/fake-api.ts';
+import { checkInsPath, LATE, listItemOf, servePhotos, serveSearch, statusOf, statusPath } from './support/check-ins.ts';
+import { expect, type FakeApi, problem, sessionOf, test } from './support/fake-api.ts';
 import { SCREENS, serveWorld } from './support/identidade.ts';
 import { animationOf, type Baseline, baselineOf, DESKTOP, fixtureIds, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
 import { STUDENT_ID } from './support/plans.ts';
@@ -309,6 +310,153 @@ test('landing_and_login_have_no_skeleton_or_page_motion', async ({ page, api }) 
   await page.goto('/login', { waitUntil: 'commit' }).catch(() => undefined);
   await page.waitForTimeout(1500);
   await expect(page.locator(SKELETON)).toHaveCount(0);
+});
+
+// S4 - ações
+
+const REGISTER = 'Registrar presença';
+
+/** Abre `/check-in` com o cartão de um aluno liberado, pronto para registrar a presença. */
+async function openCheckInCard(page: Page, api: FakeApi) {
+  const status = statusOf(listItemOf(1).id);
+  const item = listItemOf(1, { id: status.student.id, name: status.student.name });
+  serveSearch(api, 'reception', [item]);
+  servePhotos(api, [item.photoUrl, status.photoUrl]);
+  api.on('GET', statusPath(status.student.id), { status: 200, body: status });
+  await page.goto('/check-in');
+  const field = page.getByLabel('Nome ou CPF', { exact: true });
+  await field.fill('529.982.247-25');
+  await field.press('Enter');
+  await expect(page.getByRole('button', { name: REGISTER, exact: true })).toBeVisible();
+  return status;
+}
+
+/** O `transform` computado do botão com o mouse segurado sobre ele por 250 ms. */
+async function heldTransform(page: Page, name: string) {
+  const button = page.getByRole('button', { name, exact: true });
+  const box = (await button.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  const transform = await button.evaluate((element) => getComputedStyle(element).transform);
+  await page.mouse.up();
+  return transform;
+}
+
+test('button_presses_to_0_98_in_150ms_and_not_when_reduced', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  serveWorld(api, 'admin');
+  await page.goto('/students');
+  await settle(page);
+  const button = page.getByRole('button', { name: 'Buscar', exact: true });
+  const transition = await button.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { property: style.transitionProperty, duration: style.transitionDuration };
+  });
+  const properties = transition.property.split(', ');
+  expect(properties).toContain('transform');
+  expect(transition.duration.split(', ')[properties.indexOf('transform')]).toBe('0.15s');
+  expect(await heldTransform(page, 'Buscar')).toBe('matrix(0.98, 0, 0, 0.98, 0, 0)');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/students');
+  await settle(page);
+  expect(await heldTransform(page, 'Buscar')).toBe('none');
+});
+
+test('busy_button_has_aria_busy_spinner_and_stays_disabled', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  const status = await openCheckInCard(page, api);
+  // o pedido de registro fica preso no navegador até o teste soltar
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(`**${checkInsPath(status.student.id)}`, async (route) => {
+    await held;
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '018f0000-0000-7000-8000-0000000c3001', day: '2026-10-07', checkedInAt: LATE }) });
+  });
+  const button = page.getByRole('button', { name: REGISTER, exact: true });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-busy', 'true');
+  await expect(button).toBeDisabled();
+  const spinner = button.locator('svg');
+  await expect(spinner).toHaveCount(1);
+  await expect(spinner).toHaveAttribute('aria-hidden', 'true');
+  // a caixa do `svg`, não a do retângulo girado que `boundingBox` mede no meio da volta
+  expect(await spinner.evaluate((element) => [getComputedStyle(element).width, getComputedStyle(element).height])).toEqual(['16px', '16px']);
+
+  release();
+  await expect(page.getByText(/^Presença registrada às/)).toBeVisible();
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+});
+
+test('dialog_opens_with_overlay_150ms_and_content_200ms', async ({ page, api }) => {
+  serveWorld(api, 'admin');
+  await page.goto(`/students/${STUDENT_ID}`);
+  await settle(page);
+  await page.getByRole('button', { name: 'Inativar', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  expect(await animationOf(page.locator('[data-slot="dialog-overlay"]'))).toEqual({ name: 'overlay-in', duration: '0.15s' });
+  expect(await animationOf(page.locator('[data-slot="dialog-content"]'))).toEqual({ name: 'dialog-in', duration: '0.2s' });
+});
+
+test('dialog_unmounts_at_once_and_returns_focus', async ({ page, api }) => {
+  serveWorld(api, 'admin');
+  await page.goto(`/students/${STUDENT_ID}`);
+  await settle(page);
+  const trigger = page.getByRole('main').getByRole('button', { name: 'Inativar', exact: true });
+  for (const close of ['Escape', 'Cancelar'] as const) {
+    await trigger.click();
+    await expect(page.getByRole('dialog'), close).toBeVisible();
+    if (close === 'Escape') await page.keyboard.press('Escape');
+    else await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click();
+    // no quadro seguinte ao fechar não há diálogo no DOM
+    const left = await page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(document.querySelectorAll('[role="dialog"]').length))));
+    expect(left, close).toBe(0);
+    await expect(trigger, close).toBeFocused();
+  }
+});
+
+test('success_messages_are_feedback_in_180ms', async ({ page, api }) => {
+  const status = statusOf(listItemOf(1).id);
+  api.on('POST', checkInsPath(status.student.id), {
+    status: 201,
+    body: { id: '018f0000-0000-7000-8000-0000000c3001', day: '2026-10-07', checkedInAt: LATE },
+  });
+  await openCheckInCard(page, api);
+  await page.getByRole('button', { name: REGISTER, exact: true }).click();
+  const registered = page.getByText(/^Presença registrada às/);
+  await expect(registered).toBeVisible();
+  await expect(registered).toHaveAttribute('data-motion', 'feedback');
+  expect(await animationOf(registered)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+
+  api.session = sessionOf('admin');
+  api.on('GET', '/api/privacy-settings', { status: 200, body: { inactiveStudentRetentionYears: 5, photoVersionRetentionDays: 30 } });
+  api.on('PUT', '/api/privacy-settings', (request) => ({ status: 200, body: request.body }));
+  await page.goto('/privacy');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  const saved = page.getByText('Configurações salvas.', { exact: true });
+  await expect(saved).toBeVisible();
+  await expect(saved).toHaveAttribute('data-motion', 'feedback');
+  expect(await animationOf(saved)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+});
+
+test('failed_action_alert_keeps_role_and_text_and_animates', async ({ page, api }) => {
+  // o `409` relê o cartão; quando a releitura também falha, o aviso aparece
+  const status = await openCheckInCard(page, api);
+  api.on('POST', checkInsPath(status.student.id), problem(409, 'already_checked_in'));
+  api.on('GET', statusPath(status.student.id), problem(500, 'internal_error'));
+  await page.getByRole('button', { name: REGISTER, exact: true }).click();
+  let alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toHaveText('Não foi possível carregar o aluno.');
+  expect(await animationOf(alert)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+
+  // o registro que falha de vez (`500`)
+  await openCheckInCard(page, api);
+  api.on('POST', checkInsPath(status.student.id), problem(500, 'internal_error'));
+  await page.getByRole('button', { name: REGISTER, exact: true }).click();
+  alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toHaveText('Não foi possível registrar a presença.');
+  expect(await animationOf(alert)).toEqual({ name: 'feedback-in', duration: '0.18s' });
 });
 
 // S6 - C39: cópia, nomes acessíveis e ordem de foco iguais ao baseline gravado em `7471232`

@@ -151,7 +151,7 @@ function ConfirmDialog({
           <DialogClose asChild>
             <Button variant="outline">Voltar</Button>
           </DialogClose>
-          <Button disabled={pending} onClick={confirm}>
+          <Button busy={pending} onClick={confirm}>
             Confirmar
           </Button>
         </DialogFooter>
@@ -202,7 +202,7 @@ function UndoDialog({
           <DialogClose asChild>
             <Button variant="outline">Voltar</Button>
           </DialogClose>
-          <Button variant="destructive" disabled={pending} onClick={confirm}>
+          <Button variant="destructive" busy={pending} onClick={confirm}>
             Confirmar
           </Button>
         </DialogFooter>

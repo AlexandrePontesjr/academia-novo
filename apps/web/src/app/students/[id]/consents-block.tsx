@@ -223,7 +223,7 @@ function GrantDialog({
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button disabled={pending || blocked || term.status !== 'ready'} onClick={confirm}>
+          <Button busy={pending} disabled={blocked || term.status !== 'ready'} onClick={confirm}>
             Confirmar
           </Button>
         </DialogFooter>
@@ -271,7 +271,7 @@ function RevokeDialog({
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button variant="destructive" disabled={pending} onClick={confirm}>
+          <Button variant="destructive" busy={pending} onClick={confirm}>
             Confirmar
           </Button>
         </DialogFooter>

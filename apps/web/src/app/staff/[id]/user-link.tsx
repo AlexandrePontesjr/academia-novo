@@ -58,7 +58,7 @@ export function UserLink({
       </div>
       {alert && <Alert variant="destructive">{alert}</Alert>}
       <div>
-        <Button variant="outline" disabled={pending} onClick={save}>
+        <Button variant="outline" busy={pending} onClick={save}>
           Salvar vínculo
         </Button>
       </div>

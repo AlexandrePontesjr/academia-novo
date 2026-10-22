@@ -183,13 +183,13 @@ function StudentCard({
           </ul>
         )}
         {registeredAt ? (
-          <p role="status">Presença registrada às {formatTime(registeredAt)}.</p>
+          <p role="status" data-motion="feedback">Presença registrada às {formatTime(registeredAt)}.</p>
         ) : status.checkedInAt ? (
           <p>Presença já registrada hoje às {formatTime(status.checkedInAt)}.</p>
         ) : (
           allowed && (
             <div>
-              <Button disabled={pending} onClick={onRegister}>
+              <Button busy={pending} onClick={onRegister}>
                 Registrar presença
               </Button>
             </div>

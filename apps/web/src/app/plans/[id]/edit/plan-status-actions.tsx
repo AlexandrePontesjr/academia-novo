@@ -42,7 +42,7 @@ export function PlanStatusActions({ id, name, status }: { id: string; name: stri
       {status === 'inactive' ? (
         <Button
           variant="outline"
-          disabled={pending}
+          busy={pending}
           onClick={() => send(() => callApi('PATCH', `/api/plans/${id}`, { status: 'active' }), () => router.refresh())}
         >
           Reativar
@@ -66,7 +66,7 @@ export function PlanStatusActions({ id, name, status }: { id: string; name: stri
             </DialogClose>
             <Button
               variant="destructive"
-              disabled={pending}
+              busy={pending}
               onClick={() => send(() => callApi('DELETE', `/api/plans/${id}`), () => router.push('/plans'))}
             >
               Inativar

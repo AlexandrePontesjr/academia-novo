@@ -43,7 +43,7 @@ export function StaffStatusActions({ id, name, status }: { id: string; name: str
       {status === 'inactive' ? (
         <Button
           variant="outline"
-          disabled={pending}
+          busy={pending}
           onClick={() => send(() => callApi('PATCH', `/api/staff/${id}`, { status: 'active' }))}
         >
           Reativar
@@ -68,7 +68,7 @@ export function StaffStatusActions({ id, name, status }: { id: string; name: str
             </DialogClose>
             <Button
               variant="destructive"
-              disabled={pending}
+              busy={pending}
               onClick={() => send(() => callApi('DELETE', `/api/staff/${id}`))}
             >
               Inativar

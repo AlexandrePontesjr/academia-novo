@@ -112,7 +112,7 @@ function AnonymizeDialog({ subject, id, name, onClose }: { subject: Subject; id:
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button variant="destructive" disabled={pending} onClick={confirm}>
+          <Button variant="destructive" busy={pending} onClick={confirm}>
             Anonimizar
           </Button>
         </DialogFooter>

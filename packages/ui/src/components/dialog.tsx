@@ -1,13 +1,22 @@
 'use client';
 
 import { Dialog as DialogPrimitive } from 'radix-ui';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useRef } from 'react';
 import { cn } from '../cn.ts';
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogClose = DialogPrimitive.Close;
 
-export function DialogContent({ className, children, ...props }: ComponentProps<typeof DialogPrimitive.Content>) {
+export function DialogContent({
+  className,
+  children,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Content>) {
+  // o Radix devolve o foco só a um `DialogTrigger`; os diálogos daqui abrem por estado, então o foco
+  // volta ao elemento que o tinha quando o diálogo abriu (motion, AC 23)
+  const opener = useRef<Element | null>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay data-slot="dialog-overlay" className="fixed inset-0 bg-[rgb(0_0_0_/_0.8)] backdrop-blur-sm" />
@@ -17,6 +26,16 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
           'fixed top-1/2 left-1/2 grid w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl border bg-card p-6 shadow-lg',
           className,
         )}
+        onOpenAutoFocus={(event) => {
+          opener.current = document.activeElement;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented || !(opener.current instanceof HTMLElement) || !opener.current.isConnected) return;
+          event.preventDefault();
+          opener.current.focus();
+        }}
         {...props}
       >
         {children}

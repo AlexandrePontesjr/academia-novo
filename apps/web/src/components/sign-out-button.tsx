@@ -15,7 +15,7 @@ export function SignOutButton() {
   }
 
   return (
-    <Button variant="outline" size="sm" disabled={pending} onClick={signOut}>
+    <Button variant="outline" size="sm" busy={pending} onClick={signOut}>
       Sair
     </Button>
   );

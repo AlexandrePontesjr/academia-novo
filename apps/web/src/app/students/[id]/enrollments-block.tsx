@@ -245,7 +245,7 @@ function EnrollDialog({
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button disabled={pending || !plan} onClick={confirm}>
+          <Button busy={pending} disabled={!plan} onClick={confirm}>
             Confirmar
           </Button>
         </DialogFooter>
@@ -294,7 +294,7 @@ function CancelDialog({
           <DialogClose asChild>
             <Button variant="outline">Voltar</Button>
           </DialogClose>
-          <Button variant="destructive" disabled={pending} onClick={confirm}>
+          <Button variant="destructive" busy={pending} onClick={confirm}>
             Cancelar matrícula
           </Button>
         </DialogFooter>

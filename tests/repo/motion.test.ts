@@ -137,3 +137,70 @@ test('no_skeleton_on_landing_login_or_two_factor', () => {
     expect(names, dir).not.toContain('template.tsx');
   }
 });
+
+// S4 - ações
+
+/** Os 14 arquivos que tinham `disabled={pending}` em `7471232` (Coverage, "pending controls"). */
+const PENDING_FILES = [
+  'apps/web/src/app/check-in/check-in-desk.tsx',
+  'apps/web/src/app/check-ins/report-table.tsx',
+  'apps/web/src/app/plans/[id]/edit/plan-status-actions.tsx',
+  'apps/web/src/app/privacy/privacy-form.tsx',
+  'apps/web/src/app/staff/[id]/status-actions.tsx',
+  'apps/web/src/app/staff/[id]/user-link.tsx',
+  'apps/web/src/app/students/[id]/check-ins-block.tsx',
+  'apps/web/src/app/students/[id]/consents-block.tsx',
+  'apps/web/src/app/students/[id]/enrollments-block.tsx',
+  'apps/web/src/app/students/[id]/payments-block.tsx',
+  'apps/web/src/app/students/[id]/status-actions.tsx',
+  'apps/web/src/app/users/users-panel.tsx',
+  'apps/web/src/components/privacy/privacy-block.tsx',
+  'apps/web/src/components/sign-out-button.tsx',
+];
+
+test('pending_controls_use_busy', () => {
+  expect(PENDING_FILES).toHaveLength(14);
+  for (const path of filesOf().filter((file) => file.startsWith('apps/web/src/'))) {
+    expect(read(path), path).not.toContain('disabled={pending}');
+  }
+  for (const path of PENDING_FILES) expect(read(path), path).toContain('busy={pending}');
+});
+
+/** As declarações de um bloco CSS como pares `[propriedade, valor]`. */
+const declarationsOf = (block: string) =>
+  [...block.matchAll(/([a-z-]+):\s*([^;{}]+);/g)].map((match) => [match[1]!, match[2]!.trim()] as const);
+
+test('action_keyframes_are_the_door_five_literal', () => {
+  const css = read(GLOBALS);
+  expect(keyframesOf(css, 'overlay-in')).toMatch(/from \{\s*opacity: 0;\s*\}\s*to \{\s*opacity: 1;\s*\}/);
+  expect(keyframesOf(css, 'dialog-in')).toMatch(/from \{\s*opacity: 0;\s*transform: scale\(0\.98\);\s*\}\s*to \{\s*opacity: 1;\s*transform: scale\(1\);\s*\}/);
+  expect(css).toContain("[data-slot='dialog-overlay'][data-state='open'] {\n  animation: overlay-in 150ms var(--motion-ease);\n}");
+  expect(css).toContain("[data-slot='dialog-content'][data-state='open'] {\n  animation: dialog-in 200ms var(--motion-ease);\n}");
+  expect(css).toMatch(/\[role='alert'\],\n\[data-motion='feedback'\] \{\n {2}animation: feedback-in 180ms var\(--motion-ease\);\n\}/);
+  expect(css).toMatch(/\.pressable:active \{\n {2}transform: scale\(0\.98\);\n\}/);
+  expect(css).toContain('--motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);');
+});
+
+test('action_animations_touch_only_opacity_transform_background', () => {
+  const css = read(GLOBALS);
+  for (const name of ['overlay-in', 'dialog-in', 'feedback-in']) {
+    const properties = new Set(declarationsOf(keyframesOf(css, name)).map(([property]) => property));
+    expect([...properties].sort(), name).toEqual(name === 'overlay-in' ? ['opacity'] : ['opacity', 'transform']);
+  }
+  const pressable = /\.pressable \{([^}]*)\}/.exec(css)?.[1] ?? '';
+  const transition = declarationsOf(pressable).find(([property]) => property === 'transition')?.[1] ?? '';
+  expect(transition.split(',').map((part) => part.trim().split(/\s+/)[0])).toEqual(['transform', 'background-color']);
+
+  // as regras desta feature: do bloco de movimento até a impressão
+  const added = css.slice(css.indexOf('/* Movimento (motion'), css.indexOf('/* A impressão'));
+  expect(added.length).toBeGreaterThan(200);
+  const banned = /^(top|left|width|height|margin(-\w+)?)$/;
+  for (const [property, value] of declarationsOf(added)) {
+    if (property === 'transition' || property === 'transition-property') {
+      for (const part of value.split(',')) expect(part.trim().split(/\s+/)[0], value).not.toMatch(banned);
+    }
+    // um `@keyframes` só move o que declara: nada de geometria
+    expect(property, value).not.toMatch(banned);
+  }
+});
+

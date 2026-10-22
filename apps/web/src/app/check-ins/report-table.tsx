@@ -58,7 +58,7 @@ export function ReportTable({ report }: { report: CheckInsReport }) {
       {failed && <Alert variant="destructive">Não foi possível carregar as presenças.</Alert>}
       {nextCursor && (
         <div>
-          <Button variant="outline" disabled={pending} onClick={() => loadMore(nextCursor)}>
+          <Button variant="outline" busy={pending} onClick={() => loadMore(nextCursor)}>
             Carregar mais
           </Button>
         </div>
