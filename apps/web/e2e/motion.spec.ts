@@ -688,6 +688,161 @@ test('entrance_does_not_widen_the_page_at_360', async ({ page, api }) => {
   }
 });
 
+// S6 - movimento reduzido, responsividade e portão
+
+const QUIET = '[data-motion="page"], [data-slot="page-skeleton"], [role="alert"], [role="dialog"], [data-motion="feedback"]';
+
+/** As animações do documento em `QUIET` ou dentro dele, e o `animation-name` de cada elemento de `QUIET`. */
+const quietState = (page: Page) =>
+  page.evaluate((selector) => {
+    const running = document.getAnimations().filter((animation) => {
+      const target = (animation.effect as KeyframeEffect | null)?.target;
+      return target instanceof Element && target.closest(selector) !== null;
+    });
+    const names = [...document.querySelectorAll(selector)].map((element) => getComputedStyle(element).animationName);
+    return { running: running.length, names, count: names.length };
+  }, QUIET);
+
+test('reduced_motion_leaves_no_running_animation', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize(MOBILE);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const expectQuiet = async (label: string) => {
+    const state = await quietState(page);
+    expect(state.count, `${label}: o elemento existe`).toBeGreaterThan(0);
+    expect(state.running, label).toBe(0);
+    for (const name of state.names) expect(name, label).toBe('none');
+  };
+
+  // navegação
+  serveWorld(api, 'admin');
+  await toStudents(page);
+  await settle(page);
+  await expectQuiet('navegação');
+
+  // esqueleto da espera (a rede não para: espera o esqueleto e mais meio segundo)
+  await toHangingStudents(page, api);
+  await page.waitForTimeout(500);
+  await expectQuiet('esqueleto');
+
+  // diálogo
+  serveWorld(api, 'admin');
+  await page.goto(`/students/${STUDENT_ID}`);
+  await settle(page);
+  await page.getByRole('button', { name: 'Inativar', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await settle(page);
+  await expectQuiet('diálogo');
+  await page.keyboard.press('Escape');
+
+  // registro que falha
+  const status = await openCheckInCard(page, api);
+  api.on('POST', checkInsPath(status.student.id), problem(500, 'internal_error'));
+  await page.getByRole('button', { name: 'Registrar presença', exact: true }).click();
+  await expect(page.getByRole('main').getByRole('alert')).toBeVisible();
+  await settle(page);
+  await expectQuiet('aviso');
+
+  // entrada de lista
+  serveTwelve(api);
+  await sampleEntrance(page, '/dashboard', 'Alunos', ROWS);
+  await expectQuiet('lista');
+
+  // menu da landing
+  await page.goto('/');
+  await settle(page);
+  await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await expect(page.locator('#site-menu')).toBeVisible();
+  await settle(page);
+  await expectQuiet('menu da landing');
+});
+
+/** Grava `[scrollWidth, clientWidth]` do documento a cada quadro por 1,2 s. */
+const recordWidths = () => {
+  const widths: number[][] = [];
+  Object.assign(window, { __widths: widths, __done: false });
+  const start = performance.now();
+  const tick = () => {
+    if (document.documentElement) widths.push([document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    if (performance.now() - start < 1200) requestAnimationFrame(tick);
+    else Object.assign(window, { __done: true });
+  };
+  requestAnimationFrame(tick);
+};
+
+/** As larguras do documento a cada quadro, da ação até a tela assentar. */
+async function widthsDuring(page: Page, action: () => Promise<unknown>) {
+  await page.evaluate(recordWidths);
+  await action();
+  await page.waitForFunction(() => (window as unknown as { __done: boolean }).__done);
+  return page.evaluate(() => (window as unknown as { __widths: number[][] }).__widths);
+}
+
+test('no_horizontal_scroll_during_motion_at_360_and_1440', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  serveTwelve(api);
+  for (const size of [NARROW, DESKTOP]) {
+    await page.setViewportSize(size);
+    // `/`: o primeiro documento, desde o primeiro quadro dele, e o cabeçalho que ganha fundo
+    // (numa página só dela: o script de início valeria para toda navegação seguinte da página)
+    const landing = await page.context().newPage();
+    await landing.setViewportSize(size);
+    await landing.addInitScript(recordWidths);
+    await landing.goto('/');
+    await landing.evaluate(() => window.scrollTo(0, 400));
+    await landing.waitForFunction(() => (window as unknown as { __done: boolean }).__done);
+    let widths = await landing.evaluate(() => (window as unknown as { __widths: number[][] }).__widths);
+    await landing.close();
+    expect(widths.length, `${size.width} /`).toBeGreaterThan(30);
+    for (const [scroll, client] of widths) expect(scroll, `${size.width} /`).toBe(client);
+    // as telas internas por navegação: a transição e a cascata rodando
+    for (const [from, name, path] of [
+      ['/students', 'Início', '/dashboard'],
+      ['/dashboard', 'Alunos', '/students'],
+      ['/dashboard', 'Funcionários', '/staff'],
+    ] as const) {
+      await page.goto(from);
+      await settle(page);
+      widths = await widthsDuring(page, () => navigateTo(page, name));
+      await expect(page).toHaveURL(path);
+      expect(widths.length, `${size.width} ${path}`).toBeGreaterThan(30);
+      for (const [scroll, client] of widths) expect(scroll, `${size.width} ${path}`).toBe(client);
+    }
+  }
+});
+
+test('motion_raises_no_csp_violation', async ({ page, api }) => {
+  await page.addInitScript(() => {
+    const violations: string[] = [];
+    (window as unknown as { __cspViolations: string[] }).__cspViolations = violations;
+    document.addEventListener('securitypolicyviolation', (event) => violations.push(`${event.violatedDirective} ${event.blockedURI}`));
+  });
+  const violations = () => page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+  await page.setViewportSize(MOBILE);
+  serveWorld(api, 'admin');
+
+  // navegação com a transição de página e a abertura de um diálogo, no mesmo documento
+  await toStudents(page);
+  await settle(page);
+  await page.goto(`/students/${STUDENT_ID}`);
+  await settle(page);
+  await page.getByRole('button', { name: 'Inativar', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await navigateTo(page, 'Início');
+  await expect(page).toHaveURL('/dashboard');
+  await settle(page);
+  expect(await violations()).toEqual([]);
+
+  // o menu da landing
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await expect(page.locator('#site-menu')).toBeVisible();
+  await settle(page);
+  await page.keyboard.press('Escape');
+  expect(await violations()).toEqual([]);
+});
+
 // S6 - C39: cópia, nomes acessíveis e ordem de foco iguais ao baseline gravado em `7471232`
 
 const BASELINE_DIR = join(import.meta.dirname, 'fixtures', 'motion-baseline');
