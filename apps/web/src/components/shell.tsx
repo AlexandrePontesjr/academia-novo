@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { canCheckIn } from '../lib/check-ins.ts';
 import { ROLE_LABELS } from '../lib/roles.ts';
 import { BottomNav, MoreMenu, SideNav } from './nav.tsx';
+import { PageTransition } from './page-transition.tsx';
 import { SignOutButton } from './sign-out-button.tsx';
 import { Brand } from './brand.tsx';
 
@@ -55,7 +56,7 @@ export function Shell({ session, alert, children }: { session: SessionResponse; 
         </div>
         <BottomNav role={user.role} />
       </header>
-      <main className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-32 lg:px-8 lg:pb-12">{children}</main>
+      <PageTransition className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-32 lg:px-8 lg:pb-12">{children}</PageTransition>
       {canCheckIn(user.role) && (
         <Link
           href="/check-in"

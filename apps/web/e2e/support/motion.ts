@@ -17,13 +17,20 @@ const SAMPLED = ['opacity', 'transform', 'pointer-events', 'width', 'height', 't
  * Instala, antes da ação, um `requestAnimationFrame` que grava a cada quadro o estilo computado dos
  * alvos de cada seletor (o primeiro elemento que casa, ou `null` enquanto não existe) até `ms` depois
  * de começar (checks.md, Sampling). `all: true` grava todo elemento que casa, achatado na ordem do DOM.
+ * `appear: true` conta os `ms` a partir do primeiro quadro em que o primeiro seletor existe (uma
+ * navegação leva um tempo de rede antes de a tela nova montar) e só grava desse quadro em diante.
  */
-export async function startSampling(page: Page, selectors: string[], options: { ms?: number; all?: boolean; extra?: string[] } = {}) {
+export async function startSampling(
+  page: Page,
+  selectors: string[],
+  options: { ms?: number; all?: boolean; appear?: boolean; extra?: string[] } = {},
+) {
   await page.evaluate(
-    ({ selectors, ms, all, properties }) => {
+    ({ selectors, ms, all, appear, properties }) => {
       const frames: Array<{ t: number; targets: Array<Record<string, string> | null> }> = [];
       (window as unknown as { __frames: typeof frames }).__frames = frames;
-      const start = performance.now();
+      let start = appear ? undefined : performance.now();
+      const limit = performance.now() + 5000;
       const read = (element: Element) => {
         const style = getComputedStyle(element);
         return Object.fromEntries(properties.map((property) => [property, style.getPropertyValue(property)]));
@@ -35,14 +42,15 @@ export async function startSampling(page: Page, selectors: string[], options: { 
           const element = document.querySelector(selector);
           return [element ? read(element) : null];
         });
-        frames.push({ t, targets });
-        if (t - start < ms) requestAnimationFrame(tick);
+        if (start === undefined && document.querySelector(selectors[0]!)) start = t;
+        if (start !== undefined) frames.push({ t, targets });
+        if ((start === undefined || t - start < ms) && t < limit) requestAnimationFrame(tick);
         else (window as unknown as { __done: boolean }).__done = true;
       };
       (window as unknown as { __done: boolean }).__done = false;
       requestAnimationFrame(tick);
     },
-    { selectors, ms: options.ms ?? 600, all: options.all ?? false, properties: [...SAMPLED, ...(options.extra ?? [])] },
+    { selectors, ms: options.ms ?? 600, all: options.all ?? false, appear: options.appear ?? false, properties: [...SAMPLED, ...(options.extra ?? [])] },
   );
 }
 

@@ -18,6 +18,12 @@ export const MOTION = {
   staggerMax: 8,
 } as const;
 
+/** A entrada de um bloco: some e fica `distance` px abaixo, depois aparece no lugar. */
+export const enter = (distance: number) => ({
+  hidden: { opacity: 0, y: distance },
+  shown: { opacity: 1, y: 0 },
+});
+
 /** A configuração de movimento da árvore inteira: respeita o movimento reduzido do sistema, sem elemento próprio. */
 export function MotionProvider({ children }: { children: ReactNode }) {
   return (
