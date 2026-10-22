@@ -1,7 +1,7 @@
 'use client';
 
 import type { Role, StudentsResponse, StudentStatus } from '@academia/contracts';
-import { Alert, Button, Input, Label, Select, Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, Input, Label, Select, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
 import Link from 'next/link';
 import { type FormEvent, useId, useState } from 'react';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
@@ -114,9 +114,9 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
               </tr>
             </thead>
             <tbody>
-              {page.items.map((student) => (
+              {page.items.map((student, index) => (
                 <TableRow key={student.id}>
-                  <TableCell>
+                  <StaggerCell index={index}>
                     <div className="flex items-center gap-3">
                       <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
                       <Link
@@ -127,10 +127,10 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
                         {student.name}
                       </Link>
                     </div>
-                  </TableCell>
-                  {withContact && <TableCell>{formatCpf(student.cpf ?? '')}</TableCell>}
-                  {withContact && <TableCell>{formatPhone(student.phone ?? '')}</TableCell>}
-                  <TableCell>{STATUS_LABELS[student.status]}</TableCell>
+                  </StaggerCell>
+                  {withContact && <StaggerCell index={index}>{formatCpf(student.cpf ?? '')}</StaggerCell>}
+                  {withContact && <StaggerCell index={index}>{formatPhone(student.phone ?? '')}</StaggerCell>}
+                  <StaggerCell index={index}>{STATUS_LABELS[student.status]}</StaggerCell>
                 </TableRow>
               ))}
             </tbody>

@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
+import { Reveal } from '../motion.tsx';
 
 /** A superfície da referência: cartão #0f0f0f, borda do tema e raio de 16 px. */
 export const PANEL = 'rounded-2xl border bg-card p-5';
@@ -17,16 +18,19 @@ export function Panel({
   title,
   action,
   className,
+  index,
   children,
 }: {
   id: string;
   title: string;
   action?: ReactNode;
   className?: string;
+  /** A posição do cartão numa grade que entra em cascata (motion, door 4); sem ela, o cartão não se move. */
+  index?: number;
   children: ReactNode;
 }) {
-  return (
-    <section aria-labelledby={id} className={cn('grid content-start gap-4', PANEL, className)}>
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <h3 id={id} className="text-xl font-medium">
           {title}
@@ -34,7 +38,20 @@ export function Panel({
         {action}
       </div>
       {children}
-    </section>
+    </>
+  );
+  const classes = cn('grid content-start gap-4', PANEL, className);
+  if (index === undefined) {
+    return (
+      <section aria-labelledby={id} className={classes}>
+        {content}
+      </section>
+    );
+  }
+  return (
+    <Reveal as="section" index={index} aria-labelledby={id} className={classes}>
+      {content}
+    </Reveal>
   );
 }
 

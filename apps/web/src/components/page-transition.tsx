@@ -1,12 +1,9 @@
 'use client';
 
-import { enter, MOTION } from '@academia/ui';
-import { motion, useReducedMotion } from 'motion/react';
+import { enter, MOTION, useEntrance } from '@academia/ui';
+import { motion } from 'motion/react';
 import { usePathname } from 'next/navigation';
-import { type ReactNode, useEffect, useState } from 'react';
-
-/** Vira `true` depois da primeira montagem no navegador: só as navegações seguintes animam. */
-let hydrated = false;
+import type { ReactNode } from 'react';
 
 /**
  * O `<main>` da Shell com a entrada de página (motion, door 2; AD-100): opacidade 0→1 e 8 px → 0 (12 px
@@ -15,20 +12,10 @@ let hydrated = false;
  */
 export function PageTransition({ className, children }: { className: string; children: ReactNode }) {
   const pathname = usePathname();
-  const reduce = useReducedMotion();
-  const [distance] = useState(() =>
-    typeof window !== 'undefined' && hydrated
-      ? window.matchMedia('(min-width: 1024px)').matches
-        ? MOTION.distanceDesktop
-        : MOTION.distance
-      : null,
-  );
-  useEffect(() => {
-    hydrated = true;
-  }, []);
+  const distance = useEntrance();
 
   if (pathname.endsWith('/print')) return <main className={className}>{children}</main>;
-  if (distance === null || reduce) {
+  if (distance === null) {
     return (
       <motion.main className={className} data-motion="page">
         {children}

@@ -1,4 +1,4 @@
-import { Button, Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { Button, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
 import Link from 'next/link';
 import { Shell } from '../../components/shell.tsx';
 import { loadPlans } from '../../lib/plans-server.ts';
@@ -47,9 +47,9 @@ export default async function PlansPage() {
               </tr>
             </thead>
             <tbody>
-              {plans.map((plan) => (
+              {plans.map((plan, index) => (
                 <TableRow key={plan.id}>
-                  <TableCell>
+                  <StaggerCell index={index}>
                     {canWrite ? (
                       // a edição pede a lista de planos: nada de pré-carregar uma por linha
                       <Link
@@ -62,11 +62,11 @@ export default async function PlansPage() {
                     ) : (
                       plan.name
                     )}
-                  </TableCell>
-                  <TableCell>{PERIOD_LABELS[plan.period]}</TableCell>
-                  <TableCell className="whitespace-nowrap">{formatPrice(plan.priceCents)}</TableCell>
-                  <TableCell className="break-words whitespace-pre-wrap">{plan.rules ?? '—'}</TableCell>
-                  <TableCell>{PLAN_STATUS_LABELS[plan.status]}</TableCell>
+                  </StaggerCell>
+                  <StaggerCell index={index}>{PERIOD_LABELS[plan.period]}</StaggerCell>
+                  <StaggerCell index={index} className="whitespace-nowrap">{formatPrice(plan.priceCents)}</StaggerCell>
+                  <StaggerCell index={index} className="break-words whitespace-pre-wrap">{plan.rules ?? '—'}</StaggerCell>
+                  <StaggerCell index={index}>{PLAN_STATUS_LABELS[plan.status]}</StaggerCell>
                 </TableRow>
               ))}
             </tbody>

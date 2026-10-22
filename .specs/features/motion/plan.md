@@ -45,8 +45,11 @@ nenhuma cor, fonte, permissão, contrato ou dado novo.
 3. `apps/web/src/app/<segmento>/loading.tsx` (new, door 3) monta `AppLoading` (new, door 3) de
    `apps/web/src/components/app-loading.tsx`, o esqueleto com a geometria da shell, enquanto o
    server component busca os dados.
-4. telas internas (exist) aplicam `Reveal` e `Stagger` de `@academia/ui` (new, door 4) aos cartões
-   do painel e às listas de alunos, planos, pagamentos, funcionários e presenças.
+4. telas internas (exist) aplicam `Reveal` de `@academia/ui` (new, door 4) aos cartões do painel, pelo
+   `index` do `Panel`, e `StaggerCell` (a célula `td` de um `StaggerItem`) às linhas das listas de
+   alunos, planos, pagamentos, funcionários e presenças: a linha `tr` fica parada e o conteúdo dela
+   entra. O que veio no documento do servidor chega parado; só o que monta no navegador entra
+   (`useEntrance`, em `packages/ui/src/motion.tsx`).
 5. `packages/ui/src/globals.css` (exists) e os componentes `Button`, `Dialog` e `Alert` (exist)
    recebem os estados de toque, abertura e feedback pelo CSS do tema (door 5).
 6. `/` -> `apps/web/src/app/page.tsx` (exists) deixa de montar o `<header>` dentro do hero e
@@ -71,8 +74,8 @@ nenhuma cor, fonte, permissão, contrato ou dado novo.
 | impressão | `apps/web/src/app/students/[id]/print/page.tsx` e `apps/web/src/app/staff/[id]/print/page.tsx` não montam `PageTransition` e não recebem animação |
 | contrato da API | nothing - nenhuma rota, schema, resposta ou status muda |
 | stored data | nothing - nenhuma migração, coluna ou dado novo |
-| e2e existentes | com o `loading.tsx`, o conteúdo do segmento chega por streaming e hidrata um instante depois do `load`: três provas que preenchem um formulário logo após o `goto` (`staff.spec.ts` › `new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared`, `students.spec.ts` › `guardian_block_shown_only_for_minor_on_both_forms` e `guardian_422_shown_on_each_field_keeps_the_rest`) ganham a espera `formHydrated`; os contadores de id das fixtures ganham leitura e reposição para a C39 |
 | diálogos | `DialogContent` devolve o foco a quem o tinha ao abrir: os diálogos do app abrem por estado, sem `DialogTrigger`, e o Radix só devolve o foco a um `DialogTrigger` (antes o foco caía no `body`; AC 23 e AC 49) |
+| e2e existentes | com o `loading.tsx`, o conteúdo do segmento chega por streaming e hidrata um instante depois do `load`: três provas que preenchem um formulário logo após o `goto` (`staff.spec.ts` › `new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared`, `students.spec.ts` › `guardian_block_shown_only_for_minor_on_both_forms` e `guardian_422_shown_on_each_field_keeps_the_rest`) ganham a espera `formHydrated`; os contadores de id das fixtures ganham leitura e reposição para a C39 |
 | acessibilidade | `aria-busy` entra nos carregamentos e nos controles pendentes; `role="alert"` e `role="status"` continuam sendo o sinal que o leitor de tela anuncia, e a animação é decoração |
 
 ## Relations

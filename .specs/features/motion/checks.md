@@ -312,4 +312,4 @@ Size from `wc -c` of the files each slice touches, divided by four:
 - Mechanism: one builder (under budget, no ask)
 - Order: the C39 baseline under `apps/web/e2e/fixtures/motion-baseline/` is recorded at `7471232` before any code of this feature; S1's first commit also carries the four dependency files that are uncommitted today (`apps/web/package.json`, `packages/ui/package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`)
 - Verifier: blocked by the plan's Open question (real plan prices) through C37; the Build is not
-- **Progress:** baseline C39 em `70e9826` (gravado sobre o código de `7471232`); S1 (C1-C5), S2 (C6-C12), S3 (C13-C18) e S4 (C19-C26) fechadas
+- **Progress:** baseline C39 em `70e9826` (gravado sobre o código de `7471232`); S1 (C1-C5), S2 (C6-C12), S3 (C13-C18), S4 (C19-C26) e S5 (C27-C33) fechadas

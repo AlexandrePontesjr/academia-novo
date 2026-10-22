@@ -69,9 +69,12 @@ function ListOrTable({ head, rows }: { head: string[]; rows: Array<{ key: string
 function Cards({ dashboard }: { dashboard: DashboardResponse }) {
   const { students, enrollments, payments, checkIns, today } = dashboard;
   const weekMax = checkIns ? Math.max(0, ...checkIns.lastSevenDays.map((day) => day.count)) : 0;
+  // a posição de cada cartão presente, na ordem da grade: a cascata conta só os que aparecem
+  let card = 0;
+  const next = () => card++;
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-slot="dashboard-grid">
-      <Panel id="card-students" title="Alunos" action={<Arrow href="/students" label="Ver alunos" />}>
+      <Panel index={next()} id="card-students" title="Alunos" action={<Arrow href="/students" label="Ver alunos" />}>
         <dl className="grid gap-4">
           <div className="grid gap-1">
             <dt className="text-sm text-muted-foreground">Ativos</dt>
@@ -84,7 +87,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
         </dl>
       </Panel>
       {checkIns && (
-        <Panel id="card-check-ins" title="Check-ins de hoje" action={<Arrow href="/check-ins" label="Ver presenças de hoje" />}>
+        <Panel index={next()} id="card-check-ins" title="Check-ins de hoje" action={<Arrow href="/check-ins" label="Ver presenças de hoje" />}>
           <Gauge
             value={checkIns.count}
             max={weekMax}
@@ -94,12 +97,12 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
         </Panel>
       )}
       {checkIns && (
-        <Panel id="card-week" title="Check-ins da semana">
+        <Panel index={next()} id="card-week" title="Check-ins da semana">
           <WeekBars days={checkIns.lastSevenDays} label="Check-ins por dia, últimos 7 dias" />
         </Panel>
       )}
       {enrollments && (
-        <Panel id="card-enrollments" title="Matrículas">
+        <Panel index={next()} id="card-enrollments" title="Matrículas">
           <dl className="grid grid-cols-2 gap-3">
             <MetricTile label="Ativas" value={enrollments.active} />
             <MetricTile label="Agendadas" value={enrollments.scheduled} />
@@ -108,6 +111,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
       )}
       {enrollments && (
         <Panel
+          index={next()}
           id="card-expiring"
           title={`Vencimentos nos próximos ${enrollments.expiringSoon.days} dias`}
           className="md:col-span-2"
@@ -132,7 +136,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
         </Panel>
       )}
       {payments && (
-        <Panel id="card-payments" title="Pagamentos">
+        <Panel index={next()} id="card-payments" title="Pagamentos">
           <dl className="grid grid-cols-2 gap-3">
             <MetricTile
               label="Pendentes"
@@ -154,7 +158,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
         </Panel>
       )}
       {enrollments && (
-        <Panel id="card-by-plan" title="Matrículas ativas por plano">
+        <Panel index={next()} id="card-by-plan" title="Matrículas ativas por plano">
           {enrollments.byPlan.length === 0 ? (
             <p>Nenhuma matrícula ativa.</p>
           ) : (

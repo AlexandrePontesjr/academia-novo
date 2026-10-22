@@ -1,5 +1,5 @@
 import { type StaffListResponse, staffListResponseSchema } from '@academia/contracts';
-import { Alert, Button, Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
@@ -61,9 +61,9 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
               </tr>
             </thead>
             <tbody>
-              {list.items.map((member) => (
+              {list.items.map((member, index) => (
                 <TableRow key={member.id}>
-                  <TableCell>
+                  <StaggerCell index={index}>
                     <div className="flex items-center gap-3">
                       <PersonPhoto name={member.name} photoUrl={member.photoUrl} shape="thumb" />
                       {/* a ficha só conta como vista quando alguém a abre: nada de pré-carregar (door 5) */}
@@ -75,10 +75,10 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
                         {member.name}
                       </Link>
                     </div>
-                  </TableCell>
-                  <TableCell>{member.position}</TableCell>
-                  <TableCell>{member.department ?? '—'}</TableCell>
-                  <TableCell>{STATUS_LABELS[member.status]}</TableCell>
+                  </StaggerCell>
+                  <StaggerCell index={index}>{member.position}</StaggerCell>
+                  <StaggerCell index={index}>{member.department ?? '—'}</StaggerCell>
+                  <StaggerCell index={index}>{STATUS_LABELS[member.status]}</StaggerCell>
                 </TableRow>
               ))}
             </tbody>

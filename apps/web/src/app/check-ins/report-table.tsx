@@ -1,7 +1,7 @@
 'use client';
 
 import type { CheckInsReport } from '@academia/contracts';
-import { Alert, Button, Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
 import Link from 'next/link';
 import { useState } from 'react';
 import { callApi } from '../../lib/api.ts';
@@ -41,16 +41,16 @@ export function ReportTable({ report }: { report: CheckInsReport }) {
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
+          {items.map((item, index) => (
             <TableRow key={item.id}>
-              <TableCell>{formatBirthDate(item.day)}</TableCell>
-              <TableCell>{formatTime(item.checkedInAt)}</TableCell>
-              <TableCell>
+              <StaggerCell index={index}>{formatBirthDate(item.day)}</StaggerCell>
+              <StaggerCell index={index}>{formatTime(item.checkedInAt)}</StaggerCell>
+              <StaggerCell index={index}>
                 <Link href={`/students/${item.student.id}`} prefetch={false} className="text-primary underline underline-offset-4">
                   {item.student.name}
                 </Link>
-              </TableCell>
-              <TableCell>{item.checkedInBy.name}</TableCell>
+              </StaggerCell>
+              <StaggerCell index={index}>{item.checkedInBy.name}</StaggerCell>
             </TableRow>
           ))}
         </tbody>

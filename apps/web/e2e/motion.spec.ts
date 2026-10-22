@@ -1,12 +1,26 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { checkInsPath, LATE, listItemOf, servePhotos, serveSearch, statusOf, statusPath } from './support/check-ins.ts';
+import { checkInsPath, LATE, listItemOf, reportItemOf, reportOf, servePhotos, serveSearch, statusOf, statusPath } from './support/check-ins.ts';
 import { expect, type FakeApi, problem, sessionOf, test } from './support/fake-api.ts';
 import { SCREENS, serveWorld } from './support/identidade.ts';
-import { animationOf, type Baseline, baselineOf, DESKTOP, fixtureIds, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
-import { STUDENT_ID } from './support/plans.ts';
-import { STAFF_ID } from './support/staff.ts';
+import {
+  animationOf,
+  type Baseline,
+  baselineOf,
+  DESKTOP,
+  fixtureIds,
+  type Frame,
+  framesOf,
+  MOBILE,
+  NARROW,
+  settle,
+  startSampling,
+  translateYOf,
+} from './support/motion.ts';
+import { openPaymentOf, serveOpenPayments } from './support/payments.ts';
+import { planOf, servePlans, stateOf, STUDENT_ID } from './support/plans.ts';
+import { serveStaffAs, STAFF_ID, staffOf } from './support/staff.ts';
 
 /**
  * A prova da `motion` (`.specs/features/motion`): transição de página, carregamento, ações, entrada
@@ -457,6 +471,221 @@ test('failed_action_alert_keeps_role_and_text_and_animates', async ({ page, api 
   alert = page.getByRole('main').getByRole('alert');
   await expect(alert).toHaveText('Não foi possível registrar a presença.');
   expect(await animationOf(alert)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+});
+
+// S5 - entrada de conteúdo
+
+const TWELVE = Array.from({ length: 12 }, (_, index) => index + 1);
+const idFor = (group: string, n: number) => `018f0000-0000-7000-8000-0000000${group}${String(n).padStart(3, '0')}`;
+
+/** As 5 listas com 12 itens na API falsa, e o nome de cada item na ordem da resposta. */
+function serveTwelve(api: FakeApi) {
+  serveWorld(api, 'admin');
+  const students = TWELVE.map((n) => listItemOf(n, { photoUrl: null }));
+  api.on('GET', '/api/students', { status: 200, body: { items: students, nextCursor: null } });
+  const plans = TWELVE.map((n) => planOf({ id: idFor('91', n), name: `Plano ${n}` }));
+  servePlans(api, stateOf({ plans }));
+  const payments = TWELVE.map((n) => openPaymentOf({ student: { id: idFor('63', n), name: `Pagante ${n}` } }));
+  serveOpenPayments(api, 'admin', payments);
+  const staff = TWELVE.map((n) => staffOf({ id: idFor('41', n), name: `Funcionário ${n}` }));
+  serveStaffAs(api, 'admin', { staff, users: [] });
+  const report = TWELVE.map((n) => reportItemOf(n));
+  api.on('GET', '/api/check-ins', { status: 200, body: reportOf({ total: 12, items: report }) });
+  return {
+    students: students.map((item) => item.name),
+    plans: plans.map((item) => item.name),
+    payments: payments.map((item) => item.student.name),
+    staff: staff.map((item) => item.name),
+    checkIns: report.map((item) => item.student.name),
+  };
+}
+
+/** As 5 listas: o caminho, o link que leva a ela e a chave dos nomes da fixture. */
+const LISTS = [
+  { path: '/students', link: 'Alunos', key: 'students' },
+  { path: '/plans', link: 'Planos', key: 'plans' },
+  { path: '/payments', link: 'Pagamentos', key: 'payments' },
+  { path: '/staff', link: 'Funcionários', key: 'staff' },
+  { path: '/check-ins', link: 'Presenças', key: 'checkIns' },
+] as const;
+
+/** Aciona o link `name` da navegação: a aba ou a barra lateral se visível, senão pelo menu "Mais". */
+async function navigateTo(page: Page, name: string) {
+  const direct = page.locator('[data-slot="bottom-nav"], [data-slot="side-nav"]').getByRole('link', { name, exact: true }).filter({ visible: true });
+  if ((await direct.count()) > 0) return direct.first().click();
+  await page.locator('[data-slot="bottom-nav"]').getByRole('button', { name: 'Mais', exact: true }).click();
+  await page.getByRole('dialog').getByRole('link', { name, exact: true }).click();
+}
+
+const ROWS = 'main:not([data-old]) tbody tr > td:first-child';
+const CARDS = 'main:not([data-old]) [data-slot="dashboard-grid"] > section';
+
+/** De `from`, navega até `name` e amostra `selector` (todos) desde o quadro em que o `main` novo monta. */
+async function sampleEntrance(page: Page, from: string, name: string, selector: string) {
+  await page.goto(from);
+  await settle(page);
+  await page.evaluate(() => document.querySelector('main')?.setAttribute('data-old', ''));
+  await startSampling(page, [selector], { all: true, appear: true, ms: 900 });
+  await navigateTo(page, name);
+  const frames = await framesOf(page);
+  expect(frames.length, `${name}: a tela nova montou`).toBeGreaterThan(0);
+  await settle(page);
+  return frames;
+}
+
+/** O instante do primeiro quadro em que cada item aparece (`opacity` > 0), relativo ao item 0. */
+function firstShown(frames: Frame[], count: number) {
+  const times = Array.from({ length: count }, (_, index) => frames.find((frame) => Number(frame.targets[index]?.opacity ?? 0) > 0)?.t);
+  for (const [index, time] of times.entries()) expect(time, `item ${index} aparece`).toBeDefined();
+  return times.map((time) => time! - times[0]!);
+}
+
+test('dashboard_cards_reveal_with_40ms_steps', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  serveWorld(api, 'admin');
+  const frames = await sampleEntrance(page, '/students', 'Início', CARDS);
+  const count = frames.at(-1)!.targets.length;
+  expect(count).toBe(7);
+  const times = firstShown(frames, count);
+  for (const [index, time] of times.entries()) expect(Math.abs(time - index * 40), `cartão ${index}`).toBeLessThanOrEqual(17);
+  for (let index = 0; index < count; index += 1) expect(frames.at(-1)!.targets[index], `cartão ${index}`).toMatchObject({ opacity: '1', transform: 'none' });
+});
+
+test('lists_stagger_8_items_at_40ms_and_cap_the_rest', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize(MOBILE);
+  serveTwelve(api);
+  for (const list of LISTS) {
+    const frames = await sampleEntrance(page, '/dashboard', list.link, ROWS);
+    expect(frames.at(-1)!.targets, list.path).toHaveLength(12);
+    const times = firstShown(frames, 12);
+    for (const [index, time] of times.entries()) {
+      if (index < 8) expect(Math.abs(time - index * 40), `${list.path} item ${index}`).toBeLessThanOrEqual(17);
+      else expect(time, `${list.path} item ${index}`).toBeLessThanOrEqual(280 + 17);
+    }
+    // a cascata andou de fato: o item 0 começou escondido
+    expect(Number(frames[0]!.targets[0]!.opacity), list.path).toBeLessThan(1);
+  }
+});
+
+test('reduced_motion_lists_are_static', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize(MOBILE);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  serveTwelve(api);
+  const runs = [
+    ...LISTS.map((list) => ({ from: '/dashboard', name: list.link, selector: ROWS, label: list.path })),
+    { from: '/students', name: 'Início', selector: CARDS, label: '/dashboard' },
+  ];
+  for (const run of runs) {
+    const frames = await sampleEntrance(page, run.from, run.name, run.selector);
+    expect(frames.at(-1)!.targets.length, run.label).toBeGreaterThan(5);
+    for (const frame of frames) {
+      for (const target of frame.targets) expect(target, run.label).toMatchObject({ opacity: '1', transform: 'none' });
+    }
+  }
+});
+
+/** O nome do link de cada linha (o aluno, o plano, o funcionário) e o nome acessível de cada linha, na ordem do DOM. */
+const rowsOf = async (page: Page) => {
+  const rows = page.locator('main tbody tr');
+  const result: Array<{ link: string | null; name: string }> = [];
+  for (let index = 0; index < (await rows.count()); index += 1) {
+    const row = rows.nth(index);
+    const link = row.getByRole('link');
+    result.push({ link: (await link.count()) > 0 ? (await link.first().textContent())!.trim() : null, name: await row.evaluate((element) => (element as HTMLElement).innerText) });
+  }
+  return result;
+};
+
+test('entrance_keeps_order_names_and_leaves_table_rows_alone', async ({ page, api }) => {
+  test.setTimeout(180_000);
+  const names = serveTwelve(api);
+  for (const size of [MOBILE, DESKTOP]) {
+    await page.setViewportSize(size);
+    for (const list of LISTS) {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.goto(list.path);
+      await settle(page);
+      const still = await rowsOf(page);
+
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      const frames = await sampleEntrance(page, '/dashboard', list.link, 'main:not([data-old]) tbody tr');
+      const moving = await rowsOf(page);
+      expect(moving.map((row) => row.link), `${size.width} ${list.path} ordem`).toEqual(names[list.key]);
+      expect(moving, `${size.width} ${list.path} nomes`).toEqual(still);
+      if (size === DESKTOP) {
+        expect(frames.at(-1)!.targets, list.path).toHaveLength(12);
+        for (const frame of frames) {
+          for (const target of frame.targets) expect(target, `${list.path} tr`).toMatchObject({ opacity: '1', transform: 'none' });
+        }
+      }
+    }
+  }
+});
+
+test('replaced_rows_animate_once_and_same_rows_do_not_restart', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  serveWorld(api, 'admin');
+  const all = TWELVE.map((n) => listItemOf(n, { photoUrl: null }));
+  api.on('GET', '/api/students', (request) => {
+    const q = new URLSearchParams(request.query).get('q');
+    return { status: 200, body: { items: q ? all.slice(6) : all.slice(0, 6), nextCursor: null } };
+  });
+  await page.goto('/students');
+  await settle(page);
+  const field = page.getByLabel('Buscar por nome, CPF ou telefone', { exact: true });
+  const rows = 'main tbody tr > td';
+  await expect(page.locator('main tbody tr').first()).toContainText('Aluno 1');
+
+  // a busca troca as linhas: a primeira linha nova entra escondida
+  await field.fill('Aluno');
+  await startSampling(page, ['main tbody tr:first-child > td:first-child'], { ms: 900 });
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  let frames = await framesOf(page);
+  await expect(page.locator('main tbody tr').first()).toContainText('Aluno 7');
+  expect(frames.some((frame) => Number(frame.targets[0]?.opacity ?? 1) < 1), 'a primeira linha nova começa escondida').toBe(true);
+  await settle(page);
+
+  // a mesma busca de novo devolve as mesmas linhas: nada recomeça
+  await startSampling(page, [rows], { all: true, ms: 900 });
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  frames = await framesOf(page);
+  for (const frame of frames) {
+    for (const target of frame.targets) expect(Number(target!.opacity), 'mesmas linhas').toBe(1);
+  }
+});
+
+test('entrance_does_not_widen_the_page_at_360', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize(NARROW);
+  serveTwelve(api);
+  for (const list of LISTS) {
+    await page.goto('/dashboard');
+    await settle(page);
+    await page.evaluate(() => {
+      const widths: number[][] = [];
+      Object.assign(window, { __widths: widths, __done: false });
+      const start = performance.now();
+      const tick = () => {
+        widths.push([document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        if (performance.now() - start < 1500) requestAnimationFrame(tick);
+        else Object.assign(window, { __done: true });
+      };
+      requestAnimationFrame(tick);
+    });
+    await navigateTo(page, list.link);
+    await page.waitForFunction(() => (window as unknown as { __done: boolean }).__done);
+    const widths = await page.evaluate(() => (window as unknown as { __widths: number[][] }).__widths);
+    expect(widths.length, list.path).toBeGreaterThan(30);
+    for (const [scroll, client] of widths) expect(scroll, list.path).toBe(client);
+    const edges = await page.locator('main table').evaluate((table) => {
+      const scroller = table.parentElement!;
+      const panel = scroller.parentElement!.closest('.bg-card') ?? scroller.parentElement!;
+      return { scroller: scroller.getBoundingClientRect().right, panel: panel.getBoundingClientRect().right };
+    });
+    expect(edges.scroller, list.path).toBeLessThanOrEqual(edges.panel);
+  }
 });
 
 // S6 - C39: cópia, nomes acessíveis e ordem de foco iguais ao baseline gravado em `7471232`

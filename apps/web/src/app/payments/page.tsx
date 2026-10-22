@@ -1,5 +1,5 @@
 import { openPaymentStatusSchema } from '@academia/contracts';
-import { Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
 import Link from 'next/link';
 import { Shell } from '../../components/shell.tsx';
 import { loadOpenPayments } from '../../lib/payments-server.ts';
@@ -47,9 +47,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map((payment) => (
+                  {payments.map((payment, index) => (
                     <TableRow key={payment.enrollmentId}>
-                      <TableCell>
+                      <StaggerCell index={index}>
                         <Link
                           href={`/students/${payment.student.id}`}
                           prefetch={false}
@@ -57,14 +57,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                         >
                           {payment.student.name}
                         </Link>
-                      </TableCell>
-                      <TableCell>
+                      </StaggerCell>
+                      <StaggerCell index={index}>
                         {payment.plan.name} · {PERIOD_LABELS[payment.plan.period]}
-                      </TableCell>
-                      <TableCell>{formatPeriod(payment.startsAt, payment.endsAt)}</TableCell>
-                      <TableCell>{formatBirthDate(payment.dueDate)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatPrice(payment.priceCents)}</TableCell>
-                      <TableCell>{PAYMENT_STATUS_LABELS[payment.status]}</TableCell>
+                      </StaggerCell>
+                      <StaggerCell index={index}>{formatPeriod(payment.startsAt, payment.endsAt)}</StaggerCell>
+                      <StaggerCell index={index}>{formatBirthDate(payment.dueDate)}</StaggerCell>
+                      <StaggerCell index={index} className="whitespace-nowrap">{formatPrice(payment.priceCents)}</StaggerCell>
+                      <StaggerCell index={index}>{PAYMENT_STATUS_LABELS[payment.status]}</StaggerCell>
                     </TableRow>
                   ))}
                 </tbody>
