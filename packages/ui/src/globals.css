@@ -25,6 +25,8 @@
   --destructive: #dc2626;
   --destructive-foreground: #fafafa;
   --radius: 1rem;
+  /* a curva de todo movimento do tema, a mesma de `MOTION.ease` (motion, door 1) */
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @theme inline {
@@ -103,6 +105,52 @@
 @media (prefers-reduced-motion: reduce) {
   .spin-slow {
     animation: none;
+  }
+}
+
+/* Movimento (motion, doors 3 e 5; AD-101, AD-103): o pulso do esqueleto e a entrada dos avisos. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+[data-slot='skeleton'] {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes feedback-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[role='alert'],
+[data-motion='feedback'] {
+  animation: feedback-in 180ms var(--motion-ease);
+}
+
+/* Com movimento reduzido nada do tema se move: o esqueleto fica parado a meio caminho. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='skeleton'] {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  [role='alert'],
+  [data-motion='feedback'] {
+    animation: none;
+    transition: none;
+    transform: none;
   }
 }
 

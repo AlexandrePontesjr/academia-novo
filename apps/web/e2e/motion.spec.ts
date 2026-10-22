@@ -1,9 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test } from './support/fake-api.ts';
+import { expect, type FakeApi, problem, test } from './support/fake-api.ts';
 import { SCREENS, serveWorld } from './support/identidade.ts';
 import type { Page } from '@playwright/test';
-import { type Baseline, baselineOf, DESKTOP, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
+import { animationOf, type Baseline, baselineOf, DESKTOP, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
 import { STUDENT_ID } from './support/plans.ts';
 import { STAFF_ID } from './support/staff.ts';
 
@@ -197,6 +197,117 @@ test('every_shell_route_has_one_page_motion_main', async ({ page, api }) => {
     await expect(page.locator('main'), path).toHaveCount(1);
     await expect(page.locator('main'), path).toHaveAttribute('data-motion', 'page');
   }
+});
+
+// S3 - carregamento
+
+const SKELETON = '[data-slot="page-skeleton"]';
+
+/** De `/dashboard`, aciona "Alunos" com a lista da API falsa presa: a tela fica no esqueleto. */
+async function toHangingStudents(page: Page, api: FakeApi) {
+  serveWorld(api, 'admin');
+  api.on('GET', '/api/students', 'hang');
+  await page.goto('/dashboard');
+  await settle(page);
+  await page.getByRole('link', { name: 'Alunos', exact: true }).filter({ visible: true }).first().click();
+  await expect(page.locator(SKELETON)).toBeVisible();
+}
+
+test('pending_navigation_shows_the_page_skeleton', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  await toHangingStudents(page, api);
+  const skeleton = page.locator(SKELETON);
+  await expect(skeleton).toHaveCount(1);
+  await expect(skeleton).toHaveAttribute('role', 'status');
+  await expect(skeleton).toHaveAttribute('aria-busy', 'true');
+  await expect(page.getByRole('status', { name: /Carregando…/ })).toHaveCount(1);
+  // a tela de verdade ainda não chegou
+  await expect(page.locator('main')).toHaveCount(0);
+});
+
+test('skeleton_repeats_the_shell_geometry', async ({ page, api }) => {
+  for (const size of [MOBILE, DESKTOP]) {
+    await page.setViewportSize(size);
+    await toHangingStudents(page, api);
+    const skeleton = page.locator(SKELETON);
+    await expect(skeleton.locator('[data-slot="skeleton-shell"]'), `${size.width}`).toHaveCount(1);
+    const title = skeleton.locator('[data-slot="skeleton-title"]');
+    await expect(title, `${size.width}`).toHaveCount(1);
+    expect(Math.round((await title.boundingBox())!.height), `${size.width} título`).toBe(30);
+    const panels = skeleton.locator('[data-slot="skeleton-panel"]');
+    await expect(panels, `${size.width}`).toHaveCount(4);
+    for (const box of await panels.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height))) {
+      expect(Math.round(box), `${size.width} bloco`).toBe(96);
+    }
+    const avatar = (await skeleton.locator('[data-slot="skeleton-avatar"]').boundingBox())!;
+    expect([Math.round(avatar.width), Math.round(avatar.height)], `${size.width} avatar`).toEqual([44, 44]);
+    const box = await skeleton.locator('[data-slot="skeleton-content"]').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { maxWidth: style.maxWidth, left: style.paddingLeft, right: style.paddingRight, x: element.getBoundingClientRect().x, width: element.getBoundingClientRect().width };
+    });
+    if (size === DESKTOP) {
+      const side = skeleton.locator('[data-slot="skeleton-side"]');
+      await expect(side).toBeVisible();
+      expect(Math.round((await side.boundingBox())!.width)).toBe(256);
+      await expect(skeleton.locator('[data-slot="skeleton-bottom-bar"]')).toBeHidden();
+    } else {
+      await expect(skeleton.locator('[data-slot="skeleton-bottom-bar"]')).toBeVisible();
+      await expect(skeleton.locator('[data-slot="skeleton-side"]')).toBeHidden();
+    }
+
+    // a tela de verdade, carregada: o `main` tem a mesma largura máxima, os mesmos recuos e a mesma caixa
+    api.on('GET', '/api/students', { status: 200, body: { items: [], nextCursor: null } });
+    await page.goto('/students');
+    await settle(page);
+    const main = await page.getByRole('main').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { maxWidth: style.maxWidth, left: style.paddingLeft, right: style.paddingRight, x: element.getBoundingClientRect().x, width: element.getBoundingClientRect().width };
+    });
+    expect(box, `${size.width}`).toEqual(main);
+  }
+});
+
+test('skeleton_pulses_in_1_4s_and_is_static_when_reduced', async ({ page, api }) => {
+  await page.setViewportSize(MOBILE);
+  for (const reduced of [false, true]) {
+    await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+    await toHangingStudents(page, api);
+    const blocks = await page.locator('[data-slot="skeleton"]').evaluateAll((items) =>
+      items.map((item) => {
+        const style = getComputedStyle(item);
+        return { hidden: item.getAttribute('aria-hidden'), name: style.animationName, duration: style.animationDuration, opacity: style.opacity };
+      }),
+    );
+    expect(blocks.length).toBeGreaterThan(5);
+    for (const block of blocks) {
+      expect(block.hidden).toBe('true');
+      if (reduced) expect(block).toMatchObject({ name: 'none', opacity: '0.5' });
+      else expect(block).toMatchObject({ name: 'skeleton-pulse', duration: '1.4s' });
+    }
+  }
+});
+
+test('load_error_alert_animates_in_180ms', async ({ page, api }) => {
+  serveWorld(api, 'admin');
+  api.on('GET', '/api/students', problem(500, 'internal_error'));
+  await page.goto('/students');
+  const alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toBeVisible();
+  expect(await animationOf(alert)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+});
+
+test('landing_and_login_have_no_skeleton_or_page_motion', async ({ page, api }) => {
+  for (const path of ['/', '/login']) {
+    await page.goto(path);
+    await settle(page);
+    await expect(page.locator(SKELETON), path).toHaveCount(0);
+    await expect(page.locator('[data-motion="page"]'), path).toHaveCount(0);
+  }
+  // com a API presa, o login fica sem resposta e sem esqueleto
+  api.on('GET', '/api/auth/session', 'hang');
+  await page.goto('/login', { waitUntil: 'commit' }).catch(() => undefined);
+  await page.waitForTimeout(1500);
+  await expect(page.locator(SKELETON)).toHaveCount(0);
 });
 
 // S6 - C39: cópia, nomes acessíveis e ordem de foco iguais ao baseline gravado em `7471232`

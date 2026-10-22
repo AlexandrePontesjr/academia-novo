@@ -90,3 +90,50 @@ test('the_dukfit_dependency_guard_is_gone', () => {
   expect(guard).not.toContain('dukfit_adds_no_npm_dependency');
   expect(guard).not.toContain('DUKFIT_BASE');
 });
+
+// S3 - carregamento
+
+const SEGMENTS = ['dashboard', 'students', 'staff', 'plans', 'payments', 'check-in', 'check-ins', 'audit', 'users', 'privacy', 'account'];
+const GLOBALS = 'packages/ui/src/globals.css';
+
+/** O bloco de um `@keyframes`, da chave que abre até a que fecha. */
+function keyframesOf(css: string, name: string) {
+  const start = css.indexOf(`@keyframes ${name} {`);
+  expect(start, name).toBeGreaterThan(-1);
+  let depth = 0;
+  for (let index = css.indexOf('{', start); index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    if (css[index] === '}') depth -= 1;
+    if (depth === 0) return css.slice(start, index + 1);
+  }
+  throw new Error(`${name} sem fim`);
+}
+
+test.each(SEGMENTS)('eleven_segments_have_app_loading: %s', (segment) => {
+  const source = read(`apps/web/src/app/${segment}/loading.tsx`);
+  expect(source.trim()).toBe("export { AppLoading as default } from '../../components/app-loading.tsx';");
+  expect(read('apps/web/src/components/app-loading.tsx')).toContain('export function AppLoading()');
+});
+
+test('eleven_segments_have_app_loading', () => {
+  expect(SEGMENTS).toHaveLength(11);
+  const all = readdirSync(join(ROOT, 'apps/web/src/app'), { recursive: true, encoding: 'utf8' }).filter((path) => /(^|[\\/])loading\.tsx$/.test(path));
+  expect(all.map((path) => path.split(/[\\/]/)[0]).sort()).toEqual([...SEGMENTS].sort());
+});
+
+test('skeleton_pulse_keyframes_are_the_door_three_literal', () => {
+  const css = read(GLOBALS);
+  const frames = keyframesOf(css, 'skeleton-pulse');
+  expect([...frames.matchAll(/opacity: ([\d.]+);/g)].map((match) => Number(match[1])).sort()).toEqual([0.35, 0.7]);
+  expect(css).toMatch(/\[data-slot='skeleton'\] \{\n {2}animation: skeleton-pulse 1\.4s [^;]*infinite;/);
+  const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)', css.indexOf('@keyframes skeleton-pulse')));
+  expect(reduced).toMatch(/\[data-slot='skeleton'\] \{\n {4}animation: none;\n {4}opacity: 0\.5;/);
+});
+
+test('no_skeleton_on_landing_login_or_two_factor', () => {
+  for (const dir of ['apps/web/src/app', 'apps/web/src/app/login', 'apps/web/src/app/login/two-factor', 'apps/web/src/app/two-factor/setup']) {
+    const names = readdirSync(join(ROOT, dir));
+    expect(names, dir).not.toContain('loading.tsx');
+    expect(names, dir).not.toContain('template.tsx');
+  }
+});
