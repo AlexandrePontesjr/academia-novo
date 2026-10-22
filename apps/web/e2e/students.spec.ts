@@ -1,6 +1,7 @@
 import type { Role, Student, StudentListItem, StudentStatus } from '@academia/contracts';
 import type { Page } from '@playwright/test';
 import { expect, type FakeApi, problem, type Recorded, sessionOf, test } from './support/fake-api.ts';
+import { formHydrated } from './support/motion.ts';
 
 let counter = 0;
 function studentOf(overrides: Partial<Student> = {}): Student {
@@ -630,6 +631,7 @@ test('guardian_block_shown_only_for_minor_on_both_forms', async ({ browser, api,
 
     for (const path of ['/students/new', `/students/${student.id}/edit`]) {
       await page.goto(path);
+      await formHydrated(page);
       const birthDate = page.getByLabel('Data de nascimento', { exact: true });
 
       await birthDate.fill('2008-10-05');
@@ -767,6 +769,7 @@ test('guardian_422_shown_on_each_field_keeps_the_rest', async ({ page, api }) =>
       api.on('POST', '/api/students', problem(422, 'validation_failed', [{ path, message }]));
       api.on('PATCH', `/api/students/${minor.id}`, problem(422, 'validation_failed', [{ path, message }]));
       await page.goto(target === 'new' ? '/students/new' : `/students/${minor.id}/edit`);
+      await formHydrated(page);
       if (target === 'new') {
         await page.getByLabel('Nome completo', { exact: true }).fill('Menor Digitado');
         await page.getByLabel('CPF', { exact: true }).fill('123.456.789-09');

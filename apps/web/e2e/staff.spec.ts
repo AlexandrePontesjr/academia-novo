@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { FAKE_API_PORT } from '../playwright.config.ts';
 import { expect, problem, servePhotoFile, test, userOf } from './support/fake-api.ts';
+import { formHydrated } from './support/motion.ts';
 import { PHOTO_URL } from './support/photo.ts';
 import {
   DENIED_ROLES,
@@ -511,6 +512,7 @@ test('new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared', asyn
 
   // cadastro só com os obrigatórios: sem as chaves `department` e `email`
   await page.goto('/staff/new');
+  await formHydrated(page);
   await fill(required);
   await save(page).click();
   const withoutOptionals = await sentOnce();
@@ -527,6 +529,7 @@ test('new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared', asyn
 
   // cadastro com os dois preenchidos: as duas chaves vão
   await page.goto('/staff/new');
+  await formHydrated(page);
   await fill({ ...required, CPF: '111.444.777-35', Setor: 'Setor Digitado', 'E-mail': 'digitado@exemplo.com' });
   await save(page).click();
   const withOptionals = await sentOnce();
@@ -534,6 +537,7 @@ test('new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared', asyn
 
   // edição: apagar "Setor" e "E-mail" preenchidos envia `null` nos dois
   await page.goto(`/staff/${STAFF_ID}/edit`);
+  await formHydrated(page);
   await page.getByLabel('Setor', { exact: true }).fill('');
   await page.getByLabel('E-mail', { exact: true }).fill('');
   await save(page).click();
@@ -543,6 +547,7 @@ test('new_form_omits_empty_optionals_and_edit_form_sends_null_for_cleared', asyn
 
   // edição: mudar só "Cargo" envia `position` com o valor digitado
   await page.goto(`/staff/${STAFF_ID}/edit`);
+  await formHydrated(page);
   await page.getByLabel('Cargo', { exact: true }).fill('Fisioterapeuta Sênior');
   await save(page).click();
   const changed = await sentOnce();

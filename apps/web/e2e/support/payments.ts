@@ -9,6 +9,13 @@ export const PAYMENT_ROLES: Role[] = ['admin', 'hr_finance'];
 export const NO_PAYMENT_ROLES: Role[] = ['reception', 'instructor'];
 
 let periods = 0;
+/** Os contadores de ids deste arquivo, lidos e repostos pela prova que compara com um baseline (motion, C39). */
+export const paymentIds = {
+  get: () => ({ periods, confirmations, openIds }),
+  set: (value: { periods: number; confirmations: number; openIds: number }) => {
+    ({ periods, confirmations, openIds } = value);
+  },
+};
 /** Um período do "Mensal", de `2026-10-07` a `2026-11-06`, a `9990`, ainda sem pagamento. */
 export function periodOf(overrides: Partial<StudentPayment> = {}): StudentPayment {
   periods += 1;

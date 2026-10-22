@@ -22,6 +22,8 @@ const id = (group: string, n: number) => `018f0000-0000-7000-8000-000000000${gro
 export const planOf = (n: number, name: string, period: PlanPeriod = 'monthly') => ({ id: id('9', n), name, period });
 
 let expiring = 0;
+/** O contador dos ids de vencimento, lido e reposto pela prova que compara com um baseline (motion, C39). */
+export const expiringIds = { get: () => expiring, set: (value: number) => void (expiring = value) };
 /** Um período que vence na janela: de `Ana Souza`, no "Mensal", em `2026-10-10`. */
 export function expiringOf(overrides: Partial<ExpiringEnrollment> = {}): ExpiringEnrollment {
   expiring += 1;

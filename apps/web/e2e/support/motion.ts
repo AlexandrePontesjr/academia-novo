@@ -1,5 +1,8 @@
 /* O que as provas da `motion` leem de um Chromium real: quadros amostrados, animações e o baseline (C39). */
 import type { Locator, Page } from '@playwright/test';
+import { expiringIds } from './dashboard.ts';
+import { paymentIds } from './payments.ts';
+import { enrollmentIds } from './plans.ts';
 
 export const MOBILE = { width: 390, height: 844 };
 export const NARROW = { width: 360, height: 800 };
@@ -30,13 +33,14 @@ export async function startSampling(
       const frames: Array<{ t: number; targets: Array<Record<string, string> | null> }> = [];
       (window as unknown as { __frames: typeof frames }).__frames = frames;
       let start = appear ? undefined : performance.now();
-      const limit = performance.now() + 5000;
+      // até 15 s para a tela nova montar: sob a suíte inteira, uma navegação pode demorar segundos
+      const limit = performance.now() + 15_000;
       const read = (element: Element) => {
         const style = getComputedStyle(element);
         return Object.fromEntries(properties.map((property) => [property, style.getPropertyValue(property)]));
       };
-      const tick = () => {
-        const t = performance.now();
+      // o instante do quadro é o que o `requestAnimationFrame` entrega, não o relógio dentro da chamada
+      const tick = (t: number) => {
         const targets = selectors.flatMap((selector) => {
           if (all) return [...document.querySelectorAll(selector)].map(read);
           const element = document.querySelector(selector);
@@ -56,7 +60,7 @@ export async function startSampling(
 
 /** Espera o fim da amostragem e devolve os quadros. */
 export async function framesOf(page: Page): Promise<Frame[]> {
-  await page.waitForFunction(() => (window as unknown as { __done: boolean }).__done === true, null, { timeout: 10_000 });
+  await page.waitForFunction(() => (window as unknown as { __done: boolean }).__done === true, null, { timeout: 20_000 });
   return page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames);
 }
 
@@ -76,6 +80,19 @@ export async function settle(page: Page) {
       .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
       .every((animation) => animation.playState !== 'running'),
   );
+}
+
+/**
+ * Espera o React hidratar o formulário da tela: com o `loading.tsx` (motion, door 3) o conteúdo chega
+ * por streaming e hidrata um instante depois do `load`, e um campo preenchido antes disso não tem o
+ * `onChange` do formulário ainda.
+ */
+export async function formHydrated(page: Page) {
+  await page.locator('main form').first().waitFor();
+  await page.waitForFunction(() => {
+    const form = document.querySelector('main form');
+    return form !== null && Object.keys(form).some((key) => key.startsWith('__reactProps'));
+  });
 }
 
 /** O nome do `animation-name` e a duração computados de um elemento. */
@@ -124,3 +141,24 @@ export async function baselineOf(page: Page, landing: boolean): Promise<Baseline
   const aria = await page.locator('body').ariaSnapshot();
   return { text: normalized(text), aria: normalized(aria), focus: focus.map((entry) => normalized(entry)) };
 }
+
+/**
+ * Os contadores de id das fixtures: as telas mostram links com esses ids, e o valor deles depende de
+ * quantos testes rodaram antes no mesmo worker. O baseline foi gravado com a prova rodando sozinha.
+ */
+export interface FixtureIds {
+  expiring: number;
+  enrollments: number;
+  periods: number;
+  confirmations: number;
+  openIds: number;
+}
+
+export const fixtureIds = {
+  get: (): FixtureIds => ({ expiring: expiringIds.get(), enrollments: enrollmentIds.get(), ...paymentIds.get() }),
+  set: ({ expiring, enrollments, ...payments }: FixtureIds) => {
+    expiringIds.set(expiring);
+    enrollmentIds.set(enrollments);
+    paymentIds.set(payments);
+  },
+};

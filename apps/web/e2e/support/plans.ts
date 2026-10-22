@@ -24,6 +24,8 @@ export function planOf(overrides: Partial<Plan> = {}): Plan {
 }
 
 let enrollments = 0;
+/** O contador dos ids de matrícula, lido e reposto pela prova que compara com um baseline (motion, C39). */
+export const enrollmentIds = { get: () => enrollments, set: (value: number) => void (enrollments = value) };
 /** Uma matrícula no "Mensal", de `2026-10-07` a `2026-11-06`, ativa. */
 export function enrollmentOf(overrides: Partial<Enrollment> = {}): Enrollment {
   enrollments += 1;

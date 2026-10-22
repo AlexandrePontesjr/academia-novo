@@ -1,9 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Page } from '@playwright/test';
 import { expect, type FakeApi, problem, test } from './support/fake-api.ts';
 import { SCREENS, serveWorld } from './support/identidade.ts';
-import type { Page } from '@playwright/test';
-import { animationOf, type Baseline, baselineOf, DESKTOP, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
+import { animationOf, type Baseline, baselineOf, DESKTOP, fixtureIds, framesOf, MOBILE, settle, startSampling, translateYOf } from './support/motion.ts';
 import { STUDENT_ID } from './support/plans.ts';
 import { STAFF_ID } from './support/staff.ts';
 
@@ -21,11 +21,12 @@ test('motion_provider_adds_no_element_to_the_body', async ({ page, api }) => {
   serveWorld(api, 'admin');
   await page.goto('/dashboard');
   await settle(page);
-  // fora o que o Next põe no `body` (scripts, o anunciador de rota e o `<div hidden>` dos metadados),
+  // fora o que o Next e o React põem no `body` (scripts, folhas de estilo içadas, o anunciador de rota e
+  // o `<div hidden>` dos metadados),
   // o único filho é a raiz da Shell: o provider não acrescenta elemento entre ela e o `body`
   const children = await page.evaluate(() =>
     [...document.body.children]
-      .filter((element) => !['SCRIPT', 'NEXT-ROUTE-ANNOUNCER'].includes(element.tagName))
+      .filter((element) => !['SCRIPT', 'LINK', 'NEXT-ROUTE-ANNOUNCER'].includes(element.tagName))
       .filter((element) => !(element.tagName === 'DIV' && element.hasAttribute('hidden') && element.children.length === 0))
       .map((element) => ({
         tag: element.tagName.toLowerCase(),
@@ -319,6 +320,8 @@ test('copy_names_and_focus_order_match_the_baseline', async ({ page, api }) => {
   test.setTimeout(600_000);
   // `MOTION_BASELINE=record` grava o baseline; só se roda assim sobre o código de `7471232`
   const record = process.env.MOTION_BASELINE === 'record';
+  // os contadores de id como estavam quando o baseline foi gravado, com esta prova rodando sozinha
+  fixtureIds.set({ expiring: 0, enrollments: 1, periods: 1, confirmations: 0, openIds: 0 });
   expect(SHELL_PATHS).toHaveLength(21);
 
   for (const size of [MOBILE, DESKTOP]) {

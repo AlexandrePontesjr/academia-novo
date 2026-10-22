@@ -240,6 +240,17 @@ export function serveConsents(api: FakeApi, studentId: string, state: ConsentsSt
 
 /** `test` com a API falsa de pé durante o teste. */
 export const test = base.extend<{ api: FakeApi }>({
+  // com o `loading.tsx` (motion, door 3) o `goto` pode voltar com o esqueleto ainda na tela, antes de o
+  // conteúdo do segmento chegar por streaming: toda navegação por `goto` espera o esqueleto sair
+  page: async ({ page }, use) => {
+    const goto = page.goto.bind(page);
+    page.goto = async (url, options) => {
+      const response = await goto(url, options);
+      if (options?.waitUntil !== 'commit') await page.locator('[data-slot="page-skeleton"]').waitFor({ state: 'detached' });
+      return response;
+    };
+    await use(page);
+  },
   // o Playwright exige a desestruturação no primeiro parâmetro, mesmo sem dependências
   // eslint-disable-next-line no-empty-pattern
   api: async ({}, use) => {
