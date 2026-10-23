@@ -1,18 +1,28 @@
 # Pré-cadastro verification
 
-**Verdict**: FAIL
+**Verdict**: PASS
 **Profile**: standard
-**Diff range**: 6e67520..e4c114d
-**Round**: 1 - full
+**Diff range**: 6e67520..a60d180 (fix diff e6ac162..a60d180: one commit, `a60d180`, touching only `apps/api/test/enrollment.test.ts`)
+**Round**: 2 - scoped
 **Verifier**: independent sub-agent (author != verifier)
 
-One check is half unproven: C96 says an `admin` without 2FA is blocked on the two staff routes
-"e não nas seis públicas", and no proof anywhere asserts the second half. The other 107 checks
-are proven at `e4c114d` with located assertions, the five injected faults were all killed, and
-the three Test policy rows are met. Two precision gaps in the checks are listed at the end; they
-do not change the verdict on their own.
+Round 1 (at `e4c114d`, committed as `e6ac162`) failed on one check: C96 claimed an `admin`
+without 2FA is blocked on the two staff routes "e não nas seis públicas", and no proof asserted
+the second half. `a60d180` adds that assertion. At `a60d180` all 112 proofs of the 108 checks
+were re-run in full and each named test passed individually. C96 is now proven, and its
+Coverage row has no unproven member. A fault on the new surface (the 2FA refusal moved above the
+`@Public()` early return) was killed by the C96 proof. The two precision gaps from round 1
+(the 10 s mail timeout, the `Secure` cookie attribute) are still open. They are findings about
+the checks and do not flip the verdict.
+
+Scope of this round, per `verify.md` "Re-verifying after a fix": proofs re-run in full at
+`a60d180`; C96 and the Coverage row `admin-without-2FA outcome` re-judged; one fault injected
+on the new surface; citations refreshed in `apps/api/test/enrollment.test.ts`, the only file the
+fix touched. Everything else is carried from `e4c114d`, and each section says which.
 
 ## Binding sources
+
+Carried from `e4c114d` (the fix touched no interface, no screen and no binding source).
 
 | Source | Opened | Contradiction | Uncovered |
 | --- | --- | --- | --- |
@@ -25,14 +35,19 @@ which C51, C56 and C64 follow.
 
 ## Checks
 
-Proof runs, all at `e4c114d`, each batched per target. Every named test appears individually in
-the output as passed, and each name was found in the tree with `grep -n` (one hit per name).
-- API: `pnpm --filter "./apps/api" exec vitest run <18 files> -t "<72-name alternation>"`: exit 0, `Tests 72 passed | 81 skipped`, 72 distinct `✓` lines.
-- Database: `pnpm --filter "./packages/database" exec vitest run test/leads.test.ts -t "<6 names>"`: exit 0, 6 passed.
-- Contracts: `pnpm --filter "./packages/contracts" exec vitest run test/leads.test.ts -t "lead_schemas_accept_and_reject"`: exit 0, 1 passed.
-- Repo: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts identidade.test.ts -t "<5 names>"`: exit 0, 5 passed.
-- Web: `pnpm --filter "./apps/web" exec playwright test <9 files> -g "<27-name alternation>" --reporter=list`: exit 0, `27 passed`, 27 `ok` lines.
-- Stack: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "lead_submitted_confirmed_and_listed_through_real_stack"`: exit 0, 1 passed.
+Proof runs verified at `a60d180`, all 112 proofs of the 108 checks, batched per target. The
+commands were taken from `checks.md` mechanically (112 `Proof:` lines). Each named test appears
+individually in the verbose output as passed, exactly once per name.
+- API: `pnpm --filter "./apps/api" exec vitest run <18 files> -t "<72-name alternation>" --reporter=verbose`: exit 0, `Tests 72 passed | 81 skipped`, 72 `✓` lines, 0 `×`; it includes `✓ test/enrollment.test.ts > admin_without_2fa_gets_403_everywhere_else`.
+- Database: `pnpm --filter "./packages/database" exec vitest run test/leads.test.ts -t "<6 names>" --reporter=verbose`: exit 0, 6 passed, 6 `✓`.
+- Contracts: `pnpm --filter "./packages/contracts" exec vitest run test/leads.test.ts -t "lead_schemas_accept_and_reject" --reporter=verbose`: exit 0, 1 passed.
+- Repo: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts identidade.test.ts -t "<5 names>" --reporter=verbose`: exit 0, `5 passed | 36 skipped`, 5 `✓`.
+- Web: `pnpm --filter "./apps/web" exec playwright test <9 files> -g "<27-name alternation>" --reporter=list`: exit 0, `27 passed (57.8s)`, 27 `ok` lines, one per name.
+- Stack: `pnpm --filter "./tests/stack" exec vitest run compose.test.ts -t "lead_submitted_confirmed_and_listed_through_real_stack" --reporter=verbose`: exit 0, `✓ compose.test.ts > stack de pé > lead_submitted_confirmed_and_listed_through_real_stack 13152ms`.
+
+Evidence citations are carried from `e4c114d` for every row except C96. The fix touched no
+other file, so no other line number moved. C96 is re-judged and its citations refreshed at
+`a60d180`.
 
 C7's second proof, `actions_written_equal_contract_vocabulary`, matches `ten_actions_written_equal_contract_vocabulary` as a substring. That is the only test with the name, and it ran.
 
@@ -133,10 +148,10 @@ C7's second proof, `actions_written_equal_contract_vocabulary`, matches `ten_act
 | C93 | custody list has `SMTP_PASS` and `GOOGLE_CLIENT_SECRET` | repo batch, `secret_custody_list_includes_smtp_pass_and_google_secret` passed | `tests/repo/repo.test.ts:616` - `expect(listed).toEqual([...])`, eight secrets | PASS |
 | C94 | OpenAPI: eight lead routes, contract bodies, `leadId` optional | API batch, both proofs passed | `apps/api/test/openapi.test.ts:164` - each body equals `z.toJSONSchema(schema)`, lead bodies at `:153-155`; `:477` - `toEqual([...surface].sort())`; `:493-494` - `leadId` uuid, not required | PASS |
 | C95 | only listed routes answer without a session | API batch, `only_listed_routes_answer_without_session` passed | `apps/api/test/access.test.ts:161-172` - `open.sort()` equals the previous four plus the six lead routes; the `@Roles` half is settled by behaviour in C43, C45 and C49 | PASS |
-| C96 | admin without 2FA gets 403 on the two staff routes, "e não nas seis públicas" | API batch, `admin_without_2fa_gets_403_everywhere_else` passed | `apps/api/test/enrollment.test.ts:57` - `two_factor_enrollment_required` for every blocked route, with `'GET /api/leads'` and `'PATCH /api/leads/:id'` in the list at `:115-116`. The six public routes are only excluded by name from `blocked` (`:51`, list at `:8-18`): no proof in the suite sends a 2FA-less admin's request to any public lead route. The guard's early `return true` for `@Public()` (`apps/api/src/access.ts:108`) runs before the 2FA test (`:131`), but moving the 2FA test above it would pass every proof | FAIL - half unproven: 2 of 8 route outcomes asserted |
+| C96 | admin without 2FA gets 403 on the two staff routes, "e não nas seis públicas" | API batch at `a60d180`, `admin_without_2fa_gets_403_everywhere_else` passed (re-judged in round 2) | `apps/api/test/enrollment.test.ts:56-57` - `toBe(403)` and `toBe('two_factor_enrollment_required')` for every blocked route, with `'GET /api/leads'` and `'PATCH /api/leads/:id'` in the list at `:126-127`; `:62` - `expect(leadPublic).toHaveLength(6)` (the six `/api/leads` entries of `PUBLIC`, `:11-16`); `:67-68` - per public lead route, sent by the same 2FA-less admin, `expect(response.status, route).not.toBe(401)` and `expect(text, route).not.toContain('two_factor_enrollment_required')`. Fault F6 (below) kills it | PASS |
 | C97 | PATCH under the origin check | API batch, `lead_patch_under_origin_check` passed | `apps/api/test/csrf.test.ts:179-180` - `403`, `csrf_rejected`; `:183` - row unchanged; `:186` - accepted with origin | PASS |
 | C98 | hostile bodies on `POST /api/leads` | API batch, `lead_create_hostile_bodies` passed | `apps/api/test/hostile-input.test.ts:125-126` - `400 bad_request`; `:129` - `413`; `:134-135` - `422` on `name` | PASS |
-| C99 | landing guard unedited; plans CTA href | repo batch, both passed; `git diff 6e67520..HEAD -- tests/repo/identidade.test.ts` touches only `site_content_has_the_door_five_shape` | `tests/repo/identidade.test.ts:110` - `not.toMatch(/fetchApi\|loadDashboard\|\/api\//)`; `tests/repo/repo.test.ts:632` - `toEqual({ label: 'Matricule-se', href: '/matricula' })` | PASS |
+| C99 | landing guard unedited; plans CTA href | repo batch, both passed; `git diff 6e67520..HEAD -- tests/repo/identidade.test.ts` touches only `site_content_has_the_door_five_shape` | `tests/repo/identidade.test.ts:110` - `not.toMatch(...)` over `fetchApi`, `loadDashboard` and `/api/` (one regex alternation); `tests/repo/repo.test.ts:632` - `toEqual({ label: 'Matricule-se', href: '/matricula' })` | PASS |
 | C100 | motion C39 passes without re-recording for the href | web batch, `copy_names_and_focus_order_match_the_baseline` ok (31.7 s) | `apps/web/e2e/motion.spec.ts:878-880` - text, ARIA and focus equal the baseline. The baseline diff has no `matricula`/`#localizacao` line: its edits are the `/audit` options and the "Interessados" link, both recorded in the Handoff and planned in Impact | PASS |
 | C101 | 47 everywhere 43 was counted; one label each | API and web batches, both proofs passed; web typecheck in the Gate | `apps/api/test/contracts.test.ts:1315` - `toHaveLength(47)`; `:1318` - `ACTION_LABELS` keys equal the actions; `:1328` - no `toHaveLength(43)` left; `apps/web/e2e/audit.spec.ts:1050-1053` - options equal the 47 | PASS |
 | C102 | students form unchanged; no leads read without `lead` | web batch, `new_student_without_lead_does_not_read_leads` ok; the `students.spec.ts` diff only adds this test | `apps/web/e2e/students.spec.ts:812` - no `/api/leads` request | PASS |
@@ -144,10 +159,15 @@ C7's second proof, `actions_written_equal_contract_vocabulary`, matches `ten_act
 | C104 | signed cookie table, six rows | API batch, `signed_cookie_table_six_rows` passed | `apps/api/test/leads-google.test.ts:368` - six rows; `:371-372` - accepted/refused per row | PASS |
 | C105 | throttle module bounds and window edges | API batch, `throttle_module_bounds_and_window_edges` passed | `apps/api/test/leads-throttle.test.ts:109` - `{ ip: 5, email: 3 }`; `:123` - `toBe(3600)`; `:144-145` - 59:59 counted with `retryAfter` 1, 60:01 not | PASS |
 | C106 | resend decision table, eight rows | API batch, `resend_decision_table_eight_rows` passed | `apps/api/test/leads-create.test.ts:422` - eight rows; `:436` - `{ status: 'pending' }`; `:440-451` - per-effect assertions written by hand | PASS |
-| C107 | real stack: submit, production log, confirm, list (as rewritten in batch B) | stack run passed (13.3 s inside `docker compose up --build --wait`) | `tests/stack/compose.test.ts:1593` - landing `href="/matricula"`; `:1615-1616` - phrase, no `token=`; `:1635` - `{ status: 'confirmed' }`; `:1660` - `Sim`; `:1663` - `new\|true`; `:1664-1667` - `['lead.created', 'lead.confirmed']` | PASS |
+| C107 | real stack: submit, production log, confirm, list (as rewritten in batch B) | stack run passed (13.3 s inside `docker compose up --build --wait`) | `tests/stack/compose.test.ts:1593` - landing `href="/matricula"`; `:1615-1616` - phrase, no `token=`; `:1635` - `{ status: 'confirmed' }`; `:1660` - `Sim`; `:1663` - the psql row `new` with `email_verified_at` set (`true`); `:1664-1667` - `['lead.created', 'lead.confirmed']` | PASS |
 | C108 | first 43 actions unchanged | web batch, `first_forty_three_actions_unchanged` ok | `apps/web/e2e/audit.spec.ts:1064` - `options.slice(0, 43)` equals `LABELS.slice(0, 43)`; `:1065-1066` - position 43 is `privacy.settings_updated` | PASS |
 
 ## Coverage
+
+Carried from `e4c114d`, except the `admin-without-2FA outcome on the new routes` row, verified at
+`a60d180`. Its authority is the C96 claim and the framework route list; the fix added the
+assertion for the six public members. No other row's authority was touched: the fix adds no
+branch, route or status.
 
 Each set was recomputed from its authority: the plan's `Surface` and `Landing` for routes,
 statuses and door literals; `STATE.md` AD-107 to AD-117 for the doors; the plan's `Relations`
@@ -172,9 +192,9 @@ and Criteria for the enumerations; `stack.api.routes()` (the framework) for the 
 | who converts, by role (3) | AD-115 as corrected | admin C51 · reception C51 · hr_finance 403 C56 | - |
 | public routes answer without a session (6) | plan Surface, framework route list | C95 equality at `access.test.ts:161`, plus C23, C11, C24, C35, C37, C39 | - |
 | staff routes without a session (2) | plan Surface | GET C49 · PATCH C49 | - |
-| admin-without-2FA outcome on the new routes (8) | C96 claim, framework route list | blocked: `GET /api/leads` C96 · `PATCH /api/leads/:id` C96; not blocked: none of the six | the six public routes not blocked for an admin without 2FA (C96 claim) |
+| admin-without-2FA outcome on the new routes (8) | C96 claim, framework route list | blocked: `GET /api/leads` C96 · `PATCH /api/leads/:id` C96 (`enrollment.test.ts:56-57`, `:126-127`); not blocked: `options`, `POST /api/leads`, `confirm`, `start`, `callback`, `profile` C96 (`:62`, `:67-68`; verified at `a60d180`) | - |
 | routes in OpenAPI (8) | plan Surface | C94, `openapi.test.ts:477` over all 8 | - |
-| one-way doors (11) | `STATE.md` AD-107 to AD-117 | 1 C1-C4 · 2 C5, C12, C26 · 3 C77 · 4 C29, C32, C105 · 5 C21, C22, C68, C92 · 6 C9, C10, C91, C93 · 7 C35, C37, C38, C103, C104 · 8 C7, C80 · 9 C51, C53, C54 · 10 C86, C87 · 11 C69, C70 | - (literal-level precision gaps in doors 5 and 7, below) |
+| one-way doors (11) | `STATE.md` AD-107 to AD-117 | 1 C1-C4 · 2 C5, C12, C26 · 3 C77 · 4 C29, C32, C105 · 5 C21, C22, C68, C92 · 6 C9, C10, C91, C93 · 7 C35, C37, C38, C103, C104 · 8 C7, C80 · 9 C51, C53, C54 · 10 C86, C87 · 11 C69, C70 | - |
 | `Relations` (3) | plan Relations | lead-tokens C5, C12 · term C2, C11 · student-lead C3, C51 | - |
 | one-way constraints in `Relations` (6) | plan Relations | one open per e-mail C4, C19 · four statuses C2 · converted iff student C3 · `data_processing` term C2 · token hash/24 h/single use C12, C26, C27 · token cascade C5, C86 | - |
 | `status` values in the DB (4 accepted + 4 refused) | door 1 | C2, table at `leads.test.ts:129-143` | - |
@@ -196,6 +216,10 @@ and Criteria for the enumerations; `stack.api.routes()` (the framework) for the 
 
 ## Test policy rows
 
+Carried from `e4c114d`. Round 1 left no unmet row, and the fix touched no file these rows
+classify. `enrollment.test.ts` falls under the inherited "HTTP route with role cut" row, which
+the new assertion strengthens.
+
 | Row | Files it classifies | Required proof | Expectation met |
 | --- | --- | --- | --- |
 | Decision on third-party input, pure (`id_token` claims, cookie signature) | `apps/api/src/leads/lead-google.ts` | own level C103 (13 rows), C104 (6 rows) · boundary C38 (10 outcomes), C37, C39, C41 | yes - one asserted line per table row (`leads-google.test.ts:350-351`, `:371-372`); all ten outcomes at the boundary (`:241-242`) |
@@ -205,7 +229,24 @@ and Criteria for the enumerations; `stack.api.routes()` (the framework) for the 
 
 ## Faults injected
 
-Isolated in `git worktree add C:/Users/Admin/projetos/pcv-wt HEAD`, with dependencies from
+F6 was verified at `a60d180`, on the surface the fix created. F1 to F5 are carried from `e4c114d`.
+
+Round 2 (F6) ran in `git worktree add C:/Users/Admin/projetos/pcv-wt HEAD` at `a60d180`, with
+`pnpm install --frozen-lockfile --offline` and the same scratch-only `vitest.fault.config.ts`
+(the repo config without `globalSetup`; the C96 proof uses no `dist`). The mutation in
+`apps/api/src/access.ts` was the one round 1 named. The `if (access?.kind === 'public') return
+true;` line moves below the session lookup, and in front of it goes a session-based
+`twoFactorEnrollmentRequired(...)` check that throws `ProblemException(403,
+'two_factor_enrollment_required')`. With the mutation, the C96 proof failed (`× ...
+admin_without_2fa_gets_403_everywhere_else`; `GET /api/leads/options: expected
+'{"type":"about:blank","title":"Forbid…' not to contain 'two_factor_enrollment_required'`,
+vitest exit 1). The file was reverted with `git checkout`. A control run of the same proof on
+the unmutated worktree passed (exit 0). Then came `git worktree remove --force`, `git worktree
+prune` and deletion of the leftover directory. Real-tree `git status --porcelain` before:
+` M .specs/LESSONS.md`, ` M .specs/lessons.json`, `?? .specs/features/motion/verification.md`,
+`?? CLAUDE.md`. After: identical (`diff` empty).
+
+Round 1 (F1 to F5): isolated in `git worktree add C:/Users/Admin/projetos/pcv-wt HEAD`, with dependencies from
 `pnpm install --frozen-lockfile --offline`. The first try, under the scratchpad, failed on
 Windows path length. In this worktree the `esbuild.exe` that the API `globalSetup` runs was
 denied writes (node and bash could write there), so the API proofs ran with a scratch-only
@@ -222,26 +263,34 @@ worktree was removed. Real-tree `git status --porcelain` before:
 | `aud` check removed from `profileFromClaims` | `apps/api/src/leads/lead-google.ts:65` | yes - C103 (`aud de outro cliente`) and C38 (`expected '/matricula?google=ok' to be '/matricula?google=erro'`) |
 | conversion accepts a `discarded` lead | `apps/api/src/leads/leads.service.ts:72` | yes - C52 (`expected 201 to be 409`) |
 | named public branch `=== '/matricula' \|\| startsWith('/matricula/')` -> prefix `startsWith('/matricula')` | `apps/web/src/proxy.ts:35` | yes - C70 (`/matriculas`: expected `/login`, received `/matriculas`) |
+| F6 (round 2): 2FA enrollment refusal moved above the `@Public()` early return | `apps/api/src/access.ts:108`, `:131` | yes - C96 (`GET /api/leads/options: expected '{"type":"about:blank","title":"Forbid…' not to contain 'two_factor_enrollment_required'`) |
 
 ## Gate
 
-`pnpm verify` was not used: under turbo it exits 1 here with the known `EPERM mkdir <TEMP>\...\ssr`. Each task was run directly at `e4c114d`, sequentially:
+`pnpm verify` was not used: under turbo it exits 1 here with the known `EPERM mkdir <TEMP>\...\ssr`. Each task was run directly and sequentially.
 
-- `pnpm -r --workspace-concurrency=1 run lint` - exit 0
-- `pnpm -r --workspace-concurrency=1 run typecheck` - exit 0 (covers the `ACTION_LABELS` part of C101)
-- `pnpm -r --workspace-concurrency=1 run build` - exit 0
+Verified at `a60d180`, for the package the fix touched:
+
+- `pnpm --filter "./apps/api" run lint` - exit 0
+- `pnpm --filter "./apps/api" run typecheck` - exit 0
+- `pnpm --filter "./apps/api" test` - 781 passed, 0 failed in 86 files; coverage of `apps/api/src` 96.24% lines, 94.12% branches (the same counts as round 1: the fix adds assertions inside an existing test, not a new test)
+- all 112 proofs and C107 (above) - passed
+
+Carried from `e4c114d`. The fix diff `e6ac162..a60d180` touches no file in these packages:
+
+- `pnpm -r --workspace-concurrency=1 run lint`, `typecheck` and `build` - exit 0
 - `pnpm --filter "./packages/contracts" test` - 17 passed, 0 failed
 - `pnpm --filter "./packages/database" test` - 74 passed, 0 failed
 - `pnpm --filter "./tests/repo" test` - 79 passed, 0 failed (includes `motion_is_the_only_added_dependency`, C92)
-- `pnpm --filter "./apps/api" test` - 781 passed, 0 failed in 86 files; coverage of `apps/api/src` 96.24% lines, 94.12% branches (includes the unedited `students-create` suites, C55)
 - `pnpm --filter "./apps/web" exec playwright test` - 433 passed, 0 failed (includes all of `students.spec.ts`, C102)
-- C107 stack proof (above) - 1 passed
 
-Total: 1384 passed, 0 failed. The gate is green. The verdict is FAIL because of the C96 coverage gap, not because of the gate.
+Total: 1384 passed, 0 failed (781 at `a60d180`, 603 carried). The gate is green.
 
-## Ranked gaps
+## Open findings (do not change the verdict)
 
-1. Coverage gap: the six public lead routes are never asserted to stay reachable for an `admin` without 2FA. The check claims it ("e não nas seis públicas"), the proof only filters those routes out by name, and moving the 2FA check above the `@Public()` early return in `AccessGuard` would pass every proof. - C96 - `apps/api/test/enrollment.test.ts:51` (exclusion by name, no response assertion); `apps/api/src/access.ts:108`, `:131`
-2. Precision gap, door 5: the 10 s mail timeout (AD-111) is bounded only by the C21 wait, `wait + 2000` with a 15 s delay, which accepts any timeout up to about 13 s. No check fixes 10 s. - C21 - `apps/api/test/leads-create.test.ts:346`
-3. Precision gap, door 7: the `Secure` attribute of `lead_google_state` and `lead_google_profile` ("Secure fora de desenvolvimento", AD-113) has no check. C35 and C37 list `HttpOnly`, `SameSite`, `Path` and `Max-Age` only, and every test origin is `http:`. - C35, C37 - `apps/api/test/leads-google.test.ts:133-136`, `:183`
+Round 1 gap 1 (C96 coverage) is closed by `a60d180`, as the C96 row, the Coverage row and fault F6 above show. Gaps 2 and 3 are carried from `e4c114d` and still open: they are about what the checks fix, not about an unproven check.
+
+1. Precision gap, door 5: the 10 s mail timeout (AD-111) is bounded only by the C21 wait, `wait + 2000` with a 15 s delay, which accepts any timeout up to about 13 s. No check fixes 10 s. - C21 - `apps/api/test/leads-create.test.ts:346`
+2. Precision gap, door 7: the `Secure` attribute of `lead_google_state` and `lead_google_profile` ("Secure fora de desenvolvimento", AD-113) has no check. C35 and C37 list `HttpOnly`, `SameSite`, `Path` and `Max-Age` only, and every test origin is `http:`. - C35, C37 - `apps/api/test/leads-google.test.ts:133-136`, `:183`
+3. Minor, about the new assertion: the C96 proof for the six public routes is negative only (`not.toBe(401)`, body not containing `two_factor_enrollment_required`, `enrollment.test.ts:67-68`). That is exactly what "e não nas seis públicas" claims, and F6 shows it kills the plausible regression. Each route's own status for that admin is not fixed there; for anonymous callers, C23, C11, C24, C35/C36, C37/C38 and C39 prove those statuses. - C96
 4. Naming, not behaviour: `create_fourteen_refusals...` holds the 13 cases C13 names, and `id_token_claims_table_twelve_rows` holds the 13 rows C103 names. Both are recorded in the Handoff and do not change a result. - C13, C103
