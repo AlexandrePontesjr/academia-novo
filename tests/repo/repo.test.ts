@@ -560,3 +560,67 @@ test('ci_runs_only_pnpm_verify_and_no_deploy_job', () => {
   expect(commands).toContain('pnpm verify');
   expect(commands.filter((command) => /docker|deploy|test:stack/.test(command))).toEqual([]);
 });
+
+// pre-cadastro: SMTP e Google opcionais por ambiente (door 6) e o `nodemailer` só na API (door 5)
+
+const MAIL_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'];
+const GOOGLE_KEYS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
+
+test('env_example_lists_eight_optional_smtp_and_google_keys_empty', () => {
+  const lines = read('.env.example').split(/\r?\n/);
+  const keys = [...MAIL_KEYS, ...GOOGLE_KEYS];
+  expect(keys).toHaveLength(8);
+  for (const key of keys) {
+    expect(lines.filter((line) => line.startsWith(`${key}=`)), key).toEqual([`${key}=`]);
+  }
+  // um comentário antes de cada grupo, dizendo que ele é opcional
+  for (const [group, first] of [
+    ['SMTP', 'SMTP_HOST'],
+    ['Google', 'GOOGLE_CLIENT_ID'],
+  ] as const) {
+    const at = lines.indexOf(`${first}=`);
+    const comments: string[] = [];
+    for (let index = at - 1; index >= 0 && lines[index]!.startsWith('#'); index -= 1) comments.unshift(lines[index]!);
+    expect(comments.length, group).toBeGreaterThan(0);
+    expect(comments.join('\n'), group).toContain('opcional');
+  }
+});
+
+test('nodemailer_only_in_api', () => {
+  const manifests = workspaceDirs().map((dir) => `${dir}/package.json`);
+  const declaring = (name: string, kinds: string[]) =>
+    ['package.json', ...manifests].filter((path) => {
+      const manifest = JSON.parse(read(path)) as Record<string, Record<string, string> | undefined>;
+      return kinds.some((kind) => name in (manifest[kind] ?? {}));
+    });
+  const all = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+
+  expect(manifests).toContain('apps/api/package.json');
+  expect(declaring('nodemailer', all)).toEqual(['apps/api/package.json']);
+  const api = JSON.parse(read('apps/api/package.json')) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
+  expect(api.dependencies.nodemailer).toBe('catalog:');
+  expect(read('pnpm-workspace.yaml')).toMatch(/^catalog:\n(?: {2}.+\n)*? {2}nodemailer: \S+\n/m);
+  // o servidor SMTP de teste, se existe, é só dependência de teste da API
+  const smtpServer = declaring('smtp-server', all);
+  if (smtpServer.length > 0) {
+    expect(smtpServer).toEqual(['apps/api/package.json']);
+    expect(api.devDependencies['smtp-server']).toBeDefined();
+    expect(declaring('smtp-server', ['dependencies', 'peerDependencies', 'optionalDependencies'])).toEqual([]);
+  }
+});
+
+test('secret_custody_list_includes_smtp_pass_and_google_secret', () => {
+  const readme = read('deploy/README.md');
+  const custody = readme.slice(readme.indexOf('## Custódia dos segredos'), readme.indexOf('\n## ', readme.indexOf('## Custódia dos segredos') + 1));
+  const listed = [...custody.matchAll(/^\| `([A-Z][A-Z0-9_]*)` \|/gm)].map((match) => match[1]);
+  expect(listed).toEqual([
+    'AUTH_SECRET',
+    'DATA_ENCRYPTION_KEY',
+    'PHOTO_URL_SECRET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'ALERT_WEBHOOK_URL',
+    'SMTP_PASS',
+    'GOOGLE_CLIENT_SECRET',
+  ]);
+});

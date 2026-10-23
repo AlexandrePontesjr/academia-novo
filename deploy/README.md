@@ -132,6 +132,8 @@ As cópias fora do servidor ficam com o operador, em local cifrado e separado da
 | `S3_ACCESS_KEY_ID` | credencial do bucket | o backup e o restore param até a rotação |
 | `S3_SECRET_ACCESS_KEY` | credencial do bucket | o backup e o restore param até a rotação |
 | `ALERT_WEBHOOK_URL` | destino dos alertas | ninguém é avisado até a URL ser reposta |
+| `SMTP_PASS` | senha do SMTP do e-mail de confirmação do pré-cadastro | nenhum e-mail de confirmação sai até a senha ser reposta ou trocada no provedor |
+| `GOOGLE_CLIENT_SECRET` | segredo do cliente do "Continuar com Google" no pré-cadastro | o login com Google falha até um segredo novo ser gerado no Google |
 
 O `.env` de produção fica fora do git e com `0600`. A perda da `DATA_ENCRYPTION_KEY` é a única
 irreversível: guarde-a separada do dump, e nunca a troque sem recifrar.

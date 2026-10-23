@@ -368,3 +368,54 @@ test('retention_days_in_environment_is_ignored_and_api_starts', async () => {
     await postgres.stop();
   }
 }, 240_000);
+
+const MAIL_AND_GOOGLE_KEYS = [
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_SECURE',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'MAIL_FROM',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+];
+
+test('boots_without_smtp_and_google_keys', async () => {
+  const postgres = await startPostgres();
+  const minio = await startMinio();
+  try {
+    expect(MAIL_AND_GOOGLE_KEYS).toHaveLength(8);
+    for (const [label, extra] of [
+      ['sem as oito chaves', {}],
+      ['com as oito vazias', Object.fromEntries(MAIL_AND_GOOGLE_KEYS.map((key) => [key, '']))],
+    ] as const) {
+      const port = await freePort();
+      const env = { ...validEnv, ...minio.env, DATABASE_URL: postgres.url, PORT: String(port), ...extra };
+      for (const key of MAIL_AND_GOOGLE_KEYS) expect(env[key as keyof typeof env] ?? '', `${label} ${key}`).toBe('');
+      const { child } = spawnApi(env);
+      try {
+        await vi.waitFor(async () => expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(200), {
+          timeout: 30_000,
+          interval: 200,
+        });
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+        expect(await response.json(), label).toEqual({ status: 'ok', checks: { database: 'up', storage: 'up' } });
+        expect(child.exitCode, label).toBeNull();
+      } finally {
+        child.kill();
+      }
+    }
+  } finally {
+    await minio.stop();
+    await postgres.stop();
+  }
+}, 240_000);
+
+test('refuses_smtp_host_without_mail_from_naming_it', () => {
+  const host = 'smtp-valor-que-nao-pode-aparecer.exemplo';
+  const { status, output } = startApiProcess({ ...validEnv, SMTP_HOST: host });
+
+  expect(status).toBe(1);
+  expect(output).toContain('MAIL_FROM');
+  expect(output).not.toContain(host);
+});
