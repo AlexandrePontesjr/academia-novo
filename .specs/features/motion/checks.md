@@ -48,6 +48,17 @@ mudança; nenhuma é apagada nem enfraquecida no que ainda vale:
   outra origem e sem violação de CSP.
 - `tests/repo/identidade.test.ts` › `site_content_has_the_door_five_shape`: ganha a chave `menu`.
 
+Depois do Build, por decisão do usuário em 2026-10-22 (AD-106), fora do escopo desta feature e num
+commit próprio:
+
+- a seção Planos de `/` passa a um plano só, sem valor, e `apps/web/e2e/landing.spec.ts` ›
+  `plans_toggle_between_monthly_and_yearly` vira `plans_show_one_card_without_a_price`;
+- a C39 em `/` ignora também `#planos` (`LANDING_EXCLUDED` de `apps/web/e2e/support/motion.ts`),
+  como já ignorava o cabeçalho e o menu. O baseline foi regravado com essa exclusão sobre o código de
+  `70e9826` (o mesmo de `7471232`, mais a prova): as 21 rotas da shell saem idênticas ao baseline
+  anterior, byte a byte, e só a entrada `/` muda, perdendo o texto, o ARIA e os pontos de foco de
+  `#planos`. O resto de `/` continua comparado com o código anterior a esta feature.
+
 ## Checks
 
 Grouped by the plan's slices; numbering runs across the whole feature and follows the AC numbers
