@@ -436,3 +436,64 @@ export const privacySettings = pgTable(
     check('privacy_settings_days_range', sql`${table.photoVersionRetentionDays} BETWEEN 1 AND 365`),
   ],
 );
+
+export const LEAD_STATUSES = ['new', 'contacted', 'converted', 'discarded'] as const;
+export const LEAD_SOURCES = ['form', 'google'] as const;
+
+// Interessados (pre-cadastro, door 1): quem pediu matrícula pela página pública e ainda não é aluno.
+// Sem CPF, nascimento nem login. `email` é gravado aparado e em minúsculas, e o índice parcial deixa
+// um só interessado aberto (`new` ou `contacted`) por e-mail. `student_id` só existe em `converted` e
+// não cascateia: a anonimização não apaga aluno. O termo aceito é sempre o de `data_processing`.
+export const leads = pgTable(
+  'leads',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    phone: text('phone').notNull(),
+    source: text('source', { enum: LEAD_SOURCES }).notNull(),
+    status: text('status', { enum: LEAD_STATUSES }).notNull().default('new'),
+    consentPurpose: text('consent_purpose', { enum: CONSENT_PURPOSES }).notNull(),
+    consentTermVersion: integer('consent_term_version').notNull(),
+    emailVerifiedAt: instant('email_verified_at'),
+    studentId: uuid('student_id').references(() => students.id),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.consentPurpose, table.consentTermVersion],
+      foreignColumns: [consentTerms.purpose, consentTerms.version],
+    }),
+    check('leads_status_valid', sql`${table.status} in ('new', 'contacted', 'converted', 'discarded')`),
+    check('leads_source_valid', sql`${table.source} in ('form', 'google')`),
+    check('leads_consent_purpose_data_processing', sql`${table.consentPurpose} = 'data_processing'`),
+    check('leads_converted_iff_student_id', sql`(${table.status} = 'converted') = (${table.studentId} is not null)`),
+    uniqueIndex('leads_one_open_email_idx').on(table.email).where(sql`${table.status} in ('new', 'contacted')`),
+    index('leads_status_created_at_idx').on(table.status, table.createdAt),
+  ],
+);
+
+// Links de confirmação de e-mail de interessado (pre-cadastro, door 2). O token só existe no e-mail;
+// aqui fica o SHA-256 em hex. `used_at` muda uma vez; apagar o interessado apaga os tokens dele.
+export const leadVerifications = pgTable(
+  'lead_verifications',
+  {
+    id: id(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    expiresAt: instant('expires_at').notNull(),
+    usedAt: instant('used_at'),
+  },
+  (table) => [index('lead_verifications_lead_id_idx').on(table.leadId)],
+);
+
+// Contagem do limite do formulário público (pre-cadastro, door 4), à parte de `login_throttles`:
+// a chave é `ip:<ip>` ou `email:<e-mail>`, e `hits` guarda os instantes contados na janela.
+export const leadThrottles = pgTable('lead_throttles', {
+  key: text('key').primaryKey(),
+  hits: instant('hits').array().notNull(),
+});

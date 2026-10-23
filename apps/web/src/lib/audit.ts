@@ -68,6 +68,10 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'staff.exported': 'Dados de funcionário exportados',
   'staff.anonymized': 'Funcionário anonimizado',
   'privacy.settings_updated': 'Configuração de privacidade alterada',
+  'lead.created': 'Pré-cadastro recebido',
+  'lead.confirmed': 'E-mail do pré-cadastro confirmado',
+  'lead.status_changed': 'Situação do interessado alterada',
+  'lead.purged': 'Pré-cadastro expirado',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;

@@ -282,6 +282,9 @@ test('login_500_without_cookie_when_audit_insert_fails', async () => {
   expect(response.headers.getSetCookie()).toEqual([]);
 });
 
+/** Ações de interessado sem rota ainda: o batch B da `pre-cadastro` esvazia esta lista. */
+const LEAD_ACTIONS_NOT_ROUTED_YET: readonly string[] = ['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged'];
+
 test('ten_actions_written_equal_contract_vocabulary', async () => {
   const admin = (await stack.session('admin')).client;
   const password = 'senha-valida-123';
@@ -359,12 +362,14 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
+  // as ações de interessado que ainda não têm rota neste ponto da `pre-cadastro`: a lista só encolhe
+  const routed = auditActionSchema.options.filter((action) => !LEAD_ACTIONS_NOT_ROUTED_YET.includes(action));
 
-  expect(auditActionSchema.options).toHaveLength(43);
+  expect(auditActionSchema.options).toHaveLength(47);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  expect(written).toEqual([...auditActionSchema.options].sort());
+  expect(written).toEqual([...routed].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
-  expect(rows.filter((row) => !['user', 'student', 'staff', 'plan', 'privacy_settings'].includes(row.entity))).toEqual([]);
+  expect(rows.filter((row) => !['user', 'student', 'staff', 'plan', 'privacy_settings', 'lead'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações de funcionário e nas duas de privacidade, e só nelas
   const staffActions = auditActionSchema.options.filter((action) => action.startsWith('staff.'));
   expect(staffActions).toHaveLength(13);

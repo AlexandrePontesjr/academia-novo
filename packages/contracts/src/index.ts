@@ -4,6 +4,7 @@ export * from './check-ins.ts';
 export * from './consents.ts';
 export * from './dashboard.ts';
 export * from './health.ts';
+export * from './leads.ts';
 export * from './payments.ts';
 export * from './photos.ts';
 export * from './plans.ts';
