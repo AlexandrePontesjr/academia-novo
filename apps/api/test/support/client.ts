@@ -5,6 +5,8 @@ export interface RequestOptions {
   /** `null` manda a requisição sem `Origin`. */
   origin?: string | null;
   headers?: Record<string, string>;
+  /** `manual` devolve o `302` em vez de segui-lo. */
+  redirect?: RequestInit['redirect'];
 }
 
 /**
@@ -15,7 +17,7 @@ export function createClient(baseUrl: string) {
   const jar = new Map<string, string>();
 
   async function request(method: string, path: string, options: RequestOptions = {}) {
-    const { body, origin = WEB_ORIGIN, headers = {} } = options;
+    const { body, origin = WEB_ORIGIN, headers = {}, redirect } = options;
     // bytes e fluxos seguem como vieram, com o `Content-Type` de quem os mandou (multipart, imagem)
     const raw = body instanceof Uint8Array || body instanceof ReadableStream;
     const response = await fetch(`${baseUrl}${path}`, {
@@ -28,6 +30,7 @@ export function createClient(baseUrl: string) {
       },
       body: body === undefined ? undefined : raw || typeof body === 'string' ? (body as string | Uint8Array | ReadableStream) : JSON.stringify(body),
       ...(body instanceof ReadableStream && { duplex: 'half' }),
+      ...(redirect && { redirect }),
     } as RequestInit);
     for (const setCookie of response.headers.getSetCookie()) {
       const [pair = ''] = setCookie.split(';');

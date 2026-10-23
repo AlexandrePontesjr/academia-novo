@@ -22,13 +22,18 @@ import {
   Inject,
   Injectable,
   Post,
+  Req,
+  Res,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Public } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
+import type { Env } from '../env.ts';
+import { ENV } from '../tokens.ts';
 import { Input, Output } from '../validation.ts';
+import { cookieOptions, googleClient, PROFILE_COOKIE, profileOf } from './lead-google.ts';
 import { LeadsService } from './leads.service.ts';
 
 /** O envio caiu na armadilha: responde como um envio aceito, sem ter gravado nem contado nada. */
@@ -57,7 +62,10 @@ class LeadTrapFilter implements ExceptionFilter {
 /** O pré-cadastro público (`/matricula`): sem sessão, sob a checagem de origem nas escritas (AD-020). */
 @Controller('api/leads')
 export class LeadsController {
-  constructor(@Inject(LeadsService) private readonly leads: LeadsService) {}
+  constructor(
+    @Inject(LeadsService) private readonly leads: LeadsService,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
 
   @Get('options')
   @Public()
@@ -72,8 +80,17 @@ export class LeadsController {
   @UseFilters(LeadTrapFilter)
   @Input(createLeadRequestSchema)
   @Output(202, leadCreatedResponseSchema)
-  create(@Body() body: CreateLeadRequest, @Actor() actor: AuditActor): Promise<LeadCreatedResponse> {
-    return this.leads.create(body, actor);
+  async create(
+    @Body() body: CreateLeadRequest,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: AuditActor,
+  ): Promise<LeadCreatedResponse> {
+    // com o perfil do Google no cookie, nome e e-mail são os dele, e o cookie serve a um envio só
+    const google = googleClient(this.env) ? profileOf(req, this.env.AUTH_SECRET) : undefined;
+    const created = await this.leads.create(body, actor, google);
+    if (google) res.cookie(PROFILE_COOKIE, '', { ...cookieOptions(this.env, '/api/leads'), maxAge: 0 });
+    return created;
   }
 
   @Post('confirm')

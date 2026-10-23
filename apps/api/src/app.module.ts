@@ -17,6 +17,7 @@ import { DashboardController } from './dashboard/dashboard.controller.ts';
 import { DashboardService } from './dashboard/dashboard.service.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
+import { LeadsGoogleController } from './leads/leads-google.controller.ts';
 import { LeadsController } from './leads/leads.controller.ts';
 import { LeadsService } from './leads/leads.service.ts';
 import { MailService, type MailTransport, mailTransportFor } from './mail/mail.service.ts';
@@ -77,6 +78,7 @@ export class AppModule implements OnApplicationShutdown {
         StaffPrivacyController,
         PrivacySettingsController,
         LeadsController,
+        LeadsGoogleController,
         OpenApiController,
       ],
       providers: [

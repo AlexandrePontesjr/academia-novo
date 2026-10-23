@@ -159,6 +159,9 @@ test('only_listed_routes_answer_without_session', async () => {
   }
 
   expect(open.sort()).toEqual([
+    'GET /api/leads/google/callback',
+    'GET /api/leads/google/profile',
+    'GET /api/leads/google/start',
     'GET /api/leads/options',
     'GET /api/photo-files/:photoId/:variant',
     'GET /health',
