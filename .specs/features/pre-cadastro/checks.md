@@ -108,8 +108,8 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-create.test.ts -t 
 **C18** - `POST /api/leads` com o e-mail de um interessado `converted`, de um `discarded` e de um aluno (`students.email`) sem interessado responde `202` nos três casos e cria uma linha nova `new` em cada, mantendo as anteriores idênticas (AC 8)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-create.test.ts -t "converted_discarded_or_student_email_creates_new_lead"`
 
-**C19** - Dez `POST /api/leads` simultâneos com o mesmo e-mail novo, de IPs diferentes, respondem `202` todos, e `leads` termina com exatamente uma linha aberta daquele e-mail (AC 9)
-Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-create.test.ts -t "ten_concurrent_creates_same_email_one_open_row"`
+**C19** - Três `POST /api/leads` simultâneos com o mesmo e-mail novo, de IPs diferentes, respondem `202` os três, e `leads` termina com exatamente uma linha aberta daquele e-mail (AC 9)
+Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-create.test.ts -t "three_concurrent_creates_same_email_one_open_row"`
 
 **C20** - `POST /api/leads` com `website` igual a `http://spam` responde `202` com `{"status":"pending"}` e deixa `leads`, `lead_verifications` e `lead_throttles` idênticas e `captureMail()` vazio; também com os outros campos inválidos (AC 10)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-create.test.ts -t "honeypot_filled_202_and_nothing_recorded_or_counted"`

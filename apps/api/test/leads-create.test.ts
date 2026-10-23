@@ -16,7 +16,7 @@ import {
 } from './support/leads.ts';
 import { captureMail, confirmLink } from './support/mail.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
-import { cpfOf } from './support/students.ts';
+import { cpfOf, releasedTogether } from './support/students.ts';
 
 let stack: Stack;
 const mail = captureMail();
@@ -296,6 +296,17 @@ test('converted_discarded_or_student_email_creates_new_lead', async () => {
     expect(rows.filter((row) => row.id !== previous), email).toEqual([expect.objectContaining({ status: 'new', source: 'form' })]);
     if (previous) expect(await rowText(previous), email).toBe(before);
   }
+});
+
+test('three_concurrent_creates_same_email_one_open_row', async () => {
+  const email = nextEmail('corrida');
+  const bodies = await Promise.all([1, 2, 3].map(() => leadBody(stack, { email })));
+
+  const responses = await releasedTogether(bodies.map((body) => () => postLead(stack.client(), body, nextIp())));
+
+  expect(responses.map((response) => response.status)).toEqual([202, 202, 202]);
+  const open = (await leadRows(stack, email)).filter((row) => ['new', 'contacted'].includes(String(row.status)));
+  expect(open).toHaveLength(1);
 });
 
 test('honeypot_filled_202_and_nothing_recorded_or_counted', async () => {
