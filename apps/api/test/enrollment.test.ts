@@ -5,7 +5,14 @@ import type { Client } from './support/client.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
 
-const PUBLIC = ['POST /api/auth/login', 'POST /api/auth/two-factor/verify', 'GET /api/photo-files/:photoId/:variant'];
+const PUBLIC = [
+  'POST /api/auth/login',
+  'POST /api/auth/two-factor/verify',
+  'GET /api/photo-files/:photoId/:variant',
+  'GET /api/leads/options',
+  'POST /api/leads',
+  'POST /api/leads/confirm',
+];
 const EXEMPT = [
   'GET /api/auth/session',
   'POST /api/auth/logout',

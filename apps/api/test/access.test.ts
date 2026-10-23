@@ -142,7 +142,7 @@ test('non_admin_403_on_audit_logs', async () => {
   }
 });
 
-test('only_four_routes_answer_without_session', async () => {
+test('only_listed_routes_answer_without_session', async () => {
   const routes = stack.api.routes();
   expect(routes.length).toBeGreaterThanOrEqual(15);
 
@@ -159,9 +159,12 @@ test('only_four_routes_answer_without_session', async () => {
   }
 
   expect(open.sort()).toEqual([
+    'GET /api/leads/options',
     'GET /api/photo-files/:photoId/:variant',
     'GET /health',
     'POST /api/auth/login',
     'POST /api/auth/two-factor/verify',
-  ]);
+    'POST /api/leads',
+    'POST /api/leads/confirm',
+  ].sort());
 });

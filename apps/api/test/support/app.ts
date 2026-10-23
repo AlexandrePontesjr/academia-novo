@@ -6,8 +6,10 @@ import { Public } from '../../src/access.ts';
 import { AppModule } from '../../src/app.module.ts';
 import { configureApp } from '../../src/configure-app.ts';
 import { loadEnv } from '../../src/env.ts';
+import type { MailTransport } from '../../src/mail/mail.service.ts';
 import { PhotoPurge } from '../../src/photos/photo-purge.ts';
 import { PrivacyRetention } from '../../src/privacy/privacy-retention.ts';
+import { MAIL_TRANSPORT } from '../../src/tokens.ts';
 
 export const BOOM_MESSAGE = 'segredo-da-excecao-42';
 export const WEB_ORIGIN = 'http://localhost:3000';
@@ -51,6 +53,8 @@ export async function startApi(
   controllers: Type[] = [],
   storage: StorageEnv = NO_STORAGE,
   extraEnv: Record<string, string> = {},
+  /** O transporte de e-mail no lugar do que o ambiente escolheria (o de captura, nos testes). */
+  mail?: MailTransport,
 ) {
   // o ambiente passa pelo mesmo `loadEnv` do processo real: o que é opcional recebe o padrão de lá
   const env = loadEnv({
@@ -63,10 +67,12 @@ export async function startApi(
     ...storage,
     ...extraEnv,
   });
-  const moduleRef = await Test.createTestingModule({
+  const builder = Test.createTestingModule({
     imports: [AppModule.register({ ...env, PORT: 0 })],
     controllers,
-  }).compile();
+  });
+  if (mail) builder.overrideProvider(MAIL_TRANSPORT).useValue(mail);
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app);
   await app.listen(0, '127.0.0.1');

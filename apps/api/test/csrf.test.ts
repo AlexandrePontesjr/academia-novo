@@ -2,6 +2,8 @@ import { All, Controller } from '@nestjs/common';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { Public } from '../src/access.ts';
 import { WEB_ORIGIN } from './support/app.ts';
+import { leadBody, postLead, recorded } from './support/leads.ts';
+import { captureMail, confirmLink } from './support/mail.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 
 const FOREIGN = 'https://outro.example';
@@ -19,9 +21,10 @@ class WriteProbeController {
 }
 
 let stack: Stack;
+const mail = captureMail();
 
 beforeAll(async () => {
-  stack = await startStack([WriteProbeController]);
+  stack = await startStack([WriteProbeController], undefined, { mail: mail.transport });
 }, 180_000);
 
 beforeEach(() => {
@@ -131,4 +134,35 @@ test('origin_check_covers_every_spelling_the_router_dispatches', async () => {
   const logout = await session.request('POST', '/API/auth/logout', { origin: FOREIGN });
   expect(logout.status).toBe(403);
   expect(await stack.query('select id from sessions where user_id = $1', [user.id])).toHaveLength(1);
+});
+
+test('lead_public_writes_under_origin_check', async () => {
+  // um token de verdade, para a confirmação aceita mostrar que a rota responde como de costume
+  const submitted = await leadBody(stack);
+  expect((await postLead(stack.client(), submitted)).status).toBe(202);
+  const { token } = confirmLink(mail.sent.find((message) => message.to === submitted.email)!, WEB_ORIGIN);
+
+  const refusals: Array<[label: string, origin: string | null]> = [
+    ['sem Origin e sem Sec-Fetch-Site', null],
+    ['Origin de outro site', 'https://evil.example'],
+  ];
+  for (const [label, origin] of refusals) {
+    for (const [path, body] of [
+      ['/api/leads', await leadBody(stack)],
+      ['/api/leads/confirm', { token }],
+    ] as const) {
+      const before = await recorded(stack);
+      const response = await stack.client().request('POST', path, { body, origin });
+      expect(response.status, `${label} ${path}`).toBe(403);
+      expect((await problem(response)).code, `${label} ${path}`).toBe('csrf_rejected');
+      expect(await recorded(stack), `${label} ${path}`).toEqual(before);
+    }
+  }
+
+  const sameOrigin = { origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } };
+  const created = await stack.client().request('POST', '/api/leads', { body: await leadBody(stack), ...sameOrigin });
+  expect(created.status).toBe(202);
+  const confirmed = await stack.client().request('POST', '/api/leads/confirm', { body: { token }, ...sameOrigin });
+  expect(confirmed.status).toBe(200);
+  expect(await confirmed.json()).toEqual({ status: 'confirmed' });
 });

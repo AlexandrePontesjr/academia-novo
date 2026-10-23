@@ -7,6 +7,9 @@ import { postStaffPhoto, putStaffPhoto } from './support/staff.ts';
 import { type Minio, startMinio } from './support/servers.ts';
 import { problem, type SeededUser, type Stack, startStack } from './support/stack.ts';
 import { totpCode } from './support/totp.ts';
+import { leadBody, postConfirm, postLead } from './support/leads.ts';
+import { captureMail, confirmLink } from './support/mail.ts';
+import { WEB_ORIGIN } from './support/app.ts';
 
 const WRONG = 'senha-errada-000';
 
@@ -15,7 +18,7 @@ let minio: Minio;
 
 beforeAll(async () => {
   minio = await startMinio();
-  stack = await startStack([], minio.env);
+  stack = await startStack([], minio.env, { mail: mail.transport });
 }, 180_000);
 
 afterAll(async () => {
@@ -283,7 +286,8 @@ test('login_500_without_cookie_when_audit_insert_fails', async () => {
 });
 
 /** Ações de interessado sem rota ainda: o batch B da `pre-cadastro` esvazia esta lista. */
-const LEAD_ACTIONS_NOT_ROUTED_YET: readonly string[] = ['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged'];
+const LEAD_ACTIONS_NOT_ROUTED_YET: readonly string[] = ['lead.status_changed', 'lead.purged'];
+const mail = captureMail();
 
 test('ten_actions_written_equal_contract_vocabulary', async () => {
   const admin = (await stack.session('admin')).client;
@@ -359,6 +363,11 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   await admin.delete(`/api/students/${enrolledId}/enrollments/${enrollmentId}`); // student.enrollment_cancelled
   await admin.delete(`/api/plans/${planId}`); // plan.inactivated
   await admin.put('/api/privacy-settings', { inactiveStudentRetentionYears: 5, photoVersionRetentionDays: 30 }); // privacy.settings_updated
+  const leadEmail = 'percorre.interessado@example.com';
+  await postLead(stack.client(), await leadBody(stack, { email: leadEmail })); // lead.created
+  const { token } = confirmLink(mail.sent.find((message) => message.to === leadEmail)!, WEB_ORIGIN);
+  await postConfirm(stack.client(), { token }); // lead.confirmed
+  const leadId = (await stack.query<{ id: string }>('select id from leads where email = $1', [leadEmail]))[0]!.id;
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -404,4 +413,12 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
     expect(ofAction.length, action).toBeGreaterThan(0);
     expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(ofAction.map(() => ['student', enrolledId]));
   }
+  // `entity` igual a `lead` nas ações de interessado que já têm rota, com o id do interessado, e só nelas
+  const leadActions = auditActionSchema.options.filter((action) => action.startsWith('lead.') && !LEAD_ACTIONS_NOT_ROUTED_YET.includes(action));
+  expect(leadActions).toEqual(['lead.created', 'lead.confirmed']);
+  for (const action of leadActions) {
+    const ofAction = rows.filter((row) => row.action === action);
+    expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual([['lead', leadId]]);
+  }
+  expect(rows.filter((row) => row.entity === 'lead' && !row.action.startsWith('lead.'))).toEqual([]);
 });

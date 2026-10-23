@@ -17,6 +17,9 @@ import { DashboardController } from './dashboard/dashboard.controller.ts';
 import { DashboardService } from './dashboard/dashboard.service.ts';
 import type { Env } from './env.ts';
 import { HealthController } from './health.controller.ts';
+import { LeadsController } from './leads/leads.controller.ts';
+import { LeadsService } from './leads/leads.service.ts';
+import { MailService, type MailTransport, mailTransportFor } from './mail/mail.service.ts';
 import { OpenApiController } from './openapi.controller.ts';
 import { PhotoPurge } from './photos/photo-purge.ts';
 import { PhotoSigner } from './photos/photo-signer.ts';
@@ -37,7 +40,7 @@ import { PaymentsController, StudentPaymentsController } from './student-payment
 import { StudentPaymentsService } from './student-payments/student-payments.service.ts';
 import { StudentsController } from './students/students.controller.ts';
 import { StudentsService } from './students/students.service.ts';
-import { AUTH, DATABASE, ENV } from './tokens.ts';
+import { AUTH, DATABASE, ENV, MAIL_TRANSPORT } from './tokens.ts';
 import { UsersController } from './users/users.controller.ts';
 import { UsersService } from './users/users.service.ts';
 import { ValidationInterceptor } from './validation.ts';
@@ -73,6 +76,7 @@ export class AppModule implements OnApplicationShutdown {
         StudentPrivacyController,
         StaffPrivacyController,
         PrivacySettingsController,
+        LeadsController,
         OpenApiController,
       ],
       providers: [
@@ -149,6 +153,23 @@ export class AppModule implements OnApplicationShutdown {
           inject: [DATABASE, PhotoStorage],
         },
         PrivacyRetention,
+        { provide: MAIL_TRANSPORT, useFactory: () => mailTransportFor(env) },
+        {
+          provide: MailService,
+          useFactory: (transport: MailTransport) => new MailService(transport),
+          inject: [MAIL_TRANSPORT],
+        },
+        {
+          provide: LeadsService,
+          useFactory: (database: Database, mail: MailService) =>
+            new LeadsService(
+              database.db,
+              mail,
+              new URL(env.WEB_ORIGIN).origin,
+              env.GOOGLE_CLIENT_ID !== undefined && env.GOOGLE_CLIENT_SECRET !== undefined,
+            ),
+          inject: [DATABASE, MailService],
+        },
         {
           provide: AuditLogsService,
           useFactory: (database: Database) => new AuditLogsService(database.db),
