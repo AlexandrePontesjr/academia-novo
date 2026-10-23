@@ -296,8 +296,8 @@ test('retention_runs_on_startup_every_60_minutes_survives_failure_and_stops_on_c
     vi.advanceTimersByTime(HOUR);
     await until(() => isAnonymized(third), 'o terceiro vencido sair na execução seguinte à que falhou');
 
-    // os dois temporizadores do processo, o do expurgo de fotos e o da retenção; fechada a API, nenhum
-    expect(vi.getTimerCount()).toBe(2);
+    // os três temporizadores do processo: o do expurgo de fotos, o desta retenção e o da de interessados; fechada a API, nenhum
+    expect(vi.getTimerCount()).toBe(3);
     await api.close();
     closed = true;
     expect(vi.getTimerCount()).toBe(0);

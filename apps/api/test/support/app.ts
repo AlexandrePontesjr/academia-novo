@@ -6,6 +6,7 @@ import { Public } from '../../src/access.ts';
 import { AppModule } from '../../src/app.module.ts';
 import { configureApp } from '../../src/configure-app.ts';
 import { loadEnv } from '../../src/env.ts';
+import { LeadRetention } from '../../src/leads/lead-retention.ts';
 import type { MailTransport } from '../../src/mail/mail.service.ts';
 import { PhotoPurge } from '../../src/photos/photo-purge.ts';
 import { PrivacyRetention } from '../../src/privacy/privacy-retention.ts';
@@ -92,5 +93,7 @@ export async function startApi(
   const purge = () => app.get(PhotoPurge).run();
   /** Uma execução da retenção de inativos, esperada até o fim: a mesma que o temporizador chama. */
   const retention = () => app.get(PrivacyRetention).run();
-  return { url: `http://127.0.0.1:${port}`, server, routes, purge, retention, close: () => app.close() };
+  /** Uma execução da retenção de interessados, esperada até o fim: a mesma que o temporizador chama. */
+  const leadRetention = () => app.get(LeadRetention).run();
+  return { url: `http://127.0.0.1:${port}`, server, routes, purge, retention, leadRetention, close: () => app.close() };
 }

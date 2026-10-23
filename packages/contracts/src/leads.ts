@@ -16,6 +16,9 @@ export type LeadSource = z.infer<typeof leadSourceSchema>;
 export const MINOR_MESSAGE = 'Menores de 18 anos fazem a matrícula na recepção, com o responsável.';
 export const INVALID_LINK_MESSAGE = 'Link inválido ou expirado. Envie o pré-cadastro de novo.';
 
+/** Um substituto UTF-16 sem o par: não é texto, e o UTF-8 o trocaria por U+FFFD. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 /** O e-mail do interessado sai aparado e em minúsculas: é por ele que o aberto é único (door 1). */
 export const leadEmailSchema = z.string('Informe um e-mail válido.').trim().toLowerCase().pipe(emailSchema);
 
@@ -24,7 +27,8 @@ export const leadEmailSchema = z.string('Informe um e-mail válido.').trim().toL
  * respondido antes de chegar aqui (door 4). Com o cookie do Google, nome e e-mail são os do Google.
  */
 export const createLeadRequestSchema = z.object({
-  name: nameSchema,
+  // o nome vai para a linha e para o e-mail: um substituto UTF-16 solto não chega a nenhum dos dois
+  name: nameSchema.refine((name) => !LONE_SURROGATE.test(name), 'O nome contém um caractere inválido.'),
   email: leadEmailSchema,
   phone: phoneSchema,
   adult: z.literal(true, MINOR_MESSAGE),

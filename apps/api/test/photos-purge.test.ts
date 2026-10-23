@@ -194,8 +194,8 @@ test('purge_runs_every_60_minutes_survives_a_failed_run_and_stops_on_close', asy
     vi.advanceTimersByTime(HOUR);
     await until(() => gone(third), 'a terceira versão sair na execução seguinte à que falhou');
 
-    // o do expurgo e o da retenção de inativos (privacidade, door 7), os dois de `setInterval`
-    expect(vi.getTimerCount()).toBe(2);
+    // o do expurgo, o da retenção de inativos (privacidade, door 7) e o da de interessados (pre-cadastro, door 10)
+    expect(vi.getTimerCount()).toBe(3);
     await api.close();
     closed = true;
     expect(vi.getTimerCount()).toBe(0);

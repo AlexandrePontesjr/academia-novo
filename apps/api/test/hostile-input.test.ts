@@ -115,3 +115,22 @@ test('hostile_input_never_answers_5xx', async () => {
   expect(results.length).toBeGreaterThan(100);
   expect(results.filter((line) => line.startsWith('5'))).toEqual([]);
 }, 120_000);
+
+test('lead_create_hostile_bodies', async () => {
+  const anonymous = stack.client();
+  const json = { 'Content-Type': 'application/json' };
+  const valid = { name: 'Ana Souza', email: 'hostil@example.com', phone: '11987654321', adult: true, termVersion: 1 };
+
+  const notJson = await anonymous.request('POST', '/api/leads', { body: '{"name": "Ana",', headers: json });
+  expect(notJson.status).toBe(400);
+  expect(((await notJson.json()) as { code: string }).code).toBe('bad_request');
+
+  const huge = await anonymous.request('POST', '/api/leads', { body: JSON.stringify({ ...valid, name: 'x'.repeat(1024 * 1024) }), headers: json });
+  expect(huge.status).toBe(413);
+  await huge.text();
+
+  // o substituto solto chega ao JSON escapado e não vira `500`
+  const surrogate = await anonymous.request('POST', '/api/leads', { body: JSON.stringify({ ...valid, name: 'Ana \ud800 Souza' }), headers: json });
+  expect(surrogate.status).toBe(422);
+  expect(((await surrogate.json()) as { errors: Array<{ path: string }> }).errors.map((error) => error.path)).toEqual(['name']);
+});

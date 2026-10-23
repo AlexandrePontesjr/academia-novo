@@ -285,8 +285,6 @@ test('login_500_without_cookie_when_audit_insert_fails', async () => {
   expect(response.headers.getSetCookie()).toEqual([]);
 });
 
-/** Ações de interessado sem rota ainda: o batch B da `pre-cadastro` esvazia esta lista. */
-const LEAD_ACTIONS_NOT_ROUTED_YET: readonly string[] = ['lead.status_changed', 'lead.purged'];
 const mail = captureMail();
 
 test('ten_actions_written_equal_contract_vocabulary', async () => {
@@ -368,15 +366,26 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { token } = confirmLink(mail.sent.find((message) => message.to === leadEmail)!, WEB_ORIGIN);
   await postConfirm(stack.client(), { token }); // lead.confirmed
   const leadId = (await stack.query<{ id: string }>('select id from leads where email = $1', [leadEmail]))[0]!.id;
+  await admin.patch(`/api/leads/${leadId}`, { status: 'contacted' }); // lead.status_changed
+  await admin.post('/api/students', {
+    name: 'Interessado Percorre',
+    cpf: '390.533.447-05',
+    birthDate: '2000-01-01',
+    phone: '11912345678',
+    leadId,
+  }); // student.created e lead.status_changed
+  const [purged] = await stack.query<{ id: string }>(
+    `insert into leads (name, email, phone, source, consent_purpose, consent_term_version, created_at)
+     values ('Vencido Percorre', 'vencido.percorre@example.com', '11912345678', 'form', 'data_processing', 1, now() - interval '8 days')
+     returning id`,
+  );
+  await stack.api.leadRetention(); // lead.purged
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
-  // as ações de interessado que ainda não têm rota neste ponto da `pre-cadastro`: a lista só encolhe
-  const routed = auditActionSchema.options.filter((action) => !LEAD_ACTIONS_NOT_ROUTED_YET.includes(action));
-
   expect(auditActionSchema.options).toHaveLength(47);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  expect(written).toEqual([...routed].sort());
+  expect(written).toEqual([...auditActionSchema.options].sort());
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter((row) => !['user', 'student', 'staff', 'plan', 'privacy_settings', 'lead'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações de funcionário e nas duas de privacidade, e só nelas
@@ -413,12 +422,19 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
     expect(ofAction.length, action).toBeGreaterThan(0);
     expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(ofAction.map(() => ['student', enrolledId]));
   }
-  // `entity` igual a `lead` nas ações de interessado que já têm rota, com o id do interessado, e só nelas
-  const leadActions = auditActionSchema.options.filter((action) => action.startsWith('lead.') && !LEAD_ACTIONS_NOT_ROUTED_YET.includes(action));
-  expect(leadActions).toEqual(['lead.created', 'lead.confirmed']);
+  // `entity` igual a `lead` nas quatro ações de interessado, com o id do interessado, e só nelas
+  const leadActions = auditActionSchema.options.filter((action) => action.startsWith('lead.'));
+  expect(leadActions).toEqual(['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged']);
+  const leadTargets: Record<string, string[]> = {
+    'lead.created': [leadId],
+    'lead.confirmed': [leadId],
+    // o `PATCH` para contatado e a conversão pelo cadastro do aluno
+    'lead.status_changed': [leadId, leadId],
+    'lead.purged': [purged!.id],
+  };
   for (const action of leadActions) {
     const ofAction = rows.filter((row) => row.action === action);
-    expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual([['lead', leadId]]);
+    expect(ofAction.map((row) => [row.entity, row.entity_id]), action).toEqual(leadTargets[action]!.map((id) => ['lead', id]));
   }
   expect(rows.filter((row) => row.entity === 'lead' && !row.action.startsWith('lead.'))).toEqual([]);
 });
