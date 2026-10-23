@@ -57,6 +57,17 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
     expect((await problem(response)).code, `${method} ${path}`).toBe('two_factor_enrollment_required');
   }
 
+  // as seis públicas do pré-cadastro respondem por si ao admin sem 2FA, sem a recusa do cadastro
+  const leadPublic = PUBLIC.filter((route) => route.includes('/api/leads'));
+  expect(leadPublic).toHaveLength(6);
+  for (const route of leadPublic) {
+    const [method, path] = route.split(' ') as [string, string];
+    const response = await client.request(method, path, method === 'POST' ? { body: {} } : {});
+    const text = await response.text();
+    expect(response.status, route).not.toBe(401);
+    expect(text, route).not.toContain('two_factor_enrollment_required');
+  }
+
   expect(blocked.map(({ method, path }) => `${method} ${path}`).sort()).toEqual(
     [
       'PUT /api/auth/password',
