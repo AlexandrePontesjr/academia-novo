@@ -212,7 +212,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-staff.test.ts -t "
 **C50** - `PATCH /api/leads/abc` e `PATCH /api/leads/<uuid de ninguém>` respondem `404` com `not_found` para `admin`; e `PATCH` para um `uuid` de ninguém por `reception` também responde `404` (prova de que a rota existe e decide: o `403` do `instructor` na C49 vem antes) (AC 42)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-staff.test.ts -t "patch_404_for_non_uuid_and_unknown_uuid"`
 
-**C51** - `POST /api/students` de `admin` e de `hr_finance` com os campos de aluno válidos e `leadId` de um interessado `new`, e de outro `contacted`, responde `201`; na mesma leitura, o interessado tem `status` `converted` e `student_id` igual ao `id` do aluno criado (AC 43, door 9)
+**C51** - `POST /api/students` de `admin` e de `reception` com os campos de aluno válidos e `leadId` de um interessado `new`, e de outro `contacted`, responde `201`; na mesma leitura, o interessado tem `status` `converted` e `student_id` igual ao `id` do aluno criado (AC 43, door 9)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-convert.test.ts -t "create_student_with_lead_id_converts_new_and_contacted"`
 
 **C52** - `POST /api/students` com `leadId` de um interessado `converted` e de um `discarded` responde `409` com `lead_converted`, sem aluno novo e com o interessado idêntico; com `leadId` `abc` e com `uuid` de ninguém responde `422` com `path` `leadId` sem aluno novo (AC 44)
@@ -227,7 +227,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-convert.test.ts -t
 **C55** - `POST /api/students` sem `leadId` responde como antes: os testes de `students-create` existentes passam sem edição, e a resposta não ganha chave nova (AC 46)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-convert.test.ts -t "create_student_without_lead_id_unchanged"`
 
-**C56** - `reception` em `POST /api/students` com `leadId` responde `403` com `forbidden` e o interessado idêntico (door 9: só quem cria aluno converte)
+**C56** - `hr_finance` em `POST /api/students` com `leadId` responde `403` com `forbidden` e o interessado idêntico (door 9: só quem cria aluno converte)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/leads-convert.test.ts -t "reception_cannot_convert"`
 
 ### S6 - Tela "Interessados" · ~6 files · ~40 KB · ~10k
@@ -253,7 +253,7 @@ Proof: `pnpm --filter "./apps/web" exec playwright test e2e/leads.spec.ts -g "lo
 **C63** - Sem sessão, `/leads` redireciona para `/login`; `instructor` vê "Você não tem permissão para acessar esta página." e a `FakeApi` não recebe `GET /api/leads` (AC 52)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/leads.spec.ts -g "no_session_redirects_and_instructor_denied"`
 
-**C64** - Para `reception`, a linha `new` tem "Marcar contatado" e "Descartar" e não tem "Matricular"; a `contacted` tem só "Descartar"; a `discarded` tem só "Reabrir"; a `converted` não tem botão; para `admin` e `hr_finance`, as linhas `new` e `contacted` também têm "Matricular" (AC 53)
+**C64** - Para `hr_finance`, a linha `new` tem "Marcar contatado" e "Descartar" e não tem "Matricular"; a `contacted` tem só "Descartar"; a `discarded` tem só "Reabrir"; a `converted` não tem botão; para `admin` e `reception`, as linhas `new` e `contacted` também têm "Matricular" (AC 53)
 Proof: `pnpm --filter "./apps/web" exec playwright test e2e/leads.spec.ts -g "row_buttons_by_status_and_role"`
 
 **C65** - "Marcar contatado" envia `PATCH /api/leads/<id>` com `{"status":"contacted"}` sem diálogo; "Reabrir" envia `{"status":"new"}`; "Descartar" abre um diálogo que contém o nome do interessado, "Voltar" não envia nada, e confirmar envia `{"status":"discarded"}`; depois de cada `200` a linha mostra a situação nova (AC 53, AC 54)
@@ -368,11 +368,11 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/csrf.test.ts -t "lead_pa
 Proof: `pnpm --filter "./apps/api" exec vitest run test/hostile-input.test.ts -t "lead_create_hostile_bodies"`
 
 **C99** - A guarda de `tests/repo/identidade.test.ts` sobre `apps/web/src/app/page.tsx` (sem `/api/` nem `fetchApi`) passa sem edição, e `SITE.plans.items[0].cta.href` é `/matricula` (AD-117, Impact "web")
-Proof: `pnpm --filter "./tests/repo" exec vitest run identidade.test.ts -t "landing_page_imports_only_session_from_lib"`
+Proof: `pnpm --filter "./tests/repo" exec vitest run identidade.test.ts -t "site_content_is_the_only_source_of_landing_copy"`
 Proof: `pnpm --filter "./tests/repo" exec vitest run repo.test.ts -t "plans_cta_points_to_matricula"`
 
 **C100** - A C39 da `motion` (`motion.spec.ts`, baseline em `fixtures/motion-baseline`) passa sem regravar o baseline depois da troca do `href` (Impact "comportamento existente")
-Proof: `pnpm --filter "./apps/web" exec playwright test e2e/motion.spec.ts -g "C39"`
+Proof: `pnpm --filter "./apps/web" exec playwright test e2e/motion.spec.ts -g "copy_names_and_focus_order_match_the_baseline"`
 
 **C101** - `contracts.test.ts` e `audit.spec.ts` contam 47 ações em todos os pontos que contavam 43, e `ACTION_LABELS` tem um rótulo para cada uma (o typecheck do web passa) (Impact "contrato")
 Proof: `pnpm --filter "./apps/api" exec vitest run test/contracts.test.ts -t "audit_action_count_is_forty_seven"`
@@ -419,7 +419,7 @@ os conjuntos enumerados nos critérios e nas Assumptions, e as montagens.
 | `403 csrf_rejected` nas escritas novas (3) | `POST /api/leads` C33 · `confirm` C33 · `PATCH` C97 | - |
 | códigos de `409` (2) | `lead_converted` C47, C52, C53 · `lead_email_open` C48 | - |
 | quem lê e marca, por perfil (4) | `admin` C43, C45 · `reception` C43, C45 · `hr_finance` C43, C45 · `instructor` C49 | - |
-| quem converte, por perfil (3) | `admin` C51 · `hr_finance` C51 · `reception` C56 | - |
+| quem converte, por perfil (3) | `admin` C51 · `reception` C51 · `hr_finance` C56 | - |
 | rotas públicas (6) | `options` C23 · `POST` C11 · `confirm` C24 · `start` C35 · `callback` C37 · `profile` C39; todas juntas C95 | - |
 | rotas da equipe sem sessão (2) | `GET` C49 · `PATCH` C49 | - |
 | rotas da equipe bloqueadas ao `admin` sem 2FA (2) | `GET /api/leads` C96 · `PATCH /api/leads/:id` C96 | - |
