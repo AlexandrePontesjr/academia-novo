@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -1576,6 +1577,94 @@ describe('stack de pé', () => {
     expect(refused).not.toContain('Nome ou CPF');
 
     expect(auditRows()).toBe(beforeCheckIn);
+  }, 300_000);
+
+  test('lead_submitted_confirmed_and_listed_through_real_stack', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    const email = 'interessada.da.stack@exemplo.com';
+
+    // a landing pelo web real: o "Matricule-se" leva ao pré-cadastro, que abre sem sessão com o termo vigente
+    const landing = await (await fetch(`${stack.webOrigin}/`)).text();
+    expect(landing).toMatch(/<a[^>]*href="\/matricula"[^>]*>Matricule-se<\/a>/);
+    const form = await fetch(`${stack.webOrigin}/matricula`);
+    expect(form.status).toBe(200);
+    expect(await form.text()).toContain('Pré-cadastro');
+    const options = (await (await fetch(`${stack.webOrigin}/api/leads/options`)).json()) as { google: boolean; term: { version: number } };
+    expect(options.google).toBe(false);
+
+    // o envio, como o formulário o faz
+    const sent = await fetch(`${stack.webOrigin}/api/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ name: 'Interessada da Stack', email, phone: '(11) 98765-4321', adult: true, termVersion: options.term.version, website: '' }),
+    });
+    expect(sent.status).toBe(202);
+    expect(await sent.json()).toEqual({ status: 'pending' });
+
+    // sem SMTP, a api de produção escreve a frase e nunca o link (door 5)
+    let logs = '';
+    for (let attempt = 0; attempt < 20 && !logs.includes('SMTP não configurado'); attempt += 1) {
+      logs = stack.compose('logs api').output;
+      if (!logs.includes('SMTP não configurado')) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    expect(logs).toContain('e-mail não enviado: SMTP não configurado');
+    expect(logs.split(/\r?\n/).filter((line) => line.includes('token='))).toEqual([]);
+
+    // só o hash do token fica no banco: o teste grava um token conhecido para o interessado
+    const leadId = psql(`select id from leads where email = '${email}'`);
+    expect(leadId).toMatch(/^[0-9a-f-]{36}$/);
+    const token = 'token-conhecido-da-stack-com-43-caracteres-x';
+    const hash = createHash('sha256').update(token).digest('hex');
+    psql(`insert into lead_verifications (lead_id, token_hash, expires_at) values ('${leadId}', '${hash}', now() + interval '24 hours')`);
+
+    const page = await fetch(`${stack.webOrigin}/matricula/confirmar?token=${token}`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('Confirmar e-mail');
+    expect(psql(`select email_verified_at is null from leads where id = '${leadId}'`)).toBe('t');
+    const confirmed = await fetch(`${stack.webOrigin}/api/leads/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ token }),
+    });
+    expect(confirmed.status).toBe(200);
+    expect(await confirmed.json()).toEqual({ status: 'confirmed' });
+
+    // a recepção vê o interessado em /leads, com o e-mail confirmado
+    const password = 'senha-da-stack-lead';
+    const receptionEmail = 'recepcao.leads@exemplo.com';
+    const created = stack.compose(
+      `exec -T -e ADMIN_PASSWORD=${password} api pnpm users:create-admin --email ${receptionEmail} --name Recepcao`,
+    );
+    expect(created.status, created.output).toBe(0);
+    psql(`update users set role = 'reception' where email = '${receptionEmail}'`);
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: stack.webOrigin },
+      body: JSON.stringify({ email: receptionEmail, password }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+    const list = await (await fetch(`${stack.webOrigin}/leads`, { headers: { Cookie: cookie } })).text();
+    const row = /<tr[^>]*data-lead="([^"]+)"[^>]*>([\s\S]*?)<\/tr>/.exec(list);
+    expect(row?.[1]).toBe(leadId);
+    const cells = [...row![2]!.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((match) => match[1]!.replace(/<[^>]+>/g, '').trim());
+    expect(cells[0]).toBe('Interessada da Stack');
+    expect(cells[4]).toBe('Sim');
+
+    // as linhas, lidas do banco da stack
+    expect(psql(`select status || '|' || (email_verified_at is not null) from leads where id = '${leadId}'`)).toBe('new|true');
+    expect(psql(`select action from audit_logs where entity = 'lead' and entity_id = '${leadId}' order by created_at, id`).split(/\r?\n/)).toEqual([
+      'lead.created',
+      'lead.confirmed',
+    ]);
   }, 300_000);
 
   test('health_storage_up_then_down_when_storage_stops', async () => {
