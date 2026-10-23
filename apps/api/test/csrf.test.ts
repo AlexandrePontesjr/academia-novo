@@ -166,3 +166,22 @@ test('lead_public_writes_under_origin_check', async () => {
   expect(confirmed.status).toBe(200);
   expect(await confirmed.json()).toEqual({ status: 'confirmed' });
 });
+
+test('lead_patch_under_origin_check', async () => {
+  const admin = (await stack.session('admin')).client;
+  const [lead] = await stack.query<{ id: string; row: string }>(
+    `insert into leads (name, email, phone, source, consent_purpose, consent_term_version)
+     values ('Origem', 'origem@example.com', '11912345678', 'form', 'data_processing', 1) returning id, to_jsonb(leads)::text as row`,
+  );
+
+  for (const origin of [null, FOREIGN]) {
+    const response = await admin.request('PATCH', `/api/leads/${lead!.id}`, { body: { status: 'contacted' }, origin });
+    expect(response.status, String(origin)).toBe(403);
+    expect((await problem(response)).code, String(origin)).toBe('csrf_rejected');
+  }
+  const [after] = await stack.query<{ row: string }>('select to_jsonb(l)::text as row from leads l where id = $1', [lead!.id]);
+  expect(after!.row).toBe(lead!.row);
+
+  const accepted = await admin.request('PATCH', `/api/leads/${lead!.id}`, { body: { status: 'contacted' } });
+  expect(accepted.status).toBe(200);
+});

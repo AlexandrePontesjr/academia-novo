@@ -48,9 +48,12 @@ export class StudentsController {
   @Input(createStudentRequestSchema)
   @Output(201, studentSchema)
   async create(@Body() body: CreateStudentRequest, @Actor() actor: AuditActor): Promise<Student> {
-    const student = await this.students.create(body, actor);
-    if (!student) throw new ProblemException(409, 'cpf_taken');
-    return student;
+    const created = await this.students.create(body, actor);
+    if (created.outcome === 'lead_not_found') {
+      throw validationProblem([{ path: 'leadId', message: 'Interessado não encontrado.' }]);
+    }
+    if (created.outcome !== 'ok') throw new ProblemException(409, created.outcome);
+    return created.student;
   }
 
   @Get(':id')

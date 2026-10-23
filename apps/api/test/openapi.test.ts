@@ -12,6 +12,7 @@ import {
   createStudentRequestSchema,
   createUserRequestSchema,
   grantConsentRequestSchema,
+  leadsQuerySchema,
   guardianRequestSchema,
   linkStaffUserRequestSchema,
   loginRequestSchema,
@@ -26,6 +27,7 @@ import {
   twoFactorVerifyRequestSchema,
   updatePlanRequestSchema,
   updateStaffRequestSchema,
+  updateLeadRequestSchema,
   updateStudentRequestSchema,
   updateUserRequestSchema,
 } from '@academia/contracts';
@@ -150,8 +152,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['put', '/api/privacy-settings', privacySettingsSchema],
     ['post', '/api/leads', createLeadRequestSchema],
     ['post', '/api/leads/confirm', confirmLeadRequestSchema],
+    ['patch', '/api/leads/{id}', updateLeadRequestSchema],
   ];
-  expect(contracts).toHaveLength(22);
+  expect(contracts).toHaveLength(23);
 
   const { paths } = await document();
 
@@ -452,4 +455,41 @@ test('privacy_paths_declared_with_settings_body_from_contract', async () => {
   const content = paths['/api/privacy-settings']?.put?.requestBody?.content ?? {};
   expect(Object.keys(content)).toEqual(['application/json']);
   expect(content['application/json']?.schema).toEqual(JSON.parse(JSON.stringify(z.toJSONSchema(privacySettingsSchema))));
+});
+
+test('lead_routes_listed_with_surface_methods', async () => {
+  const { paths } = await document();
+
+  // as oito rotas da Surface, e nenhuma outra sob `/api/leads`
+  const surface = [
+    'get /api/leads/options',
+    'post /api/leads',
+    'post /api/leads/confirm',
+    'get /api/leads/google/start',
+    'get /api/leads/google/callback',
+    'get /api/leads/google/profile',
+    'get /api/leads',
+    'patch /api/leads/{id}',
+  ];
+  const documented = Object.entries(paths)
+    .filter(([path]) => path === '/api/leads' || path.startsWith('/api/leads/'))
+    .flatMap(([path, operations]) => Object.keys(operations).map((method) => `${method} ${path}`));
+  expect(documented.sort()).toEqual([...surface].sort());
+
+  // `status` é o único parâmetro de `GET /api/leads`, opcional, com o schema do contrato
+  const properties = JSON.parse(JSON.stringify(z.toJSONSchema(leadsQuerySchema).properties)) as Record<string, { enum?: string[] }>;
+  expect(properties.status!.enum).toEqual(['new', 'contacted', 'converted', 'discarded']);
+  const parameters = paths['/api/leads']?.get?.parameters ?? [];
+  expect(parameters).toHaveLength(1);
+  expect(parameters[0]).toMatchObject({ name: 'status', in: 'query' });
+  expect(parameters[0]!.required).not.toBe(true);
+  expect(parameters[0]!.schema).toEqual(properties.status);
+
+  // o corpo de `POST /api/students` declara `leadId` opcional
+  const student = paths['/api/students']?.post?.requestBody?.content['application/json']?.schema as {
+    properties: Record<string, { format?: string }>;
+    required: string[];
+  };
+  expect(student.properties.leadId).toMatchObject({ format: 'uuid' });
+  expect(student.required).not.toContain('leadId');
 });

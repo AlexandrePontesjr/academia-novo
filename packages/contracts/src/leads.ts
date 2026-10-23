@@ -75,6 +75,10 @@ export const leadSchema = z.strictObject({
 export type Lead = z.infer<typeof leadSchema>;
 
 export const leadsResponseSchema = z.strictObject({ items: z.array(leadSchema) });
+
+/** Query de `GET /api/leads`: sem `status`, os abertos (`new` e `contacted`). */
+export const leadsQuerySchema = z.object({ status: leadStatusSchema.optional() });
+export type LeadsQuery = z.infer<typeof leadsQuerySchema>;
 export type LeadsResponse = z.infer<typeof leadsResponseSchema>;
 
 /** Corpo de `PATCH /api/leads/:id`: `converted` só pela criação do aluno (door 9). */

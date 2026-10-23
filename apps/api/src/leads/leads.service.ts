@@ -2,12 +2,16 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   type CreateLeadRequest,
   INVALID_LINK_MESSAGE,
+  type Lead,
   type LeadCreatedResponse,
   type LeadOptionsResponse,
   type LeadSource,
+  type LeadStatus,
+  type UpdateLeadRequest,
 } from '@academia/contracts';
-import { and, type Database, desc, eq, inArray, schema, sql } from '@academia/database';
+import { and, type Database, desc, eq, inArray, ne, schema, sql } from '@academia/database';
 import { audit, type AuditActor, diffOf } from '../audit/audit.ts';
+import { isUniqueViolation } from '../db-errors.ts';
 import type { MailService } from '../mail/mail.service.ts';
 import { ProblemException, validationProblem } from '../problem.filter.ts';
 import { attemptLead } from './lead-throttle.ts';
@@ -21,6 +25,59 @@ export const CONFIRM_SUBJECT = 'Confirme seu pré-cadastro';
 const OPEN = ['new', 'contacted'] as const;
 /** Os campos de `lead` cuja trilha guarda o valor (door 8): nunca nome, e-mail nem telefone. */
 const REGISTRABLE = ['source', 'status'] as const;
+
+const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+type Row = typeof leads.$inferSelect;
+
+/** O interessado como a equipe o vê: sem `consent_*` nem `updated_at`. */
+const toLead = (row: Row): Lead => ({
+  id: row.id,
+  name: row.name,
+  email: row.email,
+  phone: row.phone,
+  source: row.source,
+  status: row.status,
+  emailVerified: row.emailVerifiedAt !== null,
+  createdAt: row.createdAt.toISOString(),
+  studentId: row.studentId,
+});
+
+/** A linha de `lead.status_changed`: só `status`, com o valor de antes e o de depois (door 8). */
+const recordStatusChange = (tx: Tx, actor: AuditActor, id: string, from: LeadStatus, to: LeadStatus) =>
+  audit.record(tx, {
+    actor,
+    action: 'lead.status_changed',
+    entity: 'lead',
+    entityId: id,
+    diff: diffOf({ status: from }, { status: to }, ['status'], REGISTRABLE),
+  });
+
+export type LeadChange =
+  | { outcome: 'ok'; lead: Lead }
+  | { outcome: 'not_found' }
+  /** Convertido não muda mais de situação. */
+  | { outcome: 'lead_converted' }
+  /** Reabrir esbarra noutro interessado aberto do mesmo e-mail (door 1). */
+  | { outcome: 'lead_email_open' };
+
+/**
+ * A primeira metade da conversão (door 9), dentro da transação do aluno: trava o interessado. Só um
+ * aberto converte; dois cadastros com o mesmo `leadId` se enfileiram aqui, e o segundo o lê convertido.
+ */
+export async function lockLeadToConvert(tx: Tx, leadId: string): Promise<'ok' | 'not_found' | 'lead_converted'> {
+  const [row] = await tx.select({ status: leads.status }).from(leads).where(eq(leads.id, leadId)).for('update');
+  if (!row) return 'not_found';
+  return (OPEN as readonly string[]).includes(row.status) ? 'ok' : 'lead_converted';
+}
+
+/** A segunda metade, depois do insert do aluno: `converted` com o aluno, e a linha da trilha. */
+export async function convertLead(tx: Tx, leadId: string, studentId: string, actor: AuditActor) {
+  const [before] = await tx.select({ status: leads.status }).from(leads).where(eq(leads.id, leadId));
+  await tx.update(leads).set({ status: 'converted', studentId }).where(eq(leads.id, leadId));
+  await recordStatusChange(tx, actor, leadId, before!.status, 'converted');
+}
 
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -178,6 +235,53 @@ export class LeadsService {
       await tx.update(leads).set({ emailVerifiedAt: sql`now()`, updatedAt: sql`now()` }).where(eq(leads.id, found.leadId));
       await audit.record(tx, { actor, action: 'lead.confirmed', entity: 'lead', entityId: found.leadId });
     });
+  }
+
+  /** Os interessados de uma situação, ou os abertos; do mais recente para o mais antigo, e no empate por `id`. */
+  async list(status: LeadStatus | undefined): Promise<Lead[]> {
+    const rows = await this.db
+      .select()
+      .from(leads)
+      .where(status ? eq(leads.status, status) : inArray(leads.status, [...OPEN]))
+      .orderBy(desc(leads.createdAt), desc(leads.id));
+    return rows.map(toLead);
+  }
+
+  /**
+   * Muda a situação pela equipe, com a linha travada. A mesma situação responde sem gravar; convertido
+   * não muda; reabrir um descartado exige que o e-mail não tenha outro aberto.
+   */
+  async update(id: string, change: UpdateLeadRequest, actor: AuditActor): Promise<LeadChange> {
+    if (!UUID.test(id)) return { outcome: 'not_found' };
+    try {
+      return await this.db.transaction(async (tx): Promise<LeadChange> => {
+        const [row] = await tx.select().from(leads).where(eq(leads.id, id)).for('update');
+        if (!row) return { outcome: 'not_found' };
+        if (row.status === 'converted') return { outcome: 'lead_converted' };
+        if (row.status === change.status) return { outcome: 'ok', lead: toLead(row) };
+
+        if (row.status === 'discarded') {
+          const [sibling] = await tx
+            .select({ id: leads.id })
+            .from(leads)
+            .where(and(eq(leads.email, row.email), inArray(leads.status, [...OPEN]), ne(leads.id, id)));
+          if (sibling) return { outcome: 'lead_email_open' };
+        }
+
+        const [updated] = await tx
+          .update(leads)
+          // `updated_at` é o último envio do interessado; a mudança da equipe fica na trilha
+          .set({ status: change.status })
+          .where(eq(leads.id, id))
+          .returning();
+        await recordStatusChange(tx, actor, id, row.status, change.status);
+        return { outcome: 'ok', lead: toLead(updated!) };
+      });
+    } catch (error) {
+      // o aberto do mesmo e-mail nasceu entre a leitura e a escrita: o índice da door 1 decide
+      if (isUniqueViolation(error)) return { outcome: 'lead_email_open' };
+      throw error;
+    }
   }
 
   /** Um token novo para o interessado: só o hash fica no banco, e vale 24 horas pelo relógio dele. */

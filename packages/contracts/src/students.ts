@@ -102,6 +102,8 @@ export const createStudentRequestSchema = z
     emergencyContactPhone: phoneSchema.optional(),
     healthNotes: healthNotesSchema.optional(),
     guardian: guardianRequestSchema.optional(),
+    /** O interessado que este cadastro converte (pre-cadastro, door 9). */
+    leadId: z.uuid('Interessado não encontrado.').optional(),
   })
   .superRefine((body, context) => {
     // o menor exige o responsável; um `birthDate` que o schema já recusou não chega a esta conta

@@ -9,6 +9,14 @@ import {
   leadCreatedResponseSchema,
   type LeadOptionsResponse,
   leadOptionsResponseSchema,
+  type Lead,
+  leadSchema,
+  type LeadsQuery,
+  leadsQuerySchema,
+  type LeadsResponse,
+  leadsResponseSchema,
+  type UpdateLeadRequest,
+  updateLeadRequestSchema,
 } from '@academia/contracts';
 import {
   type ArgumentsHost,
@@ -21,6 +29,9 @@ import {
   Get,
   Inject,
   Injectable,
+  NotFoundException,
+  Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -28,11 +39,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { Public } from '../access.ts';
+import { Public, Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import type { Env } from '../env.ts';
 import { ENV } from '../tokens.ts';
-import { Input, Output } from '../validation.ts';
+import { ProblemException } from '../problem.filter.ts';
+import { Input, Output, QueryInput, ValidatedQuery } from '../validation.ts';
 import { cookieOptions, googleClient, PROFILE_COOKIE, profileOf } from './lead-google.ts';
 import { LeadsService } from './leads.service.ts';
 
@@ -59,7 +71,10 @@ class LeadTrapFilter implements ExceptionFilter {
   }
 }
 
-/** O pré-cadastro público (`/matricula`): sem sessão, sob a checagem de origem nas escritas (AD-020). */
+/**
+ * O pré-cadastro público (`/matricula`): sem sessão, sob a checagem de origem nas escritas (AD-020).
+ * A lista e a mudança de situação são da equipe que atende: `admin`, `reception` e `hr_finance`.
+ */
 @Controller('api/leads')
 export class LeadsController {
   constructor(
@@ -91,6 +106,25 @@ export class LeadsController {
     const created = await this.leads.create(body, actor, google);
     if (google) res.cookie(PROFILE_COOKIE, '', { ...cookieOptions(this.env, '/api/leads'), maxAge: 0 });
     return created;
+  }
+
+  @Get()
+  @Roles('admin', 'reception', 'hr_finance')
+  @QueryInput(leadsQuerySchema)
+  @Output(200, leadsResponseSchema)
+  async list(@ValidatedQuery() query: LeadsQuery): Promise<LeadsResponse> {
+    return { items: await this.leads.list(query.status) };
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'reception', 'hr_finance')
+  @Input(updateLeadRequestSchema)
+  @Output(200, leadSchema)
+  async update(@Param('id') id: string, @Body() body: UpdateLeadRequest, @Actor() actor: AuditActor): Promise<Lead> {
+    const change = await this.leads.update(id, body, actor);
+    if (change.outcome === 'not_found') throw new NotFoundException();
+    if (change.outcome !== 'ok') throw new ProblemException(409, change.outcome);
+    return change.lead;
   }
 
   @Post('confirm')

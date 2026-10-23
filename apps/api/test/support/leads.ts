@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Client } from './client.ts';
 import type { Stack } from './stack.ts';
+import { cpfOf } from './students.ts';
 
 let ips = 0;
 /** Um IP só deste teste, para a contagem do limite não vazar de um teste para outro. */
@@ -81,3 +82,48 @@ export async function recorded(stack: Stack) {
 export async function databaseNow(stack: Stack) {
   return (await stack.query<{ now: Date }>('select now() as now'))[0]!.now;
 }
+
+/** Um interessado inserido por SQL, com o termo 1 e as colunas dadas; devolve o `id`. */
+export async function insertLead(stack: Stack, columns: Record<string, unknown> = {}) {
+  const values = {
+    name: 'Semente',
+    email: nextEmail('semente'),
+    phone: '11912345678',
+    source: 'form',
+    consent_purpose: 'data_processing',
+    consent_term_version: 1,
+    ...columns,
+  };
+  const names = Object.keys(values);
+  const [row] = await stack.query<{ id: string }>(
+    `insert into leads (${names.join(', ')}) values (${names.map((_, index) => `$${index + 1}`).join(', ')}) returning id`,
+    Object.values(values),
+  );
+  return row!.id;
+}
+
+let students = 0;
+/** Um aluno inserido por SQL, para o interessado `converted` ter a quem apontar; devolve o `id`. */
+export async function insertLeadStudent(stack: Stack) {
+  students += 1;
+  const [row] = await stack.query<{ id: string }>(
+    `insert into students (name, cpf, birth_date, phone) values ('Aluno Convertido', $1, '2000-01-01', '11912345678') returning id`,
+    [cpfOf(70_000 + students)],
+  );
+  return row!.id;
+}
+
+/** Um interessado `converted`, com o aluno que ele virou. */
+export async function insertConvertedLead(stack: Stack, columns: Record<string, unknown> = {}) {
+  const studentId = await insertLeadStudent(stack);
+  const id = await insertLead(stack, { status: 'converted', student_id: studentId, ...columns });
+  return { id, studentId };
+}
+
+/** A linha do interessado como texto (`to_jsonb`), para "linha idêntica". */
+export const leadRowText = async (stack: Stack, id: string) =>
+  (await stack.query<{ row: string }>('select to_jsonb(l)::text as row from leads l where id = $1', [id]))[0]?.row;
+
+/** A linha do interessado como objeto (`to_jsonb`). */
+export const leadRow = async (stack: Stack, id: string) =>
+  (await stack.query<{ row: Record<string, unknown> }>('select to_jsonb(l) as row from leads l where id = $1', [id]))[0]?.row;
