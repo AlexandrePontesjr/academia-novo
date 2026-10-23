@@ -13,6 +13,8 @@ interface Received {
 
 let server: Server | undefined;
 let received: Received[] = [];
+/** O que `GET /api/auth/session` responde; sem valor, o `404` de qualquer outra rota (sem sessão). */
+let sessionReply: object | undefined;
 
 /** Uma API falsa que anota o que chegou e responde com status, corpo, cookies e request id próprios. */
 test.beforeEach(async () => {
@@ -29,6 +31,11 @@ test.beforeEach(async () => {
         cookie: req.headers.cookie,
       });
       const method = String(req.method).toLowerCase();
+      if (req.url === '/api/auth/session' && sessionReply) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(sessionReply));
+        return;
+      }
       res.writeHead(req.url?.startsWith('/api/echo') ? 218 : 404, {
         'Content-Type': 'application/json',
         'X-Request-Id': `id-da-api-${method}`,
@@ -43,6 +50,7 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   if (server) await new Promise((resolve) => server!.close(resolve));
   server = undefined;
+  sessionReply = undefined;
 });
 
 test('proxy_forwards_request_and_response', async ({ page, context, baseURL }) => {
@@ -123,4 +131,36 @@ test('unreachable_api_answers_502_or_504_problem', async ({ page }) => {
   expect(refused.type).toMatch(/^application\/problem\+json\b/);
   expect(refused.body).toMatchObject({ status: 502, code: 'bad_gateway' });
   expect(refused.body.requestId).toMatch(/\S/);
+});
+
+test('matricula_pages_public_with_csp_and_no_prefix_leak', async ({ page }) => {
+  const user = { id: '018f0000-0000-7000-8000-000000000001', name: 'Marina Duarte', email: 'marina@exemplo.com' };
+  const sessions: Array<[label: string, reply: object | undefined]> = [
+    ['sem sessão', undefined],
+    ['com sessão', { user: { ...user, role: 'reception', twoFactorEnabled: false }, twoFactorEnrollmentRequired: false }],
+    ['2FA pendente', { user: { ...user, role: 'admin', twoFactorEnabled: false }, twoFactorEnrollmentRequired: true }],
+  ];
+  let cases = 0;
+  for (const [label, reply] of sessions) {
+    sessionReply = reply;
+    for (const path of ['/matricula', '/matricula/confirmar?token=x', '/matricula/enviado']) {
+      const response = await page.goto(path);
+      cases += 1;
+      expect(response?.status(), `${label} ${path}`).toBe(200);
+      expect(new URL(page.url()).pathname, `${label} ${path}`).toBe(path.split('?')[0]);
+      // nenhum redirecionamento no caminho: a resposta é a da própria página
+      expect(response?.request().redirectedFrom(), `${label} ${path}`).toBeNull();
+      const policy = response?.headers()['content-security-policy'] ?? '';
+      expect(policy, `${label} ${path}`).toContain("'nonce-");
+      expect(policy, `${label} ${path}`).toContain("form-action 'self'");
+    }
+  }
+  expect(cases).toBe(9);
+
+  // o ramo é nomeado: o que só começa com `/matricula` continua exigindo sessão
+  sessionReply = undefined;
+  for (const path of ['/matriculas', '/matricula-x']) {
+    await page.goto(path);
+    await expect(page, path).toHaveURL('/login');
+  }
 });

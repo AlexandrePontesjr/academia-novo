@@ -624,3 +624,14 @@ test('secret_custody_list_includes_smtp_pass_and_google_secret', () => {
     'GOOGLE_CLIENT_SECRET',
   ]);
 });
+
+// pre-cadastro (AD-117): o "Matricule-se" do card de planos leva ao pré-cadastro público
+test('plans_cta_points_to_matricula', async () => {
+  const { SITE } = await import('../../apps/web/src/app/site-content.ts');
+  expect(SITE.plans.items).toHaveLength(1);
+  expect(SITE.plans.items[0]!.cta).toEqual({ label: 'Matricule-se', href: '/matricula' });
+  // o cartão lê o destino do conteúdo, sem âncora literal
+  const card = readFileSync(join(repoRoot, 'apps/web/src/components/landing/plans-pricing.tsx'), 'utf8');
+  expect(card).toContain('href={plan.cta.href}');
+  expect(card).not.toContain('#localizacao');
+});

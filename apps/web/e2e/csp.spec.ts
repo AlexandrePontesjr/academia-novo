@@ -83,3 +83,30 @@ test('chromium_opens_login_and_students_without_csp_violations', async ({ page, 
   expect(await visit('/students')).toEqual([]);
   await expect(page.getByRole('heading', { name: 'Alunos', exact: true })).toBeVisible();
 });
+
+test('matricula_pages_load_only_same_origin_without_csp_violation', async ({ page, api, baseURL }) => {
+  await page.addInitScript(() => {
+    const violations: string[] = [];
+    (window as unknown as { __cspViolations: string[] }).__cspViolations = violations;
+    document.addEventListener('securitypolicyviolation', (event) => violations.push(`${event.violatedDirective} ${event.blockedURI}`));
+  });
+  api.on('GET', '/api/leads/options', { status: 200, body: { google: true, term: { version: 1, text: 'Texto do termo.' } } });
+  api.on('GET', '/api/leads/google/profile', { status: 200, body: { name: 'Bia Lima', email: 'bia@gmail.com' } });
+  const origins = new Set<string>();
+  page.on('request', (request) => {
+    if (!request.url().startsWith('data:') && !request.url().startsWith('blob:')) origins.add(new URL(request.url()).origin);
+  });
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (/content security policy/i.test(message.text())) consoleErrors.push(message.text());
+  });
+
+  for (const path of ['/matricula', '/matricula?google=ok', '/matricula/confirmar?token=t1', '/matricula/enviado']) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(200);
+    await page.waitForLoadState('networkidle');
+    expect(await page.evaluate(() => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? []), path).toEqual([]);
+  }
+  expect([...origins]).toEqual([new URL(baseURL!).origin]);
+  expect(consoleErrors).toEqual([]);
+});

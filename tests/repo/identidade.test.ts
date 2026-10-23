@@ -177,7 +177,7 @@ test('site_content_has_the_door_five_shape', async () => {
   expect(keysOf(SITE)).toEqual(
     [
       'about', 'address', 'closing', 'cta', 'eyebrow', 'footer', 'gallery', 'galleryLabels', 'hero', 'hours',
-      'instagram', 'intro', 'labels', 'legalName', 'logo', 'menu', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
+      'instagram', 'intro', 'labels', 'legalName', 'logo', 'matricula', 'menu', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
       'proof', 'rights', 'routeLabels', 'routes', 'scroll', 'sections', 'structure', 'tagline', 'why',
     ].sort(),
   );

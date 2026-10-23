@@ -194,7 +194,8 @@ test('plans_show_one_card_without_a_price', async ({ page }) => {
   await expect(cards.getByRole('heading', { level: 3 })).toHaveText('Plano mensal');
   await expect(section.locator('[data-slot="plan-price"]')).toHaveText('Consulte na recepção');
   await expect(cards.locator('li')).toHaveText(['Musculação e cardio', 'Acompanhamento da equipe', 'Acesso das 06:00 às 22:00']);
-  await expect(cards.getByRole('link', { name: 'Matricule-se' })).toHaveAttribute('href', '#localizacao');
+  // o destino passou de `#localizacao` (AD-106) ao pré-cadastro (AD-117)
+  await expect(cards.getByRole('link', { name: 'Matricule-se' })).toHaveAttribute('href', '/matricula');
   // sem valor em reais e sem a chave Mensal/Anual
   await expect(section).not.toContainText('R$');
   await expect(section.getByRole('button')).toHaveCount(0);
@@ -359,4 +360,17 @@ test('logo_sits_before_the_wordmark_on_login_and_desktop_shell', async ({ page, 
   await page.setViewportSize(MOBILE);
   await page.goto('/students');
   await expect(page.locator('[data-slot="brand-logo"]')).toBeHidden();
+});
+
+test('matricule_se_links_to_matricula', async ({ page, api }) => {
+  api.on('GET', '/api/leads/options', { status: 200, body: { google: false, term: { version: 1, text: 'Texto do termo.' } } });
+  for (const session of [undefined, sessionOf('reception')]) {
+    api.session = session;
+    await page.goto('/');
+    const link = region(page, 'Planos').getByRole('link', { name: 'Matricule-se', exact: true });
+    await expect(link, session ? 'com sessão' : 'sem sessão').toHaveAttribute('href', '/matricula');
+    await link.click();
+    await expect(page, session ? 'com sessão' : 'sem sessão').toHaveURL('/matricula');
+    await expect(page.getByRole('heading', { name: 'Pré-cadastro', exact: true })).toBeVisible();
+  }
 });

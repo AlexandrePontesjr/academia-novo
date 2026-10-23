@@ -3,7 +3,7 @@ import { SITE } from '../../app/site-content.ts';
 
 /**
  * Os planos da landing: um cartão por plano, sem valor - a mensalidade é definida na matrícula, no
- * sistema (AD-106), e o cartão manda à recepção.
+ * sistema (AD-106), e o cartão manda ao pré-cadastro (AD-117).
  */
 export function PlansPricing() {
   const { plans } = SITE;
@@ -34,10 +34,10 @@ export function PlansPricing() {
             </ul>
           </div>
           <a
-            href="#localizacao"
+            href={plan.cta.href}
             className="inline-flex h-11 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            {plan.cta}
+            {plan.cta.label}
           </a>
         </li>
       ))}
