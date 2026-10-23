@@ -185,21 +185,19 @@ test('gallery_shows_four_captioned_photos_in_order_with_arrows', async ({ page }
   await expect(section.getByRole('button', { name: 'Foto anterior' })).toBeVisible();
 });
 
-test('plans_toggle_between_monthly_and_yearly', async ({ page }) => {
+// AD-106: um plano só, sem valor no site; a mensalidade é definida na matrícula
+test('plans_show_one_card_without_a_price', async ({ page }) => {
   await page.goto('/');
   const section = region(page, 'Planos');
   const cards = section.locator('[data-slot="plan-card"]');
-  await expect(cards).toHaveCount(3);
-  const prices = () => section.locator('[data-slot="plan-price"]').allTextContents();
-  expect(await prices()).toEqual(SITE.plans.items.map((plan) => `R$ ${plan.price.monthly}/mês`));
-  await expect(section.getByRole('button', { name: 'Mensal' })).toHaveAttribute('aria-pressed', 'true');
-
-  await section.getByRole('button', { name: 'Anual' }).click();
-  await expect(section.getByRole('button', { name: 'Anual' })).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(prices).toEqual(SITE.plans.items.map((plan) => `R$ ${plan.price.yearly}/mês`));
-  // um plano em destaque, o do meio
-  await expect(cards.nth(1)).toHaveAttribute('data-featured', 'true');
-  await expect(section.locator('[data-featured]')).toHaveCount(1);
+  await expect(cards).toHaveCount(1);
+  await expect(cards.getByRole('heading', { level: 3 })).toHaveText('Plano mensal');
+  await expect(section.locator('[data-slot="plan-price"]')).toHaveText('Consulte na recepção');
+  await expect(cards.locator('li')).toHaveText(['Musculação e cardio', 'Acompanhamento da equipe', 'Acesso das 06:00 às 22:00']);
+  await expect(cards.getByRole('link', { name: 'Matricule-se' })).toHaveAttribute('href', '#localizacao');
+  // sem valor em reais e sem a chave Mensal/Anual
+  await expect(section).not.toContainText('R$');
+  await expect(section.getByRole('button')).toHaveCount(0);
 });
 
 test('location_has_address_neighborhood_and_three_route_links', async ({ page }) => {

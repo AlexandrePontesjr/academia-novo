@@ -102,36 +102,16 @@ export const SITE = {
     },
   ],
   galleryLabels: { previous: 'Foto anterior', next: 'Próxima foto' },
-  // EXEMPLO: nomes, valores e itens dos planos precisam ser confirmados pela academia antes de ir ao ar
+  // um plano só, sem valor no site: a mensalidade é definida na matrícula, no sistema (AD-106)
   plans: {
-    billing: { monthly: 'Mensal', yearly: 'Anual' },
-    perMonth: '/mês',
-    yearlyNote: 'por mês no plano anual',
+    price: 'Consulte na recepção',
     featuresLabel: 'Inclui',
     items: [
       {
-        name: 'Essencial',
-        text: 'Para quem está começando e quer criar o hábito.',
-        price: { monthly: 89, yearly: 75 },
-        features: ['Musculação livre', 'Avaliação inicial', 'Acesso das 06:00 às 22:00'],
+        name: 'Plano mensal',
+        text: 'Para treinar no seu ritmo.',
+        features: ['Musculação e cardio', 'Acompanhamento da equipe', 'Acesso das 06:00 às 22:00'],
         cta: 'Matricule-se',
-        featured: false,
-      },
-      {
-        name: 'Completo',
-        text: 'Para quem já treina e quer evoluir com orientação.',
-        price: { monthly: 109, yearly: 92 },
-        features: ['Musculação e cardio', 'Acompanhamento da equipe', 'Reavaliação a cada 3 meses', 'Acesso das 06:00 às 22:00'],
-        cta: 'Matricule-se',
-        featured: true,
-      },
-      {
-        name: 'Dupla',
-        text: 'Para treinar junto com quem você gosta.',
-        price: { monthly: 189, yearly: 160 },
-        features: ['Duas pessoas', 'Musculação e cardio', 'Acompanhamento da equipe', 'Acesso das 06:00 às 22:00'],
-        cta: 'Matricule-se',
-        featured: false,
       },
     ],
   },
