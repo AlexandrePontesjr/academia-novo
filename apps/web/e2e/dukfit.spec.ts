@@ -168,6 +168,8 @@ test('more_menu_lists_every_allowed_link_account_and_sign_out', async ({ page, a
     admin: [
       'Início',
       'Alunos',
+      // pre-cadastro: os interessados, para quem atende (admin, reception e hr_finance)
+      'Interessados',
       'Check-in',
       'Presenças',
       'Planos',
@@ -218,6 +220,7 @@ test('desktop_shows_the_side_nav_with_every_link_and_no_bottom_nav', async ({ pa
   expect(await namesOf(nav)).toEqual([
     'Início',
     'Alunos',
+    'Interessados',
     'Check-in',
     'Presenças',
     'Planos',

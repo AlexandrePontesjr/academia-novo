@@ -93,7 +93,8 @@ test('the_dukfit_dependency_guard_is_gone', () => {
 
 // S3 - carregamento
 
-const SEGMENTS = ['dashboard', 'students', 'staff', 'plans', 'payments', 'check-in', 'check-ins', 'audit', 'users', 'privacy', 'account'];
+// `leads` entrou com a `pre-cadastro`: todo segmento novo do shell ganha o mesmo carregamento (AD-101)
+const SEGMENTS = ['dashboard', 'students', 'staff', 'plans', 'payments', 'check-in', 'check-ins', 'audit', 'users', 'privacy', 'account', 'leads'];
 const GLOBALS = 'packages/ui/src/globals.css';
 
 /** O bloco de um `@keyframes`, da chave que abre até a que fecha. */
@@ -116,7 +117,7 @@ test.each(SEGMENTS)('eleven_segments_have_app_loading: %s', (segment) => {
 });
 
 test('eleven_segments_have_app_loading', () => {
-  expect(SEGMENTS).toHaveLength(11);
+  expect(SEGMENTS).toHaveLength(12);
   const all = readdirSync(join(ROOT, 'apps/web/src/app'), { recursive: true, encoding: 'utf8' }).filter((path) => /(^|[\\/])loading\.tsx$/.test(path));
   expect(all.map((path) => path.split(/[\\/]/)[0]).sort()).toEqual([...SEGMENTS].sort());
 });

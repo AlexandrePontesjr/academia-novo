@@ -17,6 +17,7 @@ import { useForm } from 'react-hook-form';
 import { TextField } from '../../components/text-field.tsx';
 import { callApi, showFieldErrors, UNAVAILABLE } from '../../lib/api.ts';
 import { RELATIONSHIP_LABELS } from '../../lib/consents.ts';
+import { LEAD_CONFLICT_MESSAGES } from '../../lib/leads.ts';
 import { formatCpf, formatPhone, SEX_LABELS } from '../../lib/students.ts';
 
 interface FormValues {
@@ -35,14 +36,22 @@ interface FormValues {
 
 const OPTIONAL = ['sex', 'email', 'address', 'emergencyContactName', 'emergencyContactPhone', 'healthNotes'] as const;
 
-function defaultsOf(student?: Student, guardian?: Guardian | null): FormValues {
+/** O interessado que o cadastro converte: o que a lista sabe dele preenche o formulário (pre-cadastro). */
+export interface LeadPrefill {
+  id: string;
+  name?: string | undefined;
+  email?: string | undefined;
+  phone?: string | undefined;
+}
+
+function defaultsOf(student?: Student, guardian?: Guardian | null, lead?: LeadPrefill): FormValues {
   return {
-    name: student?.name ?? '',
+    name: student?.name ?? lead?.name ?? '',
     cpf: formatCpf(student?.cpf ?? ''),
     birthDate: student?.birthDate ?? '',
     sex: student?.sex ?? '',
-    email: student?.email ?? '',
-    phone: formatPhone(student?.phone ?? ''),
+    email: student?.email ?? lead?.email ?? '',
+    phone: formatPhone(student?.phone ?? lead?.phone ?? ''),
     address: student?.address ?? '',
     emergencyContactName: student?.emergencyContactName ?? '',
     emergencyContactPhone: formatPhone(student?.emergencyContactPhone ?? ''),
@@ -82,13 +91,13 @@ function bodyOf(values: FormValues, editing: boolean, withGuardian: boolean): Re
 }
 
 /** Formulário de cadastro (`/students/new`) e de edição (`/students/<id>/edit`) de aluno. */
-export function StudentForm({ student, guardian }: { student?: Student; guardian?: Guardian | null }) {
+export function StudentForm({ student, guardian, lead }: { student?: Student; guardian?: Guardian | null; lead?: LeadPrefill }) {
   const router = useRouter();
   const sexId = useId();
   const notesId = useId();
   const [alert, setAlert] = useState<string>();
   const guardianRelationshipId = useId();
-  const form = useForm<FormValues>({ defaultValues: defaultsOf(student, guardian) });
+  const form = useForm<FormValues>({ defaultValues: defaultsOf(student, guardian, lead) });
   const { errors, isSubmitting } = form.formState;
   // o dia de hoje só é lido depois da hidratação: o servidor e o navegador podem discordar do dia
   const [today, setToday] = useState<string>();
@@ -99,6 +108,7 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
   async function submit(values: FormValues) {
     setAlert(undefined);
     const body = bodyOf(values, student !== undefined, showGuardian);
+    if (lead) body.leadId = lead.id;
     // a mesma conferência que a API faz, antes de enviar
     const checked = (student ? updateStudentRequestSchema : createStudentRequestSchema).safeParse(body);
     if (!checked.success) {
@@ -116,6 +126,8 @@ export function StudentForm({ student, guardian }: { student?: Student; guardian
     else if (result.kind === 'validation') showFieldErrors(form, result.errors);
     else if (result.kind === 'problem' && result.code === 'cpf_taken') {
       form.setError('cpf', { message: 'Já existe um aluno com este CPF.' });
+    } else if (result.kind === 'problem' && LEAD_CONFLICT_MESSAGES[result.code]) {
+      setAlert(LEAD_CONFLICT_MESSAGES[result.code]);
     } else setAlert(result.kind === 'unavailable' ? UNAVAILABLE : 'Não foi possível concluir. Tente novamente.');
   }
 

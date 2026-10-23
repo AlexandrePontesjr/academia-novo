@@ -1015,3 +1015,53 @@ test('five_privacy_action_labels', async ({ page, api }) => {
   expect(options.slice(38, 43)).toEqual(PRIVACY_LABELS);
   expect(AUDIT_ACTIONS.slice(38, 43)).toEqual(PRIVACY_ACTIONS);
 });
+
+const LEAD_ACTIONS = ['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged'] as const;
+const LEAD_LABELS = ['Pré-cadastro recebido', 'E-mail do pré-cadastro confirmado', 'Situação do interessado alterada', 'Pré-cadastro expirado'];
+
+test('four_lead_actions_labels_order_and_status_detail', async ({ page, api }) => {
+  const leadId = '018f0000-0000-7000-8000-0000000003aa';
+  serve(api, [
+    ...LEAD_ACTIONS.map((action) => logOf({ action, entity: 'lead', entityId: leadId, user: null })),
+    logOf({
+      action: 'lead.status_changed',
+      entity: 'lead',
+      entityId: leadId,
+      diff: { fields: ['status'], values: { status: { from: 'new', to: 'contacted' } } },
+    }),
+  ]);
+
+  await page.goto('/audit');
+
+  expect((await page.locator('tbody tr td:nth-child(3)').allTextContents()).slice(0, 4)).toEqual(LEAD_LABELS);
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options.slice(43)).toEqual(LEAD_LABELS);
+  expect(AUDIT_ACTIONS.slice(43)).toEqual(LEAD_ACTIONS);
+  const details = page.locator('tbody tr:nth-child(5) td:nth-child(7)');
+  await expect(details.getByText('Situação: Novo → Contatado', { exact: true })).toBeVisible();
+});
+
+test('action_filter_lists_all_actions', async ({ page, api }) => {
+  serve(api, [logOf()]);
+
+  await page.goto('/audit');
+
+  const options = page.getByLabel('Ação', { exact: true }).locator('option');
+  expect(await options.allTextContents()).toEqual(['Todas', ...LABELS]);
+  // uma opção por ação do contrato, com o valor dela
+  expect((await options.evaluateAll((items) => items.map((item) => (item as HTMLOptionElement).value))).slice(1)).toEqual([...AUDIT_ACTIONS]);
+  expect(LABELS).toHaveLength(47);
+});
+
+test('first_forty_three_actions_unchanged', async ({ page, api }) => {
+  serve(api, [logOf()]);
+
+  await page.goto('/audit');
+
+  const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
+  expect(options).toHaveLength(47);
+  // as quarenta e três de antes da `pre-cadastro`, na ordem e com o texto de antes
+  expect(options.slice(0, 43)).toEqual(LABELS.slice(0, 43));
+  expect(options[42]).toBe('Configuração de privacidade alterada');
+  expect(AUDIT_ACTIONS[42]).toBe('privacy.settings_updated');
+});

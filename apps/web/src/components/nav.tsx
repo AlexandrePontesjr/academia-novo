@@ -13,6 +13,7 @@ import {
   HomeIcon,
   KeyIcon,
   LayersIcon,
+  MailIcon,
   MenuIcon,
   ShieldIcon,
   UserIcon,
@@ -20,6 +21,7 @@ import {
 } from '@academia/ui';
 import { type ReactNode, useState } from 'react';
 import { canCheckIn } from '../lib/check-ins.ts';
+import { canReadLeads } from '../lib/leads.ts';
 import { canReadPayments } from '../lib/payments.ts';
 import { canReadPlans } from '../lib/plans.ts';
 import { canAccessStaff } from '../lib/staff.ts';
@@ -39,6 +41,7 @@ function itemsFor(role: Role): Item[] {
   const items: Array<Item | false> = [
     { href: '/dashboard', label: 'Início', icon: <HomeIcon /> },
     { href: '/students', label: 'Alunos', icon: <UsersIcon /> },
+    canReadLeads(role) && { href: '/leads', label: 'Interessados', icon: <MailIcon />, prefetch: false },
     canCheckIn(role) && { href: '/check-in', label: 'Check-in', icon: <CheckInIcon />, prefetch: false },
     canCheckIn(role) && { href: '/check-ins', label: 'Presenças', icon: <ChartIcon />, prefetch: false },
     canReadPlans(role) && { href: '/plans', label: 'Planos', icon: <LayersIcon />, prefetch: false },

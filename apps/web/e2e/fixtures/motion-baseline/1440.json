@@ -47,10 +47,11 @@
   },
   "/dashboard": {
     "text": "Olá, Marina Duarte.\n\nPainel\n\nSituação em 07/10/2026\n\nAlunos\nAtivos\n31\nInativos\n4\nSuspensos\n2\nCheck-ins de hoje\n\n12\n\n07/10/2026\n\nCheck-ins da semana\n3\nQUI\n0\nSEX\n7\nSÁB\n10\nDOM\n5\nSEG\n2\nTER\n12\nQUA\nMatrículas\nAtivas\n27\nAgendadas\n6\nVencimentos nos próximos 7 dias\nALUNO\tPLANO\tVENCE EM\nAna Souza\tMensal · Mensal\t10/10/2026\nPagamentos\nPendentes\n9\nAtrasados\n4\nMatrículas ativas por plano\nPLANO\tMATRÍCULAS ATIVAS\nMensal · Mensal\t19",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\": Há pagamentos atrasados\n- main:\n  - paragraph: Olá, Marina Duarte.\n  - heading \"Painel\" [level=2]\n  - paragraph: Situação em 07/10/2026\n  - region \"Alunos\":\n    - heading \"Alunos\" [level=3]\n    - link \"Ver alunos\":\n      - /url: /students\n    - term: Ativos\n    - definition: \"31\"\n    - term: Inativos\n    - definition: \"4\"\n    - term: Suspensos\n    - definition: \"2\"\n  - region \"Check-ins de hoje\":\n    - heading \"Check-ins de hoje\" [level=3]\n    - link \"Ver presenças de hoje\":\n      - /url: /check-ins\n    - img \"12 check-ins hoje\"\n    - paragraph: \"12\"\n    - paragraph: 07/10/2026\n  - region \"Check-ins da semana\":\n    - heading \"Check-ins da semana\" [level=3]\n    - list \"Check-ins por dia, últimos 7 dias\":\n      - listitem: 3 QUI\n      - listitem: 0 SEX\n      - listitem: 7 SÁB\n      - listitem: 10 DOM\n      - listitem: 5 SEG\n      - listitem: 2 TER\n      - listitem: 12 QUA\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - term: Ativas\n    - definition: \"27\"\n    - term: Agendadas\n    - definition: \"6\"\n  - region \"Vencimentos nos próximos 7 dias\":\n    - heading \"Vencimentos nos próximos 7 dias\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Aluno Plano Vence em\":\n          - columnheader \"Aluno\"\n          - columnheader \"Plano\"\n          - columnheader \"Vence em\"\n      - rowgroup:\n        - row \"Ana Souza Mensal · Mensal 10/10/2026\":\n          - cell \"Ana Souza\":\n            - link \"Ana Souza\":\n              - /url: /students/018f0000-0000-7000-8000-000000000622\n          - cell \"Mensal · Mensal\"\n          - cell \"10/10/2026\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - term: Pendentes\n    - definition:\n      - link \"9\":\n        - /url: /payments?status=pending\n    - term: Atrasados\n    - definition:\n      - link \"4\":\n        - /url: /payments?status=overdue\n  - region \"Matrículas ativas por plano\":\n    - heading \"Matrículas ativas por plano\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Plano Matrículas ativas\":\n          - columnheader \"Plano\"\n          - columnheader \"Matrículas ativas\"\n      - rowgroup:\n        - row \"Mensal · Mensal 19\":\n          - cell \"Mensal · Mensal\"\n          - cell \"19\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\": Há pagamentos atrasados\n- main:\n  - paragraph: Olá, Marina Duarte.\n  - heading \"Painel\" [level=2]\n  - paragraph: Situação em 07/10/2026\n  - region \"Alunos\":\n    - heading \"Alunos\" [level=3]\n    - link \"Ver alunos\":\n      - /url: /students\n    - term: Ativos\n    - definition: \"31\"\n    - term: Inativos\n    - definition: \"4\"\n    - term: Suspensos\n    - definition: \"2\"\n  - region \"Check-ins de hoje\":\n    - heading \"Check-ins de hoje\" [level=3]\n    - link \"Ver presenças de hoje\":\n      - /url: /check-ins\n    - img \"12 check-ins hoje\"\n    - paragraph: \"12\"\n    - paragraph: 07/10/2026\n  - region \"Check-ins da semana\":\n    - heading \"Check-ins da semana\" [level=3]\n    - list \"Check-ins por dia, últimos 7 dias\":\n      - listitem: 3 QUI\n      - listitem: 0 SEX\n      - listitem: 7 SÁB\n      - listitem: 10 DOM\n      - listitem: 5 SEG\n      - listitem: 2 TER\n      - listitem: 12 QUA\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - term: Ativas\n    - definition: \"27\"\n    - term: Agendadas\n    - definition: \"6\"\n  - region \"Vencimentos nos próximos 7 dias\":\n    - heading \"Vencimentos nos próximos 7 dias\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Aluno Plano Vence em\":\n          - columnheader \"Aluno\"\n          - columnheader \"Plano\"\n          - columnheader \"Vence em\"\n      - rowgroup:\n        - row \"Ana Souza Mensal · Mensal 10/10/2026\":\n          - cell \"Ana Souza\":\n            - link \"Ana Souza\":\n              - /url: /students/018f0000-0000-7000-8000-000000000622\n          - cell \"Mensal · Mensal\"\n          - cell \"10/10/2026\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - term: Pendentes\n    - definition:\n      - link \"9\":\n        - /url: /payments?status=pending\n    - term: Atrasados\n    - definition:\n      - link \"4\":\n        - /url: /payments?status=overdue\n  - region \"Matrículas ativas por plano\":\n    - heading \"Matrículas ativas por plano\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Plano Matrículas ativas\":\n          - columnheader \"Plano\"\n          - columnheader \"Matrículas ativas\"\n      - rowgroup:\n        - row \"Mensal · Mensal 19\":\n          - cell \"Mensal · Mensal\"\n          - cell \"19\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -71,6 +72,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -86,17 +88,16 @@
       "a||Ver presenças de hoje|/check-ins|",
       "a||Ana Souza|/students/018f0000-0000-7000-8000-000000000622|",
       "a||9|/payments?status=pending|",
-      "a||4|/payments?status=overdue|",
-      "a||Registrar check-in|/check-in|",
-      "body"
+      "a||4|/payments?status=overdue|"
     ]
   },
   "/students": {
     "text": "Alunos\nNovo aluno\nBuscar por nome, CPF ou telefone\nSituação\nTodas\nAtivo\nInativo\nSuspenso\nBuscar\nLimpar\nNOME\tCPF\tTELEFONE\tSITUAÇÃO\n\nAluno 1\n\t529.982.247-25\t(11) 98765-4321\tAtivo\n\nAluno 2\n\t529.982.247-25\t(11) 98765-4321\tAtivo",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Alunos\" [level=2]\n  - link \"Novo aluno\":\n    - /url: /students/new\n  - text: Buscar por nome, CPF ou telefone\n  - textbox \"Buscar por nome, CPF ou telefone\"\n  - text: Situação\n  - combobox \"Situação\":\n    - option \"Todas\" [selected]\n    - option \"Ativo\"\n    - option \"Inativo\"\n    - option \"Suspenso\"\n  - button \"Buscar\"\n  - button \"Limpar\"\n  - table:\n    - rowgroup:\n      - row \"Nome CPF Telefone Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"CPF\"\n        - columnheader \"Telefone\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Sem foto Aluno 1 529.982.247-25 (11) 98765-4321 Ativo\":\n        - cell \"Sem foto Aluno 1\":\n          - img \"Sem foto\": A1\n          - link \"Aluno 1\":\n            - /url: /students/018f0000-0000-7000-8000-000000061001\n        - cell \"529.982.247-25\"\n        - cell \"(11) 98765-4321\"\n        - cell \"Ativo\"\n      - row \"Sem foto Aluno 2 529.982.247-25 (11) 98765-4321 Ativo\":\n        - cell \"Sem foto Aluno 2\":\n          - img \"Sem foto\": A2\n          - link \"Aluno 2\":\n            - /url: /students/018f0000-0000-7000-8000-000000061002\n        - cell \"529.982.247-25\"\n        - cell \"(11) 98765-4321\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Alunos\" [level=2]\n  - link \"Novo aluno\":\n    - /url: /students/new\n  - text: Buscar por nome, CPF ou telefone\n  - textbox \"Buscar por nome, CPF ou telefone\"\n  - text: Situação\n  - combobox \"Situação\":\n    - option \"Todas\" [selected]\n    - option \"Ativo\"\n    - option \"Inativo\"\n    - option \"Suspenso\"\n  - button \"Buscar\"\n  - button \"Limpar\"\n  - table:\n    - rowgroup:\n      - row \"Nome CPF Telefone Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"CPF\"\n        - columnheader \"Telefone\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Sem foto Aluno 1 529.982.247-25 (11) 98765-4321 Ativo\":\n        - cell \"Sem foto Aluno 1\":\n          - img \"Sem foto\": A1\n          - link \"Aluno 1\":\n            - /url: /students/018f0000-0000-7000-8000-000000061001\n        - cell \"529.982.247-25\"\n        - cell \"(11) 98765-4321\"\n        - cell \"Ativo\"\n      - row \"Sem foto Aluno 2 529.982.247-25 (11) 98765-4321 Ativo\":\n        - cell \"Sem foto Aluno 2\":\n          - img \"Sem foto\": A2\n          - link \"Aluno 2\":\n            - /url: /students/018f0000-0000-7000-8000-000000061002\n        - cell \"529.982.247-25\"\n        - cell \"(11) 98765-4321\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -119,6 +120,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -132,17 +134,16 @@
       "button||Menu||",
       "a||Novo aluno|/students/new|",
       "input||||q",
-      "select||Todas Ativo Inativo Suspenso||status",
-      "button||Buscar||",
-      "button||Limpar||"
+      "select||Todas Ativo Inativo Suspenso||status"
     ]
   },
   "/students/new": {
     "text": "Novo aluno\nNome completo\nCPF\nData de nascimento\nSexo\nFeminino\nMasculino\nOutro\nE-mail\nTelefone\nEndereço\nContato de emergência (nome)\nContato de emergência (telefone)\nObservações de saúde\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo aluno\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\"\n  - text: CPF\n  - textbox \"CPF\"\n  - text: Data de nascimento\n  - textbox \"Data de nascimento\"\n  - text: Sexo\n  - combobox \"Sexo\":\n    - option [selected]\n    - option \"Feminino\"\n    - option \"Masculino\"\n    - option \"Outro\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - text: Telefone\n  - textbox \"Telefone\"\n  - text: Endereço\n  - textbox \"Endereço\"\n  - text: Contato de emergência (nome)\n  - textbox \"Contato de emergência (nome)\"\n  - text: Contato de emergência (telefone)\n  - textbox \"Contato de emergência (telefone)\"\n  - text: Observações de saúde\n  - textbox \"Observações de saúde\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo aluno\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\"\n  - text: CPF\n  - textbox \"CPF\"\n  - text: Data de nascimento\n  - textbox \"Data de nascimento\"\n  - text: Sexo\n  - combobox \"Sexo\":\n    - option [selected]\n    - option \"Feminino\"\n    - option \"Masculino\"\n    - option \"Outro\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - text: Telefone\n  - textbox \"Telefone\"\n  - text: Endereço\n  - textbox \"Endereço\"\n  - text: Contato de emergência (nome)\n  - textbox \"Contato de emergência (nome)\"\n  - text: Contato de emergência (telefone)\n  - textbox \"Contato de emergência (telefone)\"\n  - text: Observações de saúde\n  - textbox \"Observações de saúde\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -172,23 +173,23 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
       "a||Pagamentos|/payments|",
       "a||Funcionários|/staff|",
       "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|"
+      "a||Auditoria|/audit|"
     ]
   },
   "/students/018f0000-0000-7000-8000-000000000601": {
     "text": "Rafaela Prado Cunha\nEditar\nSuspender\nInativar\n\nArraste uma foto aqui ou escolha um arquivo\n\nEnviar foto\nUsar câmera\nSituação\nAtivo\nCPF\n529.982.247-25\nData de nascimento\n30/11/1990\nSexo\nFeminino\nE-mail\n—\nTelefone\n(11) 98765-4321\nEndereço\n—\nContato de emergência (nome)\n—\nContato de emergência (telefone)\n—\nObservações de saúde\n—\nResponsável e consentimentos\n\nNenhum responsável cadastrado.\n\nUso de dados pessoais\n\nPendente\n\nRegistrar consentimento\nUso da imagem\n\nPendente\n\nRegistrar consentimento\nMatrículas\nRenovar\nPLANO\tINÍCIO\tVENCIMENTO\tVALOR\tSITUAÇÃO\nMensal\t07/10/2026\t06/11/2026\tR$ 99,90\t\nAtiva\nCancelar\nPagamentos\nPERÍODO\tPAGAR ATÉ\tVALOR\tSITUAÇÃO\n07/10/2026 a 06/11/2026\t07/10/2026\tR$ 99,90\t\nPendente\nConfirmar pagamento\nPresenças\nDATA\tHORA\tREGISTRADO POR\n07/10/2026\t12:00\tPaula Recepção\nPrivacidade\nExportar dados\nVersão para impressão\nAnonimizar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Rafaela Prado Cunha\" [level=2]\n  - link \"Editar\":\n    - /url: /students/018f0000-0000-7000-8000-000000000601/edit\n  - button \"Suspender\"\n  - button \"Inativar\"\n  - img \"Sem foto\": RC\n  - paragraph: Arraste uma foto aqui ou escolha um arquivo\n  - button \"Enviar foto\"\n  - button \"Usar câmera\"\n  - term: Situação\n  - definition: Ativo\n  - term: CPF\n  - definition: 529.982.247-25\n  - term: Data de nascimento\n  - definition: 30/11/1990\n  - term: Sexo\n  - definition: Feminino\n  - term: E-mail\n  - definition: —\n  - term: Telefone\n  - definition: (11) 98765-4321\n  - term: Endereço\n  - definition: —\n  - term: Contato de emergência (nome)\n  - definition: —\n  - term: Contato de emergência (telefone)\n  - definition: —\n  - term: Observações de saúde\n  - definition: —\n  - region \"Responsável e consentimentos\":\n    - heading \"Responsável e consentimentos\" [level=3]\n    - paragraph: Nenhum responsável cadastrado.\n    - region \"Uso de dados pessoais\":\n      - heading \"Uso de dados pessoais\" [level=4]\n      - paragraph: Pendente\n      - button \"Registrar consentimento\"\n    - region \"Uso da imagem\":\n      - heading \"Uso da imagem\" [level=4]\n      - paragraph: Pendente\n      - button \"Registrar consentimento\"\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - button \"Renovar\"\n    - table:\n      - rowgroup:\n        - row \"Plano Início Vencimento Valor Situação\":\n          - columnheader \"Plano\"\n          - columnheader \"Início\"\n          - columnheader \"Vencimento\"\n          - columnheader \"Valor\"\n          - columnheader \"Situação\"\n      - rowgroup:\n        - row \"Mensal 07/10/2026 06/11/2026 R$ 99,90 Ativa Cancelar\":\n          - cell \"Mensal\"\n          - cell \"07/10/2026\"\n          - cell \"06/11/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"Ativa Cancelar\":\n            - text: Ativa\n            - button \"Cancelar\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Período Pagar até Valor Situação\":\n          - columnheader \"Período\"\n          - columnheader \"Pagar até\"\n          - columnheader \"Valor\"\n          - columnheader \"Situação\"\n      - rowgroup:\n        - row \"07/10/2026 a 06/11/2026 07/10/2026 R$ 99,90 Pendente Confirmar pagamento\":\n          - cell \"07/10/2026 a 06/11/2026\"\n          - cell \"07/10/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"Pendente Confirmar pagamento\":\n            - text: Pendente\n            - button \"Confirmar pagamento\"\n  - region \"Presenças\":\n    - heading \"Presenças\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Data Hora Registrado por\":\n          - columnheader \"Data\"\n          - columnheader \"Hora\"\n          - columnheader \"Registrado por\"\n      - rowgroup:\n        - row \"07/10/2026 12:00 Paula Recepção\":\n          - cell \"07/10/2026\"\n          - cell \"12:00\"\n          - cell \"Paula Recepção\"\n  - region \"Privacidade\":\n    - heading \"Privacidade\" [level=3]\n    - button \"Exportar dados\"\n    - link \"Versão para impressão\":\n      - /url: /students/018f0000-0000-7000-8000-000000000601/print\n    - button \"Anonimizar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Rafaela Prado Cunha\" [level=2]\n  - link \"Editar\":\n    - /url: /students/018f0000-0000-7000-8000-000000000601/edit\n  - button \"Suspender\"\n  - button \"Inativar\"\n  - img \"Sem foto\": RC\n  - paragraph: Arraste uma foto aqui ou escolha um arquivo\n  - button \"Enviar foto\"\n  - button \"Usar câmera\"\n  - term: Situação\n  - definition: Ativo\n  - term: CPF\n  - definition: 529.982.247-25\n  - term: Data de nascimento\n  - definition: 30/11/1990\n  - term: Sexo\n  - definition: Feminino\n  - term: E-mail\n  - definition: —\n  - term: Telefone\n  - definition: (11) 98765-4321\n  - term: Endereço\n  - definition: —\n  - term: Contato de emergência (nome)\n  - definition: —\n  - term: Contato de emergência (telefone)\n  - definition: —\n  - term: Observações de saúde\n  - definition: —\n  - region \"Responsável e consentimentos\":\n    - heading \"Responsável e consentimentos\" [level=3]\n    - paragraph: Nenhum responsável cadastrado.\n    - region \"Uso de dados pessoais\":\n      - heading \"Uso de dados pessoais\" [level=4]\n      - paragraph: Pendente\n      - button \"Registrar consentimento\"\n    - region \"Uso da imagem\":\n      - heading \"Uso da imagem\" [level=4]\n      - paragraph: Pendente\n      - button \"Registrar consentimento\"\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - button \"Renovar\"\n    - table:\n      - rowgroup:\n        - row \"Plano Início Vencimento Valor Situação\":\n          - columnheader \"Plano\"\n          - columnheader \"Início\"\n          - columnheader \"Vencimento\"\n          - columnheader \"Valor\"\n          - columnheader \"Situação\"\n      - rowgroup:\n        - row \"Mensal 07/10/2026 06/11/2026 R$ 99,90 Ativa Cancelar\":\n          - cell \"Mensal\"\n          - cell \"07/10/2026\"\n          - cell \"06/11/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"Ativa Cancelar\":\n            - text: Ativa\n            - button \"Cancelar\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Período Pagar até Valor Situação\":\n          - columnheader \"Período\"\n          - columnheader \"Pagar até\"\n          - columnheader \"Valor\"\n          - columnheader \"Situação\"\n      - rowgroup:\n        - row \"07/10/2026 a 06/11/2026 07/10/2026 R$ 99,90 Pendente Confirmar pagamento\":\n          - cell \"07/10/2026 a 06/11/2026\"\n          - cell \"07/10/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"Pendente Confirmar pagamento\":\n            - text: Pendente\n            - button \"Confirmar pagamento\"\n  - region \"Presenças\":\n    - heading \"Presenças\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Data Hora Registrado por\":\n          - columnheader \"Data\"\n          - columnheader \"Hora\"\n          - columnheader \"Registrado por\"\n      - rowgroup:\n        - row \"07/10/2026 12:00 Paula Recepção\":\n          - cell \"07/10/2026\"\n          - cell \"12:00\"\n          - cell \"Paula Recepção\"\n  - region \"Privacidade\":\n    - heading \"Privacidade\" [level=3]\n    - button \"Exportar dados\"\n    - link \"Versão para impressão\":\n      - /url: /students/018f0000-0000-7000-8000-000000000601/print\n    - button \"Anonimizar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -217,6 +218,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -224,17 +226,16 @@
       "a||Funcionários|/staff|",
       "a||Usuários|/users|",
       "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||"
+      "a||Privacidade|/privacy|"
     ]
   },
   "/students/018f0000-0000-7000-8000-000000000601/edit": {
     "text": "Editar aluno\nNome completo\nCPF\nData de nascimento\nSexo\nFeminino\nMasculino\nOutro\nE-mail\nTelefone\nEndereço\nContato de emergência (nome)\nContato de emergência (telefone)\nObservações de saúde\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar aluno\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\": Rafaela Prado Cunha\n  - text: CPF\n  - textbox \"CPF\": 529.982.247-25\n  - text: Data de nascimento\n  - textbox \"Data de nascimento\": 1990-11-30\n  - text: Sexo\n  - combobox \"Sexo\":\n    - option\n    - option \"Feminino\" [selected]\n    - option \"Masculino\"\n    - option \"Outro\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - text: Telefone\n  - textbox \"Telefone\": (11) 98765-4321\n  - text: Endereço\n  - textbox \"Endereço\"\n  - text: Contato de emergência (nome)\n  - textbox \"Contato de emergência (nome)\"\n  - text: Contato de emergência (telefone)\n  - textbox \"Contato de emergência (telefone)\"\n  - text: Observações de saúde\n  - textbox \"Observações de saúde\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar aluno\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\": Rafaela Prado Cunha\n  - text: CPF\n  - textbox \"CPF\": 529.982.247-25\n  - text: Data de nascimento\n  - textbox \"Data de nascimento\": 1990-11-30\n  - text: Sexo\n  - combobox \"Sexo\":\n    - option\n    - option \"Feminino\" [selected]\n    - option \"Masculino\"\n    - option \"Outro\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - text: Telefone\n  - textbox \"Telefone\": (11) 98765-4321\n  - text: Endereço\n  - textbox \"Endereço\"\n  - text: Contato de emergência (nome)\n  - textbox \"Contato de emergência (nome)\"\n  - text: Contato de emergência (telefone)\n  - textbox \"Contato de emergência (telefone)\"\n  - text: Observações de saúde\n  - textbox \"Observações de saúde\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -264,23 +265,23 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
       "a||Pagamentos|/payments|",
       "a||Funcionários|/staff|",
       "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|"
+      "a||Auditoria|/audit|"
     ]
   },
   "/staff": {
     "text": "Funcionários\nNovo funcionário\nNOME\tCARGO\tSETOR\tSITUAÇÃO\n\nRafaela Prado Cunha\n\tFisioterapeuta Esportiva\tReabilitação\tAtivo",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Funcionários\" [level=2]\n  - link \"Novo funcionário\":\n    - /url: /staff/new\n  - table:\n    - rowgroup:\n      - row \"Nome Cargo Setor Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"Cargo\"\n        - columnheader \"Setor\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Sem foto Rafaela Prado Cunha Fisioterapeuta Esportiva Reabilitação Ativo\":\n        - cell \"Sem foto Rafaela Prado Cunha\":\n          - img \"Sem foto\": RC\n          - link \"Rafaela Prado Cunha\":\n            - /url: /staff/018f0000-0000-7000-8000-000000000401\n        - cell \"Fisioterapeuta Esportiva\"\n        - cell \"Reabilitação\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Funcionários\" [level=2]\n  - link \"Novo funcionário\":\n    - /url: /staff/new\n  - table:\n    - rowgroup:\n      - row \"Nome Cargo Setor Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"Cargo\"\n        - columnheader \"Setor\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Sem foto Rafaela Prado Cunha Fisioterapeuta Esportiva Reabilitação Ativo\":\n        - cell \"Sem foto Rafaela Prado Cunha\":\n          - img \"Sem foto\": RC\n          - link \"Rafaela Prado Cunha\":\n            - /url: /staff/018f0000-0000-7000-8000-000000000401\n        - cell \"Fisioterapeuta Esportiva\"\n        - cell \"Reabilitação\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -298,6 +299,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -315,18 +317,17 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|"
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|"
     ]
   },
   "/staff/new": {
     "text": "Novo funcionário\nNome completo\nCPF\nCargo\nSetor\nData de admissão\nTelefone\nE-mail\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo funcionário\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\"\n  - text: CPF\n  - textbox \"CPF\"\n  - text: Cargo\n  - textbox \"Cargo\"\n  - text: Setor\n  - textbox \"Setor\"\n  - text: Data de admissão\n  - textbox \"Data de admissão\"\n  - text: Telefone\n  - textbox \"Telefone\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo funcionário\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\"\n  - text: CPF\n  - textbox \"CPF\"\n  - text: Cargo\n  - textbox \"Cargo\"\n  - text: Setor\n  - textbox \"Setor\"\n  - text: Data de admissão\n  - textbox \"Data de admissão\"\n  - text: Telefone\n  - textbox \"Telefone\"\n  - text: E-mail\n  - textbox \"E-mail\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -353,6 +354,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -362,17 +364,16 @@
       "a||Auditoria|/audit|",
       "a||Privacidade|/privacy|",
       "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||name"
+      "button||Sair||"
     ]
   },
   "/staff/018f0000-0000-7000-8000-000000000401": {
     "text": "Rafaela Prado Cunha\nEditar\nInativar\n\nArraste uma foto aqui ou escolha um arquivo\n\nEnviar foto\nUsar câmera\nSituação\nAtivo\nCPF\n529.982.247-25\nCargo\nFisioterapeuta Esportiva\nSetor\nReabilitação\nData de admissão\n15/03/2021\nTelefone\n(11) 91234-5678\nE-mail\nrafaela.prado@exemplo.com\nAcesso ao sistema\n\nSem usuário vinculado\n\nUsuário vinculado\nNenhum\nPessoa 1 (pessoa1@exemplo.com)\nSalvar vínculo\nPrivacidade\nExportar dados\nVersão para impressão\nAnonimizar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Rafaela Prado Cunha\" [level=2]\n  - link \"Editar\":\n    - /url: /staff/018f0000-0000-7000-8000-000000000401/edit\n  - button \"Inativar\"\n  - img \"Sem foto\": RC\n  - paragraph: Arraste uma foto aqui ou escolha um arquivo\n  - button \"Enviar foto\"\n  - button \"Usar câmera\"\n  - term: Situação\n  - definition: Ativo\n  - term: CPF\n  - definition: 529.982.247-25\n  - term: Cargo\n  - definition: Fisioterapeuta Esportiva\n  - term: Setor\n  - definition: Reabilitação\n  - term: Data de admissão\n  - definition: 15/03/2021\n  - term: Telefone\n  - definition: (11) 91234-5678\n  - term: E-mail\n  - definition: rafaela.prado@exemplo.com\n  - region \"Acesso ao sistema\":\n    - heading \"Acesso ao sistema\" [level=3]\n    - paragraph: Sem usuário vinculado\n    - text: Usuário vinculado\n    - combobox \"Usuário vinculado\":\n      - option \"Nenhum\" [selected]\n      - option \"Pessoa 1 (pessoa1@exemplo.com)\"\n    - button \"Salvar vínculo\"\n  - region \"Privacidade\":\n    - heading \"Privacidade\" [level=3]\n    - button \"Exportar dados\"\n    - link \"Versão para impressão\":\n      - /url: /staff/018f0000-0000-7000-8000-000000000401/print\n    - button \"Anonimizar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Rafaela Prado Cunha\" [level=2]\n  - link \"Editar\":\n    - /url: /staff/018f0000-0000-7000-8000-000000000401/edit\n  - button \"Inativar\"\n  - img \"Sem foto\": RC\n  - paragraph: Arraste uma foto aqui ou escolha um arquivo\n  - button \"Enviar foto\"\n  - button \"Usar câmera\"\n  - term: Situação\n  - definition: Ativo\n  - term: CPF\n  - definition: 529.982.247-25\n  - term: Cargo\n  - definition: Fisioterapeuta Esportiva\n  - term: Setor\n  - definition: Reabilitação\n  - term: Data de admissão\n  - definition: 15/03/2021\n  - term: Telefone\n  - definition: (11) 91234-5678\n  - term: E-mail\n  - definition: rafaela.prado@exemplo.com\n  - region \"Acesso ao sistema\":\n    - heading \"Acesso ao sistema\" [level=3]\n    - paragraph: Sem usuário vinculado\n    - text: Usuário vinculado\n    - combobox \"Usuário vinculado\":\n      - option \"Nenhum\" [selected]\n      - option \"Pessoa 1 (pessoa1@exemplo.com)\"\n    - button \"Salvar vínculo\"\n  - region \"Privacidade\":\n    - heading \"Privacidade\" [level=3]\n    - button \"Exportar dados\"\n    - link \"Versão para impressão\":\n      - /url: /staff/018f0000-0000-7000-8000-000000000401/print\n    - button \"Anonimizar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -397,6 +398,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -408,17 +410,16 @@
       "a||Minha conta|/account|",
       "button||Sair||",
       "button||Menu||",
-      "a||Editar|/staff/018f0000-0000-7000-8000-000000000401/edit|",
-      "button||Inativar||",
-      "button||Enviar foto||"
+      "a||Editar|/staff/018f0000-0000-7000-8000-000000000401/edit|"
     ]
   },
   "/staff/018f0000-0000-7000-8000-000000000401/edit": {
     "text": "Editar funcionário\nNome completo\nCPF\nCargo\nSetor\nData de admissão\nTelefone\nE-mail\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar funcionário\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\": Rafaela Prado Cunha\n  - text: CPF\n  - textbox \"CPF\": 529.982.247-25\n  - text: Cargo\n  - textbox \"Cargo\": Fisioterapeuta Esportiva\n  - text: Setor\n  - textbox \"Setor\": Reabilitação\n  - text: Data de admissão\n  - textbox \"Data de admissão\": 2021-03-15\n  - text: Telefone\n  - textbox \"Telefone\": (11) 91234-5678\n  - text: E-mail\n  - textbox \"E-mail\": rafaela.prado@exemplo.com\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar funcionário\" [level=2]\n  - text: Nome completo\n  - textbox \"Nome completo\": Rafaela Prado Cunha\n  - text: CPF\n  - textbox \"CPF\": 529.982.247-25\n  - text: Cargo\n  - textbox \"Cargo\": Fisioterapeuta Esportiva\n  - text: Setor\n  - textbox \"Setor\": Reabilitação\n  - text: Data de admissão\n  - textbox \"Data de admissão\": 2021-03-15\n  - text: Telefone\n  - textbox \"Telefone\": (11) 91234-5678\n  - text: E-mail\n  - textbox \"E-mail\": rafaela.prado@exemplo.com\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -445,6 +446,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -454,17 +456,16 @@
       "a||Auditoria|/audit|",
       "a||Privacidade|/privacy|",
       "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||name"
+      "button||Sair||"
     ]
   },
   "/plans": {
     "text": "Planos\nNovo plano\nNOME\tPERIODICIDADE\tVALOR\tREGRAS DE ACESSO\tSITUAÇÃO\nMensal\tMensal\tR$ 99,90\t—\tAtivo",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Planos\" [level=2]\n  - link \"Novo plano\":\n    - /url: /plans/new\n  - table:\n    - rowgroup:\n      - row \"Nome Periodicidade Valor Regras de acesso Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"Periodicidade\"\n        - columnheader \"Valor\"\n        - columnheader \"Regras de acesso\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Mensal Mensal R$ 99,90 — Ativo\":\n        - cell \"Mensal\":\n          - link \"Mensal\":\n            - /url: /plans/018f0000-0000-7000-8000-000000000901/edit\n        - cell \"Mensal\"\n        - cell \"R$ 99,90\"\n        - cell \"—\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Planos\" [level=2]\n  - link \"Novo plano\":\n    - /url: /plans/new\n  - table:\n    - rowgroup:\n      - row \"Nome Periodicidade Valor Regras de acesso Situação\":\n        - columnheader \"Nome\"\n        - columnheader \"Periodicidade\"\n        - columnheader \"Valor\"\n        - columnheader \"Regras de acesso\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Mensal Mensal R$ 99,90 — Ativo\":\n        - cell \"Mensal\":\n          - link \"Mensal\":\n            - /url: /plans/018f0000-0000-7000-8000-000000000901/edit\n        - cell \"Mensal\"\n        - cell \"R$ 99,90\"\n        - cell \"—\"\n        - cell \"Ativo\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -482,6 +483,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -499,18 +501,17 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|"
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|"
     ]
   },
   "/plans/new": {
     "text": "Novo plano\nNome\nPeriodicidade\nMensal\nTrimestral\nSemestral\nAnual\nValor (R$)\nRegras de acesso\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo plano\" [level=2]\n  - text: Nome\n  - textbox \"Nome\"\n  - text: Periodicidade\n  - combobox \"Periodicidade\":\n    - option [selected]\n    - option \"Mensal\"\n    - option \"Trimestral\"\n    - option \"Semestral\"\n    - option \"Anual\"\n  - text: Valor (R$)\n  - textbox \"Valor (R$)\"\n  - text: Regras de acesso\n  - textbox \"Regras de acesso\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Novo plano\" [level=2]\n  - text: Nome\n  - textbox \"Nome\"\n  - text: Periodicidade\n  - combobox \"Periodicidade\":\n    - option [selected]\n    - option \"Mensal\"\n    - option \"Trimestral\"\n    - option \"Semestral\"\n    - option \"Anual\"\n  - text: Valor (R$)\n  - textbox \"Valor (R$)\"\n  - text: Regras de acesso\n  - textbox \"Regras de acesso\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -531,6 +532,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -546,17 +548,16 @@
       "select||Mensal Trimestral Semestral Anual||period",
       "input||||priceCents",
       "textarea||||rules",
-      "button||Salvar||",
-      "a||Registrar check-in|/check-in|",
-      "body"
+      "button||Salvar||"
     ]
   },
   "/plans/018f0000-0000-7000-8000-000000000901/edit": {
     "text": "Editar plano\nInativar\nNome\nPeriodicidade\nMensal\nTrimestral\nSemestral\nAnual\nValor (R$)\nRegras de acesso\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar plano\" [level=2]\n  - button \"Inativar\"\n  - text: Nome\n  - textbox \"Nome\": Mensal\n  - text: Periodicidade\n  - combobox \"Periodicidade\" [disabled]:\n    - option\n    - option \"Mensal\" [selected]\n    - option \"Trimestral\"\n    - option \"Semestral\"\n    - option \"Anual\"\n  - text: Valor (R$)\n  - textbox \"Valor (R$)\": 99,90\n  - text: Regras de acesso\n  - textbox \"Regras de acesso\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Editar plano\" [level=2]\n  - button \"Inativar\"\n  - text: Nome\n  - textbox \"Nome\": Mensal\n  - text: Periodicidade\n  - combobox \"Periodicidade\" [disabled]:\n    - option\n    - option \"Mensal\" [selected]\n    - option \"Trimestral\"\n    - option \"Semestral\"\n    - option \"Anual\"\n  - text: Valor (R$)\n  - textbox \"Valor (R$)\": 99,90\n  - text: Regras de acesso\n  - textbox \"Regras de acesso\"\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -577,6 +578,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -592,17 +594,16 @@
       "input||||name",
       "input||||priceCents",
       "textarea||||rules",
-      "button||Salvar||",
-      "a||Registrar check-in|/check-in|",
-      "body"
+      "button||Salvar||"
     ]
   },
   "/payments": {
     "text": "Pagamentos\nSituação\nTodas\nPendente\nAtrasado\nALUNO\tPLANO\tPERÍODO\tPAGAR ATÉ\tVALOR\tSITUAÇÃO\nAna Souza\tMensal · Mensal\t07/10/2026 a 06/11/2026\t07/10/2026\tR$ 99,90\tPendente",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Pagamentos\" [level=2]\n  - text: Situação\n  - combobox \"Situação\":\n    - option \"Todas\" [selected]\n    - option \"Pendente\"\n    - option \"Atrasado\"\n  - table:\n    - rowgroup:\n      - row \"Aluno Plano Período Pagar até Valor Situação\":\n        - columnheader \"Aluno\"\n        - columnheader \"Plano\"\n        - columnheader \"Período\"\n        - columnheader \"Pagar até\"\n        - columnheader \"Valor\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Ana Souza Mensal · Mensal 07/10/2026 a 06/11/2026 07/10/2026 R$ 99,90 Pendente\":\n        - cell \"Ana Souza\":\n          - link \"Ana Souza\":\n            - /url: /students/018f0000-0000-7000-8000-000000000634\n        - cell \"Mensal · Mensal\"\n        - cell \"07/10/2026 a 06/11/2026\"\n        - cell \"07/10/2026\"\n        - cell \"R$ 99,90\"\n        - cell \"Pendente\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Pagamentos\" [level=2]\n  - text: Situação\n  - combobox \"Situação\":\n    - option \"Todas\" [selected]\n    - option \"Pendente\"\n    - option \"Atrasado\"\n  - table:\n    - rowgroup:\n      - row \"Aluno Plano Período Pagar até Valor Situação\":\n        - columnheader \"Aluno\"\n        - columnheader \"Plano\"\n        - columnheader \"Período\"\n        - columnheader \"Pagar até\"\n        - columnheader \"Valor\"\n        - columnheader \"Situação\"\n    - rowgroup:\n      - row \"Ana Souza Mensal · Mensal 07/10/2026 a 06/11/2026 07/10/2026 R$ 99,90 Pendente\":\n        - cell \"Ana Souza\":\n          - link \"Ana Souza\":\n            - /url: /students/018f0000-0000-7000-8000-000000000634\n        - cell \"Mensal · Mensal\"\n        - cell \"07/10/2026 a 06/11/2026\"\n        - cell \"07/10/2026\"\n        - cell \"R$ 99,90\"\n        - cell \"Pendente\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -620,6 +621,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -637,18 +639,17 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|"
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|"
     ]
   },
   "/check-ins": {
     "text": "Presenças\nDe\nAté\nFiltrar\n\nTotal no período: 1\n\nDATA\tHORA\tALUNO\tREGISTRADO POR\n07/10/2026\t12:00\tAna Souza 2\tPaula Recepção",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Presenças\" [level=2]\n  - text: De\n  - textbox \"De\": 2026-10-07\n  - text: Até\n  - textbox \"Até\": 2026-10-07\n  - button \"Filtrar\"\n  - paragraph: \"Total no período: 1\"\n  - table:\n    - rowgroup:\n      - row \"Data Hora Aluno Registrado por\":\n        - columnheader \"Data\"\n        - columnheader \"Hora\"\n        - columnheader \"Aluno\"\n        - columnheader \"Registrado por\"\n    - rowgroup:\n      - row \"07/10/2026 12:00 Ana Souza 2 Paula Recepção\":\n        - cell \"07/10/2026\"\n        - cell \"12:00\"\n        - cell \"Ana Souza 2\":\n          - link \"Ana Souza 2\":\n            - /url: /students/018f0000-0000-7000-8000-000000062002\n        - cell \"Paula Recepção\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Presenças\" [level=2]\n  - text: De\n  - textbox \"De\": 2026-10-07\n  - text: Até\n  - textbox \"Até\": 2026-10-07\n  - button \"Filtrar\"\n  - paragraph: \"Total no período: 1\"\n  - table:\n    - rowgroup:\n      - row \"Data Hora Aluno Registrado por\":\n        - columnheader \"Data\"\n        - columnheader \"Hora\"\n        - columnheader \"Aluno\"\n        - columnheader \"Registrado por\"\n    - rowgroup:\n      - row \"07/10/2026 12:00 Ana Souza 2 Paula Recepção\":\n        - cell \"07/10/2026\"\n        - cell \"12:00\"\n        - cell \"Ana Souza 2\":\n          - link \"Ana Souza 2\":\n            - /url: /students/018f0000-0000-7000-8000-000000062002\n        - cell \"Paula Recepção\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -674,6 +675,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -684,20 +686,19 @@
       "a||Privacidade|/privacy|",
       "a||Minha conta|/account|",
       "button||Sair||",
-      "button||Menu||",
-      "input||||from",
-      "input||||from"
+      "button||Menu||"
     ]
   },
   "/check-in": {
     "text": "Check-in\nNome ou CPF\nBuscar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Check-in\" [level=2]\n  - text: Nome ou CPF\n  - textbox \"Nome ou CPF\"\n  - button \"Buscar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Check-in\" [level=2]\n  - text: Nome ou CPF\n  - textbox \"Nome ou CPF\"\n  - button \"Buscar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "button||Buscar||",
       "a||Registrar check-in|/check-in|",
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -715,6 +716,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -730,17 +732,16 @@
       "button||Buscar||",
       "a||Registrar check-in|/check-in|",
       "body",
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|"
+      "a||Início|/dashboard|"
     ]
   },
   "/audit": {
     "text": "Auditoria\nDe\nAté\nUsuário\nTodos\nPessoa 1\nAção\nTodas\nLogin\nFalha de login\nLogout\nTroca da própria senha\n2FA ativado\n2FA desativado\nUsuário criado\nUsuário editado\nSenha redefinida\n2FA zerado\nAluno criado\nAluno editado\nAluno inativado\nResponsável do aluno salvo\nConsentimento registrado\nConsentimento revogado\nFoto do aluno enviada\nFoto do aluno removida\nFoto do aluno trocada\nVersão anterior da foto excluída\nFuncionário criado\nFuncionário editado\nFuncionário inativado\nFicha de funcionário visualizada\nLista de funcionários visualizada\nUsuário vinculado ao funcionário\nUsuário desvinculado do funcionário\nFoto do funcionário enviada\nFoto do funcionário removida\nFoto do funcionário trocada\nVersão anterior da foto do funcionário excluída\nPlano criado\nPlano editado\nPlano inativado\nMatrícula registrada\nMatrícula cancelada\nPagamento confirmado\nPagamento desfeito\nDados de aluno exportados\nAluno anonimizado\nDados de funcionário exportados\nFuncionário anonimizado\nConfiguração de privacidade alterada\nPré-cadastro recebido\nE-mail do pré-cadastro confirmado\nSituação do interessado alterada\nPré-cadastro expirado\nIP\nFiltrar\nLimpar filtros\n\nNenhum registro encontrado.",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Auditoria\" [level=2]\n  - text: De\n  - textbox \"De\"\n  - text: Até\n  - textbox \"Até\"\n  - text: Usuário\n  - combobox \"Usuário\":\n    - option \"Todos\" [selected]\n    - option \"Pessoa 1\"\n  - text: Ação\n  - combobox \"Ação\":\n    - option \"Todas\" [selected]\n    - option \"Login\"\n    - option \"Falha de login\"\n    - option \"Logout\"\n    - option \"Troca da própria senha\"\n    - option \"2FA ativado\"\n    - option \"2FA desativado\"\n    - option \"Usuário criado\"\n    - option \"Usuário editado\"\n    - option \"Senha redefinida\"\n    - option \"2FA zerado\"\n    - option \"Aluno criado\"\n    - option \"Aluno editado\"\n    - option \"Aluno inativado\"\n    - option \"Responsável do aluno salvo\"\n    - option \"Consentimento registrado\"\n    - option \"Consentimento revogado\"\n    - option \"Foto do aluno enviada\"\n    - option \"Foto do aluno removida\"\n    - option \"Foto do aluno trocada\"\n    - option \"Versão anterior da foto excluída\"\n    - option \"Funcionário criado\"\n    - option \"Funcionário editado\"\n    - option \"Funcionário inativado\"\n    - option \"Ficha de funcionário visualizada\"\n    - option \"Lista de funcionários visualizada\"\n    - option \"Usuário vinculado ao funcionário\"\n    - option \"Usuário desvinculado do funcionário\"\n    - option \"Foto do funcionário enviada\"\n    - option \"Foto do funcionário removida\"\n    - option \"Foto do funcionário trocada\"\n    - option \"Versão anterior da foto do funcionário excluída\"\n    - option \"Plano criado\"\n    - option \"Plano editado\"\n    - option \"Plano inativado\"\n    - option \"Matrícula registrada\"\n    - option \"Matrícula cancelada\"\n    - option \"Pagamento confirmado\"\n    - option \"Pagamento desfeito\"\n    - option \"Dados de aluno exportados\"\n    - option \"Aluno anonimizado\"\n    - option \"Dados de funcionário exportados\"\n    - option \"Funcionário anonimizado\"\n    - option \"Configuração de privacidade alterada\"\n    - option \"Pré-cadastro recebido\"\n    - option \"E-mail do pré-cadastro confirmado\"\n    - option \"Situação do interessado alterada\"\n    - option \"Pré-cadastro expirado\"\n  - text: IP\n  - textbox \"IP\"\n  - button \"Filtrar\"\n  - button \"Limpar filtros\"\n  - paragraph: Nenhum registro encontrado.\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Auditoria\" [level=2]\n  - text: De\n  - textbox \"De\"\n  - text: Até\n  - textbox \"Até\"\n  - text: Usuário\n  - combobox \"Usuário\":\n    - option \"Todos\" [selected]\n    - option \"Pessoa 1\"\n  - text: Ação\n  - combobox \"Ação\":\n    - option \"Todas\" [selected]\n    - option \"Login\"\n    - option \"Falha de login\"\n    - option \"Logout\"\n    - option \"Troca da própria senha\"\n    - option \"2FA ativado\"\n    - option \"2FA desativado\"\n    - option \"Usuário criado\"\n    - option \"Usuário editado\"\n    - option \"Senha redefinida\"\n    - option \"2FA zerado\"\n    - option \"Aluno criado\"\n    - option \"Aluno editado\"\n    - option \"Aluno inativado\"\n    - option \"Responsável do aluno salvo\"\n    - option \"Consentimento registrado\"\n    - option \"Consentimento revogado\"\n    - option \"Foto do aluno enviada\"\n    - option \"Foto do aluno removida\"\n    - option \"Foto do aluno trocada\"\n    - option \"Versão anterior da foto excluída\"\n    - option \"Funcionário criado\"\n    - option \"Funcionário editado\"\n    - option \"Funcionário inativado\"\n    - option \"Ficha de funcionário visualizada\"\n    - option \"Lista de funcionários visualizada\"\n    - option \"Usuário vinculado ao funcionário\"\n    - option \"Usuário desvinculado do funcionário\"\n    - option \"Foto do funcionário enviada\"\n    - option \"Foto do funcionário removida\"\n    - option \"Foto do funcionário trocada\"\n    - option \"Versão anterior da foto do funcionário excluída\"\n    - option \"Plano criado\"\n    - option \"Plano editado\"\n    - option \"Plano inativado\"\n    - option \"Matrícula registrada\"\n    - option \"Matrícula cancelada\"\n    - option \"Pagamento confirmado\"\n    - option \"Pagamento desfeito\"\n    - option \"Dados de aluno exportados\"\n    - option \"Aluno anonimizado\"\n    - option \"Dados de funcionário exportados\"\n    - option \"Funcionário anonimizado\"\n    - option \"Configuração de privacidade alterada\"\n    - option \"Pré-cadastro recebido\"\n    - option \"E-mail do pré-cadastro confirmado\"\n    - option \"Situação do interessado alterada\"\n    - option \"Pré-cadastro expirado\"\n  - text: IP\n  - textbox \"IP\"\n  - button \"Filtrar\"\n  - button \"Limpar filtros\"\n  - paragraph: Nenhum registro encontrado.\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -769,6 +770,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -776,17 +778,16 @@
       "a||Funcionários|/staff|",
       "a||Usuários|/users|",
       "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||"
+      "a||Privacidade|/privacy|"
     ]
   },
   "/users": {
     "text": "Usuários\nNovo usuário\nNOME\tE-MAIL\tPERFIL\tSITUAÇÃO\t2FA\t\nAÇÕES\n\nPessoa 1\tpessoa1@exemplo.com\tRecepção\tAtivo\tDesativado\t\nDesativar\nRedefinir senha",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Usuários\" [level=2]\n  - button \"Novo usuário\"\n  - table:\n    - rowgroup:\n      - row \"Nome E-mail Perfil Situação 2FA Ações\":\n        - columnheader \"Nome\"\n        - columnheader \"E-mail\"\n        - columnheader \"Perfil\"\n        - columnheader \"Situação\"\n        - columnheader \"2FA\"\n        - columnheader \"Ações\"\n    - rowgroup:\n      - row \"Pessoa 1 pessoa1@exemplo.com Recepção Ativo Desativado Desativar Redefinir senha\":\n        - cell \"Pessoa 1\"\n        - cell \"pessoa1@exemplo.com\"\n        - cell \"Recepção\"\n        - cell \"Ativo\"\n        - cell \"Desativado\"\n        - cell \"Desativar Redefinir senha\":\n          - button \"Desativar\"\n          - button \"Redefinir senha\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Usuários\" [level=2]\n  - button \"Novo usuário\"\n  - table:\n    - rowgroup:\n      - row \"Nome E-mail Perfil Situação 2FA Ações\":\n        - columnheader \"Nome\"\n        - columnheader \"E-mail\"\n        - columnheader \"Perfil\"\n        - columnheader \"Situação\"\n        - columnheader \"2FA\"\n        - columnheader \"Ações\"\n    - rowgroup:\n      - row \"Pessoa 1 pessoa1@exemplo.com Recepção Ativo Desativado Desativar Redefinir senha\":\n        - cell \"Pessoa 1\"\n        - cell \"pessoa1@exemplo.com\"\n        - cell \"Recepção\"\n        - cell \"Ativo\"\n        - cell \"Desativado\"\n        - cell \"Desativar Redefinir senha\":\n          - button \"Desativar\"\n          - button \"Redefinir senha\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -805,6 +806,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -819,112 +821,111 @@
       "button||Novo usuário||",
       "button||Desativar||",
       "button||Redefinir senha||",
-      "a||Registrar check-in|/check-in|",
-      "body",
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|"
-    ]
-  },
-  "/privacy": {
-    "text": "Privacidade\nAnonimizar alunos inativos há mais de\nanos\nDesligado\nGuardar versões de foto por\ndias\nSalvar",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Privacidade\" [level=2]\n  - group:\n    - text: Anonimizar alunos inativos há mais de\n    - textbox \"Anonimizar alunos inativos há mais de\" [disabled]\n    - text: anos\n    - checkbox \"Desligado\" [checked]\n    - text: Desligado\n  - text: Guardar versões de foto por\n  - textbox \"Guardar versões de foto por\": \"30\"\n  - text: dias\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
-    "focus": [
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|",
-      "a||Funcionários|/staff|",
-      "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||",
-      "input||||",
-      "button||Salvar||",
-      "a||Registrar check-in|/check-in|",
-      "body",
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|",
-      "a||Funcionários|/staff|",
-      "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||",
-      "input||||",
-      "button||Salvar||",
-      "a||Registrar check-in|/check-in|",
-      "body",
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|"
-    ]
-  },
-  "/account": {
-    "text": "Trocar senha\nSenha atual\nNova senha\nTrocar senha\nVerificação em duas etapas\nDesativar verificação em duas etapas",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Trocar senha\" [level=2]\n  - text: Senha atual\n  - textbox \"Senha atual\"\n  - text: Nova senha\n  - textbox \"Nova senha\"\n  - button \"Trocar senha\"\n  - heading \"Verificação em duas etapas\" [level=2]\n  - button \"Desativar verificação em duas etapas\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
-    "focus": [
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|",
-      "a||Funcionários|/staff|",
-      "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||currentPassword",
-      "input||||newPassword",
-      "button||Trocar senha||",
-      "button||Desativar verificação em duas etapas||",
-      "a||Registrar check-in|/check-in|",
-      "body",
-      "a||Início|/dashboard|",
-      "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|",
-      "a||Funcionários|/staff|",
-      "a||Usuários|/users|",
-      "a||Auditoria|/audit|",
-      "a||Privacidade|/privacy|",
-      "a||Minha conta|/account|",
-      "button||Sair||",
-      "button||Menu||",
-      "input||||currentPassword",
-      "input||||newPassword",
-      "button||Trocar senha||",
-      "button||Desativar verificação em duas etapas||",
       "a||Registrar check-in|/check-in|",
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|"
     ]
   },
-  "/students/018f0000-0000-7000-8000-000000000601/print": {
-    "text": "Dados do aluno: Rafaela Prado Cunha\nVoltar à ficha\nImprimir\n\nExportado em 07/10/2026 12:00:00\n\nDados pessoais\nNome\nRafaela Prado Cunha\nCPF\n529.982.247-25\nData de nascimento\n30/11/1990\nSexo\nFeminino\nE-mail\nrafaela@exemplo.com\nTelefone\n(11) 98765-4321\nEndereço\nRua das Acácias, 120\nContato de emergência\nMaria da Penha\nTelefone de emergência\n(11) 3456-7890\nObservações de saúde\nHipertensão controlada.\nSituação\nInativo\nCadastrado em\n05/01/2026 09:00:00\nInativado em\n10/09/2026 09:00:00\nResponsáveis\nNOME\tCPF\tTELEFONE\tPARENTESCO\tCADASTRADO EM\nJoana Prado\t111.444.777-35\t(11) 91234-5678\tMãe\t05/01/2026 09:00:00\nConsentimentos\nFINALIDADE\tVERSÃO DO TERMO\tTEXTO DO TERMO\tCONCEDIDO POR\tCONCEDIDO EM\tREVOGADO EM\nUso da imagem\t1\tAutorizo o uso da minha imagem.\tResponsável\t06/01/2026 09:00:00\t—\nMatrículas\nPLANO\tINÍCIO\tVENCIMENTO\tVALOR\tCANCELADA EM\nMensal Plus\t01/08/2026\t31/08/2026\tR$ 99,90\t—\nPagamentos\nPERÍODO QUE COMEÇA EM\tCONFIRMADO EM\tDESFEITO EM\n01/08/2026\t02/08/2026 10:00:00\t—\nPresenças\nDIA\tREGISTRADA EM\n05/08/2026\t05/08/2026 09:00:00\nFotos\nVersão 1 · guardada até 01/11/2026 09:00:00 · enviada em 01/02/2026 09:00:00\nVersão 2 · atual · enviada em 01/03/2026 09:00:00",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - 'heading \"Dados do aluno: Rafaela Prado Cunha\" [level=2]'\n  - link \"Voltar à ficha\":\n    - /url: /students/018f0000-0000-7000-8000-000000000601\n  - button \"Imprimir\"\n  - paragraph: Exportado em 07/10/2026 12:00:00\n  - region \"Dados pessoais\":\n    - heading \"Dados pessoais\" [level=3]\n    - term: Nome\n    - definition: Rafaela Prado Cunha\n    - term: CPF\n    - definition: 529.982.247-25\n    - term: Data de nascimento\n    - definition: 30/11/1990\n    - term: Sexo\n    - definition: Feminino\n    - term: E-mail\n    - definition: rafaela@exemplo.com\n    - term: Telefone\n    - definition: (11) 98765-4321\n    - term: Endereço\n    - definition: Rua das Acácias, 120\n    - term: Contato de emergência\n    - definition: Maria da Penha\n    - term: Telefone de emergência\n    - definition: (11) 3456-7890\n    - term: Observações de saúde\n    - definition: Hipertensão controlada.\n    - term: Situação\n    - definition: Inativo\n    - term: Cadastrado em\n    - definition: 05/01/2026 09:00:00\n    - term: Inativado em\n    - definition: 10/09/2026 09:00:00\n  - region \"Responsáveis\":\n    - heading \"Responsáveis\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Nome CPF Telefone Parentesco Cadastrado em\":\n          - columnheader \"Nome\"\n          - columnheader \"CPF\"\n          - columnheader \"Telefone\"\n          - columnheader \"Parentesco\"\n          - columnheader \"Cadastrado em\"\n      - rowgroup:\n        - row \"Joana Prado 111.444.777-35 (11) 91234-5678 Mãe 05/01/2026 09:00:00\":\n          - cell \"Joana Prado\"\n          - cell \"111.444.777-35\"\n          - cell \"(11) 91234-5678\"\n          - cell \"Mãe\"\n          - cell \"05/01/2026 09:00:00\"\n  - region \"Consentimentos\":\n    - heading \"Consentimentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Finalidade Versão do termo Texto do termo Concedido por Concedido em Revogado em\":\n          - columnheader \"Finalidade\"\n          - columnheader \"Versão do termo\"\n          - columnheader \"Texto do termo\"\n          - columnheader \"Concedido por\"\n          - columnheader \"Concedido em\"\n          - columnheader \"Revogado em\"\n      - rowgroup:\n        - row \"Uso da imagem 1 Autorizo o uso da minha imagem. Responsável 06/01/2026 09:00:00 —\":\n          - cell \"Uso da imagem\"\n          - cell \"1\"\n          - cell \"Autorizo o uso da minha imagem.\"\n          - cell \"Responsável\"\n          - cell \"06/01/2026 09:00:00\"\n          - cell \"—\"\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Plano Início Vencimento Valor Cancelada em\":\n          - columnheader \"Plano\"\n          - columnheader \"Início\"\n          - columnheader \"Vencimento\"\n          - columnheader \"Valor\"\n          - columnheader \"Cancelada em\"\n      - rowgroup:\n        - row \"Mensal Plus 01/08/2026 31/08/2026 R$ 99,90 —\":\n          - cell \"Mensal Plus\"\n          - cell \"01/08/2026\"\n          - cell \"31/08/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"—\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Período que começa em Confirmado em Desfeito em\":\n          - columnheader \"Período que começa em\"\n          - columnheader \"Confirmado em\"\n          - columnheader \"Desfeito em\"\n      - rowgroup:\n        - row \"01/08/2026 02/08/2026 10:00:00 —\":\n          - cell \"01/08/2026\"\n          - cell \"02/08/2026 10:00:00\"\n          - cell \"—\"\n  - region \"Presenças\":\n    - heading \"Presenças\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Dia Registrada em\":\n          - columnheader \"Dia\"\n          - columnheader \"Registrada em\"\n      - rowgroup:\n        - row \"05/08/2026 05/08/2026 09:00:00\":\n          - cell \"05/08/2026\"\n          - cell \"05/08/2026 09:00:00\"\n  - region \"Fotos\":\n    - heading \"Fotos\" [level=3]\n    - list:\n      - listitem:\n        - img \"Foto, versão 1\"\n        - text: Versão 1 · guardada até 01/11/2026 09:00:00 · enviada em 01/02/2026 09:00:00\n      - listitem:\n        - img \"Foto, versão 2\"\n        - text: Versão 2 · atual · enviada em 01/03/2026 09:00:00\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+  "/privacy": {
+    "text": "Privacidade\nAnonimizar alunos inativos há mais de\nanos\nDesligado\nGuardar versões de foto por\ndias\nSalvar",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Privacidade\" [level=2]\n  - group:\n    - text: Anonimizar alunos inativos há mais de\n    - textbox \"Anonimizar alunos inativos há mais de\" [disabled]\n    - text: anos\n    - checkbox \"Desligado\" [checked]\n    - text: Desligado\n  - text: Guardar versões de foto por\n  - textbox \"Guardar versões de foto por\": \"30\"\n  - text: dias\n  - button \"Salvar\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|",
+      "a||Presenças|/check-ins|",
+      "a||Planos|/plans|",
+      "a||Pagamentos|/payments|",
+      "a||Funcionários|/staff|",
+      "a||Usuários|/users|",
+      "a||Auditoria|/audit|",
+      "a||Privacidade|/privacy|",
+      "a||Minha conta|/account|",
+      "button||Sair||",
+      "button||Menu||",
+      "input||||",
+      "input||||",
+      "button||Salvar||",
+      "a||Registrar check-in|/check-in|",
+      "body",
+      "a||Início|/dashboard|",
+      "a||Alunos|/students|",
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|",
+      "a||Presenças|/check-ins|",
+      "a||Planos|/plans|",
+      "a||Pagamentos|/payments|",
+      "a||Funcionários|/staff|",
+      "a||Usuários|/users|",
+      "a||Auditoria|/audit|",
+      "a||Privacidade|/privacy|",
+      "a||Minha conta|/account|",
+      "button||Sair||",
+      "button||Menu||",
+      "input||||",
+      "input||||",
+      "button||Salvar||",
+      "a||Registrar check-in|/check-in|",
+      "body",
+      "a||Início|/dashboard|",
+      "a||Alunos|/students|"
+    ]
+  },
+  "/account": {
+    "text": "Trocar senha\nSenha atual\nNova senha\nTrocar senha\nVerificação em duas etapas\nDesativar verificação em duas etapas",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - heading \"Trocar senha\" [level=2]\n  - text: Senha atual\n  - textbox \"Senha atual\"\n  - text: Nova senha\n  - textbox \"Nova senha\"\n  - button \"Trocar senha\"\n  - heading \"Verificação em duas etapas\" [level=2]\n  - button \"Desativar verificação em duas etapas\"\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "focus": [
+      "a||Início|/dashboard|",
+      "a||Alunos|/students|",
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|",
+      "a||Presenças|/check-ins|",
+      "a||Planos|/plans|",
+      "a||Pagamentos|/payments|",
+      "a||Funcionários|/staff|",
+      "a||Usuários|/users|",
+      "a||Auditoria|/audit|",
+      "a||Privacidade|/privacy|",
+      "a||Minha conta|/account|",
+      "button||Sair||",
+      "button||Menu||",
+      "input||||currentPassword",
+      "input||||newPassword",
+      "button||Trocar senha||",
+      "button||Desativar verificação em duas etapas||",
+      "a||Registrar check-in|/check-in|",
+      "body",
+      "a||Início|/dashboard|",
+      "a||Alunos|/students|",
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|",
+      "a||Presenças|/check-ins|",
+      "a||Planos|/plans|",
+      "a||Pagamentos|/payments|",
+      "a||Funcionários|/staff|",
+      "a||Usuários|/users|",
+      "a||Auditoria|/audit|",
+      "a||Privacidade|/privacy|",
+      "a||Minha conta|/account|",
+      "button||Sair||",
+      "button||Menu||",
+      "input||||currentPassword",
+      "input||||newPassword",
+      "button||Trocar senha||",
+      "button||Desativar verificação em duas etapas||",
+      "a||Registrar check-in|/check-in|",
+      "body"
+    ]
+  },
+  "/students/018f0000-0000-7000-8000-000000000601/print": {
+    "text": "Dados do aluno: Rafaela Prado Cunha\nVoltar à ficha\nImprimir\n\nExportado em 07/10/2026 12:00:00\n\nDados pessoais\nNome\nRafaela Prado Cunha\nCPF\n529.982.247-25\nData de nascimento\n30/11/1990\nSexo\nFeminino\nE-mail\nrafaela@exemplo.com\nTelefone\n(11) 98765-4321\nEndereço\nRua das Acácias, 120\nContato de emergência\nMaria da Penha\nTelefone de emergência\n(11) 3456-7890\nObservações de saúde\nHipertensão controlada.\nSituação\nInativo\nCadastrado em\n05/01/2026 09:00:00\nInativado em\n10/09/2026 09:00:00\nResponsáveis\nNOME\tCPF\tTELEFONE\tPARENTESCO\tCADASTRADO EM\nJoana Prado\t111.444.777-35\t(11) 91234-5678\tMãe\t05/01/2026 09:00:00\nConsentimentos\nFINALIDADE\tVERSÃO DO TERMO\tTEXTO DO TERMO\tCONCEDIDO POR\tCONCEDIDO EM\tREVOGADO EM\nUso da imagem\t1\tAutorizo o uso da minha imagem.\tResponsável\t06/01/2026 09:00:00\t—\nMatrículas\nPLANO\tINÍCIO\tVENCIMENTO\tVALOR\tCANCELADA EM\nMensal Plus\t01/08/2026\t31/08/2026\tR$ 99,90\t—\nPagamentos\nPERÍODO QUE COMEÇA EM\tCONFIRMADO EM\tDESFEITO EM\n01/08/2026\t02/08/2026 10:00:00\t—\nPresenças\nDIA\tREGISTRADA EM\n05/08/2026\t05/08/2026 09:00:00\nFotos\nVersão 1 · guardada até 01/11/2026 09:00:00 · enviada em 01/02/2026 09:00:00\nVersão 2 · atual · enviada em 01/03/2026 09:00:00",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - 'heading \"Dados do aluno: Rafaela Prado Cunha\" [level=2]'\n  - link \"Voltar à ficha\":\n    - /url: /students/018f0000-0000-7000-8000-000000000601\n  - button \"Imprimir\"\n  - paragraph: Exportado em 07/10/2026 12:00:00\n  - region \"Dados pessoais\":\n    - heading \"Dados pessoais\" [level=3]\n    - term: Nome\n    - definition: Rafaela Prado Cunha\n    - term: CPF\n    - definition: 529.982.247-25\n    - term: Data de nascimento\n    - definition: 30/11/1990\n    - term: Sexo\n    - definition: Feminino\n    - term: E-mail\n    - definition: rafaela@exemplo.com\n    - term: Telefone\n    - definition: (11) 98765-4321\n    - term: Endereço\n    - definition: Rua das Acácias, 120\n    - term: Contato de emergência\n    - definition: Maria da Penha\n    - term: Telefone de emergência\n    - definition: (11) 3456-7890\n    - term: Observações de saúde\n    - definition: Hipertensão controlada.\n    - term: Situação\n    - definition: Inativo\n    - term: Cadastrado em\n    - definition: 05/01/2026 09:00:00\n    - term: Inativado em\n    - definition: 10/09/2026 09:00:00\n  - region \"Responsáveis\":\n    - heading \"Responsáveis\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Nome CPF Telefone Parentesco Cadastrado em\":\n          - columnheader \"Nome\"\n          - columnheader \"CPF\"\n          - columnheader \"Telefone\"\n          - columnheader \"Parentesco\"\n          - columnheader \"Cadastrado em\"\n      - rowgroup:\n        - row \"Joana Prado 111.444.777-35 (11) 91234-5678 Mãe 05/01/2026 09:00:00\":\n          - cell \"Joana Prado\"\n          - cell \"111.444.777-35\"\n          - cell \"(11) 91234-5678\"\n          - cell \"Mãe\"\n          - cell \"05/01/2026 09:00:00\"\n  - region \"Consentimentos\":\n    - heading \"Consentimentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Finalidade Versão do termo Texto do termo Concedido por Concedido em Revogado em\":\n          - columnheader \"Finalidade\"\n          - columnheader \"Versão do termo\"\n          - columnheader \"Texto do termo\"\n          - columnheader \"Concedido por\"\n          - columnheader \"Concedido em\"\n          - columnheader \"Revogado em\"\n      - rowgroup:\n        - row \"Uso da imagem 1 Autorizo o uso da minha imagem. Responsável 06/01/2026 09:00:00 —\":\n          - cell \"Uso da imagem\"\n          - cell \"1\"\n          - cell \"Autorizo o uso da minha imagem.\"\n          - cell \"Responsável\"\n          - cell \"06/01/2026 09:00:00\"\n          - cell \"—\"\n  - region \"Matrículas\":\n    - heading \"Matrículas\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Plano Início Vencimento Valor Cancelada em\":\n          - columnheader \"Plano\"\n          - columnheader \"Início\"\n          - columnheader \"Vencimento\"\n          - columnheader \"Valor\"\n          - columnheader \"Cancelada em\"\n      - rowgroup:\n        - row \"Mensal Plus 01/08/2026 31/08/2026 R$ 99,90 —\":\n          - cell \"Mensal Plus\"\n          - cell \"01/08/2026\"\n          - cell \"31/08/2026\"\n          - cell \"R$ 99,90\"\n          - cell \"—\"\n  - region \"Pagamentos\":\n    - heading \"Pagamentos\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Período que começa em Confirmado em Desfeito em\":\n          - columnheader \"Período que começa em\"\n          - columnheader \"Confirmado em\"\n          - columnheader \"Desfeito em\"\n      - rowgroup:\n        - row \"01/08/2026 02/08/2026 10:00:00 —\":\n          - cell \"01/08/2026\"\n          - cell \"02/08/2026 10:00:00\"\n          - cell \"—\"\n  - region \"Presenças\":\n    - heading \"Presenças\" [level=3]\n    - table:\n      - rowgroup:\n        - row \"Dia Registrada em\":\n          - columnheader \"Dia\"\n          - columnheader \"Registrada em\"\n      - rowgroup:\n        - row \"05/08/2026 05/08/2026 09:00:00\":\n          - cell \"05/08/2026\"\n          - cell \"05/08/2026 09:00:00\"\n  - region \"Fotos\":\n    - heading \"Fotos\" [level=3]\n    - list:\n      - listitem:\n        - img \"Foto, versão 1\"\n        - text: Versão 1 · guardada até 01/11/2026 09:00:00 · enviada em 01/02/2026 09:00:00\n      - listitem:\n        - img \"Foto, versão 2\"\n        - text: Versão 2 · atual · enviada em 01/03/2026 09:00:00\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "focus": [
+      "a||Início|/dashboard|",
+      "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -942,6 +943,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -959,18 +961,17 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|"
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|"
     ]
   },
   "/staff/018f0000-0000-7000-8000-000000000401/print": {
     "text": "Dados do funcionário: Rafaela Prado Cunha\nVoltar à ficha\nImprimir\n\nExportado em 07/10/2026 12:00:00\n\nDados pessoais\nNome\nRafaela Prado Cunha\nCPF\n529.982.247-25\nCargo\nFisioterapeuta Esportiva\nSetor\nReabilitação\nData de admissão\n15/03/2021\nTelefone\n(11) 91234-5678\nE-mail\nrafaela.prado@exemplo.com\nSituação\nInativo\nCadastrado em\n15/03/2021 09:00:00\nUsuário\nE-mail do usuário\nrafaela.usuario@exemplo.com\nPerfil\nInstrutor\nFotos\nVersão 1 · atual · enviada em 01/03/2026 09:00:00",
-    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - 'heading \"Dados do funcionário: Rafaela Prado Cunha\" [level=2]'\n  - link \"Voltar à ficha\":\n    - /url: /staff/018f0000-0000-7000-8000-000000000401\n  - button \"Imprimir\"\n  - paragraph: Exportado em 07/10/2026 12:00:00\n  - region \"Dados pessoais\":\n    - heading \"Dados pessoais\" [level=3]\n    - term: Nome\n    - definition: Rafaela Prado Cunha\n    - term: CPF\n    - definition: 529.982.247-25\n    - term: Cargo\n    - definition: Fisioterapeuta Esportiva\n    - term: Setor\n    - definition: Reabilitação\n    - term: Data de admissão\n    - definition: 15/03/2021\n    - term: Telefone\n    - definition: (11) 91234-5678\n    - term: E-mail\n    - definition: rafaela.prado@exemplo.com\n    - term: Situação\n    - definition: Inativo\n    - term: Cadastrado em\n    - definition: 15/03/2021 09:00:00\n  - region \"Usuário\":\n    - heading \"Usuário\" [level=3]\n    - term: E-mail do usuário\n    - definition: rafaela.usuario@exemplo.com\n    - term: Perfil\n    - definition: Instrutor\n  - region \"Fotos\":\n    - heading \"Fotos\" [level=3]\n    - list:\n      - listitem:\n        - img \"Foto, versão 1\"\n        - text: Versão 1 · atual · enviada em 01/03/2026 09:00:00\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
+    "aria": "- banner:\n  - heading \"DukFit\" [level=1]\n  - complementary:\n    - navigation \"Menu principal\":\n      - link \"Início\":\n        - /url: /dashboard\n      - link \"Alunos\":\n        - /url: /students\n      - link \"Interessados\":\n        - /url: /leads\n      - link \"Check-in\":\n        - /url: /check-in\n      - link \"Presenças\":\n        - /url: /check-ins\n      - link \"Planos\":\n        - /url: /plans\n      - link \"Pagamentos\":\n        - /url: /payments\n      - link \"Funcionários\":\n        - /url: /staff\n      - link \"Usuários\":\n        - /url: /users\n      - link \"Auditoria\":\n        - /url: /audit\n      - link \"Privacidade\":\n        - /url: /privacy\n      - link \"Minha conta\":\n        - /url: /account\n    - button \"Sair\"\n  - paragraph: \"Marina Duarte Perfil: Administrador\"\n  - button \"Menu\"\n- main:\n  - 'heading \"Dados do funcionário: Rafaela Prado Cunha\" [level=2]'\n  - link \"Voltar à ficha\":\n    - /url: /staff/018f0000-0000-7000-8000-000000000401\n  - button \"Imprimir\"\n  - paragraph: Exportado em 07/10/2026 12:00:00\n  - region \"Dados pessoais\":\n    - heading \"Dados pessoais\" [level=3]\n    - term: Nome\n    - definition: Rafaela Prado Cunha\n    - term: CPF\n    - definition: 529.982.247-25\n    - term: Cargo\n    - definition: Fisioterapeuta Esportiva\n    - term: Setor\n    - definition: Reabilitação\n    - term: Data de admissão\n    - definition: 15/03/2021\n    - term: Telefone\n    - definition: (11) 91234-5678\n    - term: E-mail\n    - definition: rafaela.prado@exemplo.com\n    - term: Situação\n    - definition: Inativo\n    - term: Cadastrado em\n    - definition: 15/03/2021 09:00:00\n  - region \"Usuário\":\n    - heading \"Usuário\" [level=3]\n    - term: E-mail do usuário\n    - definition: rafaela.usuario@exemplo.com\n    - term: Perfil\n    - definition: Instrutor\n  - region \"Fotos\":\n    - heading \"Fotos\" [level=3]\n    - list:\n      - listitem:\n        - img \"Foto, versão 1\"\n        - text: Versão 1 · atual · enviada em 01/03/2026 09:00:00\n- link \"Registrar check-in\":\n  - /url: /check-in\n- alert",
     "focus": [
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -988,6 +989,7 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
+      "a||Interessados|/leads|",
       "a||Check-in|/check-in|",
       "a||Presenças|/check-ins|",
       "a||Planos|/plans|",
@@ -1005,10 +1007,8 @@
       "body",
       "a||Início|/dashboard|",
       "a||Alunos|/students|",
-      "a||Check-in|/check-in|",
-      "a||Presenças|/check-ins|",
-      "a||Planos|/plans|",
-      "a||Pagamentos|/payments|"
+      "a||Interessados|/leads|",
+      "a||Check-in|/check-in|"
     ]
   }
 }

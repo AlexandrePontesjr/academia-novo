@@ -3,6 +3,8 @@ import type {
   AuditLog,
   ConsentGrantor,
   ConsentPurpose,
+  LeadSource,
+  LeadStatus,
   Plan,
   PlanPeriod,
   Role,
@@ -10,6 +12,7 @@ import type {
   User,
 } from '@academia/contracts';
 import { GRANTOR_LABELS, PURPOSE_LABELS } from './consents.ts';
+import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from './leads.ts';
 import { formatPrice, PERIOD_LABELS } from './plans.ts';
 import { ROLE_LABELS } from './roles.ts';
 import { formatBirthDate, STATUS_LABELS } from './students.ts';
@@ -141,10 +144,15 @@ const FIELD_LABELS: Record<string, string> = {
   planId: 'Plano',
   startsAt: 'Início',
   endsAt: 'Vencimento',
+  // interessado: a trilha guarda o valor de `status` e de `source`, nunca nome, e-mail nem telefone
+  source: 'Origem',
 };
 
-function valueLabel(field: string, value: unknown, users: UserNames, plans: PlanNames): string {
+function valueLabel(action: string, field: string, value: unknown, users: UserNames, plans: PlanNames): string {
   if (value === null || value === undefined) return '—';
+  // a situação e a origem de um interessado têm rótulos próprios (pre-cadastro)
+  if (action.startsWith('lead.') && field === 'status') return LEAD_STATUS_LABELS[value as LeadStatus] ?? String(value);
+  if (field === 'source') return LEAD_SOURCE_LABELS[value as LeadSource] ?? String(value);
   // a trilha guarda o id do usuário: a tela mostra o nome de agora, ou o id se o usuário não está na lista
   if (field === 'userId') return users.find((user) => user.id === value)?.name ?? String(value);
   // idem para o plano de uma matrícula
@@ -178,10 +186,10 @@ export function diffDetails(
   return diff.fields.flatMap((field) => {
     const label = FIELD_LABELS[field] ?? field;
     const change = diff.values[field];
-    if (created) return change ? [`${label}: ${valueLabel(field, change.to, users, plans)}`] : [];
+    if (created) return change ? [`${label}: ${valueLabel(action, field, change.to, users, plans)}`] : [];
     if (!change) return [`${label} alterado`];
     return [
-      `${label}: ${valueLabel(field, change.from, users, plans)} → ${valueLabel(field, change.to, users, plans)}`,
+      `${label}: ${valueLabel(action, field, change.from, users, plans)} → ${valueLabel(action, field, change.to, users, plans)}`,
     ];
   });
 }

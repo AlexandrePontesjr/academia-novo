@@ -196,3 +196,23 @@ test('privacy_link_only_for_admin', async ({ page, api }) => {
     if (expected) await expect(link, role).toHaveAttribute('href', '/privacy');
   }
 });
+
+test('leads_link_only_for_admin_reception_hr_finance', async ({ page, api }) => {
+  const visible: Record<Role, boolean> = {
+    admin: true,
+    reception: true,
+    hr_finance: true,
+    instructor: false,
+  };
+
+  for (const [role, expected] of Object.entries(visible) as Array<[Role, boolean]>) {
+    api.session = sessionOf(role);
+    await page.goto('/dashboard');
+
+    await expect(page.getByRole('heading', { name: 'DukFit' }), role).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Interessados', exact: true }), role).toHaveCount(expected ? 1 : 0);
+    if (expected) {
+      await expect(page.getByRole('link', { name: 'Interessados', exact: true }), role).toHaveAttribute('href', '/leads');
+    }
+  }
+});

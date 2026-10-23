@@ -798,3 +798,16 @@ test('guardian_422_shown_on_each_field_keeps_the_rest', async ({ page, api }) =>
     }
   }
 });
+
+// pre-cadastro (AC 46 na tela): sem `lead` na URL, o cadastro de aluno é o de antes e não lê interessados
+test('new_student_without_lead_does_not_read_leads', async ({ page, api }) => {
+  for (const role of ['admin', 'reception'] as Role[]) {
+    api.session = sessionOf(role);
+    await page.goto('/students/new');
+    await formHydrated(page);
+    await expect(page.getByLabel('Nome completo', { exact: true }), role).toHaveValue('');
+    await expect(page.getByLabel('E-mail', { exact: true }), role).toHaveValue('');
+    await expect(page.getByLabel('Telefone', { exact: true }), role).toHaveValue('');
+  }
+  expect(api.requests.filter((request) => request.path.startsWith('/api/leads'))).toEqual([]);
+});

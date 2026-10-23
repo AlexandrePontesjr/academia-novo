@@ -28,17 +28,17 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 
 1. `GET /api/leads/google/start` `@Public()` -> módulo de interessados - grava `state` e o verificador PKCE num cookie assinado (door 7) e responde `302` para o Google
 2. Google -> `GET /api/leads/google/callback` `@Public()` - confere o `state`, troca o `code` no endpoint de token do Google por `fetch`, valida o `id_token` (door 7), grava nome e e-mail num segundo cookie assinado e responde `302` para `/matricula?google=ok` (ou `?google=erro`)
-3. `/matricula` chama `GET /api/leads/google/profile` repassando o cookie e mostra nome e e-mail fixos; `POST /api/leads` com o cookie cria o interessado já confirmado, sem e-mail
+3. `/matricula?google=ok`, já no navegador, chama `GET /api/leads/google/profile` (o cookie de perfil só vai a `Path=/api/leads`, então o servidor da página não o vê) e mostra nome e e-mail fixos; `POST /api/leads` com o cookie cria o interessado já confirmado, sem e-mail
 
 **Interessados no painel e conversão**
 
 1. navegador `GET /leads` -> `proxy.ts` (exists) exige sessão -> página chama `GET /api/leads` por `fetchApi` (exists) dentro da `Shell` (exists), que ganha o link "Interessados"
 2. `PATCH /api/leads/:id` -> `AccessGuard` (exists) com `@Roles('admin','reception','hr_finance')` -> módulo de interessados - muda `status` e grava `lead.status_changed` (door 8)
-3. "Matricular" leva a `/students/new?lead=<id>` (exists) com nome, e-mail e telefone preenchidos; `POST /api/students` (exists) aceita `leadId` opcional e, na mesma transação do aluno, passa o interessado a `converted` com `student_id` (door 9)
+3. "Matricular" leva a `/students/new?lead=<id>` (exists), que lê os abertos por `GET /api/leads` e preenche nome, e-mail e telefone; `POST /api/students` (exists) aceita `leadId` opcional e, na mesma transação do aluno, passa o interessado a `converted` com `student_id` (door 9)
 
 **Retenção**
 
-1. temporizador no processo da API (exists, molde da AD-050) - na subida e a cada 60 minutos apaga de `leads` os não confirmados com mais de 7 dias e todos com mais de 90 dias, com `lead_verifications` em cascata, e grava `lead.purged` por linha (door 10)
+1. `LeadRetention`, temporizador no processo da API (new, no molde de `PhotoPurge` e `PrivacyRetention`, AD-050) - na subida e a cada 60 minutos apaga de `leads` os não confirmados com mais de 7 dias e todos com mais de 90 dias, com `lead_verifications` em cascata, e grava `lead.purged` por linha (door 10)
 
 ## Impact
 
@@ -54,6 +54,8 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 | comportamento existente | AD-017 continua: o Better Auth segue sem cadastro aberto e sem `socialProviders`; o login da equipe não muda |
 | web | `proxy.ts` ganha o terceiro ramo público (door 11); a guarda de `tests/repo/identidade.test.ts` sobre `page.tsx` da landing continua valendo, porque o formulário não mora na landing |
 | web | a `Shell` ganha "Interessados" para `admin`, `reception` e `hr_finance`; `apps/web/e2e/shell.spec.ts` confere o menu por perfil |
+| comportamento existente | o link "Interessados" do menu lateral entra na árvore ARIA e na ordem de foco gravadas pela C39 da `motion` a 1440 px: `fixtures/motion-baseline/1440.json` ganha a entrada depois de "Alunos" nas 21 telas, e cada sequência de foco segue cortada nos 40 Tabs; a 390 px nada muda (o menu lateral não existe) |
+| comportamento existente | `/leads` é um segmento novo do shell e tem o `loading.tsx` de todos: o guard `eleven_segments_have_app_loading` de `tests/repo/motion.test.ts` passa a listar 12; o terceiro temporizador do processo (`LeadRetention`) faz as provas de temporizador de `photos-purge.test.ts` e `privacy-retention.test.ts` contarem 3; `SITE` ganha a chave `matricula` em `site_content_has_the_door_five_shape`, e o `href` do "Matricule-se" muda em `plans_show_one_card_without_a_price` |
 | ambiente | oito variáveis novas, todas opcionais (door 6): `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; entram em `.env.example` vazias, e `SMTP_PASS` e `GOOGLE_CLIENT_SECRET` entram na lista de custódia da AD-089 |
 | dependência | `nodemailer` em `apps/api` (door 5); o guard da AD-104 só olha `motion` e não muda |
 | `.specs` | aprovado o plano, as doors viram AD-107 em diante em `STATE.md`; a AD-106 ganha a nota do novo destino do "Matricule-se"; o `ROADMAP.md` ganha a linha 15 |
