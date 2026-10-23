@@ -191,6 +191,10 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'Dados de funcionário exportados',
     'Funcionário anonimizado',
     'Configuração de privacidade alterada',
+    'Pré-cadastro recebido',
+    'E-mail do pré-cadastro confirmado',
+    'Situação do interessado alterada',
+    'Pré-cadastro expirado',
   ]);
 });
 
