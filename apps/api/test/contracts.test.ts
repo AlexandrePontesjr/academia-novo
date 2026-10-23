@@ -1309,3 +1309,22 @@ test('plan_and_enrollment_bodies_match_contract_schemas_and_three_new_codes', as
     expect(problemSchema.safeParse(body).success, route).toBe(true);
   }
 });
+
+test('audit_action_count_is_forty_seven', async () => {
+  const { ACTION_LABELS } = await import('../../web/src/lib/audit.ts');
+  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+  // a tela tem um rótulo para cada uma das 47, e só para elas
+  expect(Object.keys(ACTION_LABELS).sort()).toEqual([...AUDIT_ACTIONS].sort());
+  // nenhum ponto que contava as ações ficou em 43
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const sources = [
+    ...readdirSync(import.meta.dirname).filter((name) => name.endsWith('.test.ts')).map((name) => join(import.meta.dirname, name)),
+    join(import.meta.dirname, '../../web/e2e/audit.spec.ts'),
+  ];
+  for (const file of sources) {
+    const text = readFileSync(file, 'utf8');
+    expect(text, file).not.toMatch(/(AUDIT_ACTIONS|auditActionSchema\.options|options\.slice\(1\)|options)\)\.toHaveLength\(43\)/);
+  }
+});
