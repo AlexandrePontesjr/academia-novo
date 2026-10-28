@@ -10,6 +10,7 @@ import {
   baselineOf,
   DESKTOP,
   fixtureIds,
+  formHydrated,
   type Frame,
   framesOf,
   MOBILE,
@@ -452,6 +453,19 @@ test('success_messages_are_feedback_in_180ms', async ({ page, api }) => {
   await expect(saved).toBeVisible();
   await expect(saved).toHaveAttribute('data-motion', 'feedback');
   expect(await animationOf(saved)).toEqual({ name: 'feedback-in', duration: '0.18s' });
+
+  // a terceira mensagem de sucesso do app: a troca de senha em `/account` (C24, AC 24)
+  api.session = sessionOf('reception');
+  api.on('PUT', '/api/auth/password', { status: 204 });
+  await page.goto('/account');
+  await formHydrated(page);
+  await page.getByLabel('Senha atual').fill('senha-de-teste-123');
+  await page.getByLabel('Nova senha').fill('senha-nova-de-teste-456');
+  await page.getByRole('button', { name: 'Trocar senha', exact: true }).click();
+  const changed = page.getByText('Senha alterada.', { exact: true });
+  await expect(changed).toBeVisible();
+  await expect(changed).toHaveAttribute('data-motion', 'feedback');
+  expect(await animationOf(changed)).toEqual({ name: 'feedback-in', duration: '0.18s' });
 });
 
 test('failed_action_alert_keeps_role_and_text_and_animates', async ({ page, api }) => {
@@ -540,6 +554,20 @@ function firstShown(frames: Frame[], count: number) {
   return times.map((time) => time! - times[0]!);
 }
 
+/**
+ * De onde cada item parte: o maior `translateY` que ele mostra nos quadros amostrados (a entrada vai
+ * da distância até 0). A distância é decidida pelo `useEntrance` de `Enter` (door 4): 8 px, 12 px a
+ * partir de 1024 px (AC 7, AC 28; `Reveal`, `StaggerItem` e `StaggerCell`).
+ */
+function expectStartDistance(frames: Frame[], low: number, high: number, label: string) {
+  const count = frames.at(-1)!.targets.length;
+  for (let index = 0; index < count; index += 1) {
+    const farthest = Math.max(...frames.map((frame) => translateYOf(frame.targets[index]?.transform ?? 'none')));
+    expect(farthest, `${label} item ${index} distância`).toBeGreaterThan(low);
+    expect(farthest, `${label} item ${index} distância`).toBeLessThanOrEqual(high);
+  }
+}
+
 test('dashboard_cards_reveal_with_40ms_steps', async ({ page, api }) => {
   await page.setViewportSize(MOBILE);
   serveWorld(api, 'admin');
@@ -549,10 +577,17 @@ test('dashboard_cards_reveal_with_40ms_steps', async ({ page, api }) => {
   const times = firstShown(frames, count);
   for (const [index, time] of times.entries()) expect(Math.abs(time - index * 40), `cartão ${index}`).toBeLessThanOrEqual(17);
   for (let index = 0; index < count; index += 1) expect(frames.at(-1)!.targets[index], `cartão ${index}`).toMatchObject({ opacity: '1', transform: 'none' });
+  expectStartDistance(frames, 6, 8, '390 cartão');
+
+  // o mesmo `Reveal` a partir de 1024 px parte de 12 px (door 4; a decisão de distância do `Enter`)
+  await page.setViewportSize(DESKTOP);
+  const desktopFrames = await sampleEntrance(page, '/students', 'Início', CARDS);
+  expect(desktopFrames.at(-1)!.targets).toHaveLength(7);
+  expectStartDistance(desktopFrames, 10, 12, '1440 cartão');
 });
 
 test('lists_stagger_8_items_at_40ms_and_cap_the_rest', async ({ page, api }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await page.setViewportSize(MOBILE);
   serveTwelve(api);
   for (const list of LISTS) {
@@ -565,6 +600,15 @@ test('lists_stagger_8_items_at_40ms_and_cap_the_rest', async ({ page, api }) => 
     }
     // a cascata andou de fato: o item 0 começou escondido
     expect(Number(frames[0]!.targets[0]!.opacity), list.path).toBeLessThan(1);
+    expectStartDistance(frames, 6, 8, `${list.path} 390`);
+  }
+
+  // a partir de 1024 px o mesmo `StaggerCell` parte de 12 px (door 4; a decisão de distância do `Enter`)
+  await page.setViewportSize(DESKTOP);
+  for (const list of LISTS) {
+    const frames = await sampleEntrance(page, '/dashboard', list.link, ROWS);
+    expect(frames.at(-1)!.targets, list.path).toHaveLength(12);
+    expectStartDistance(frames, 10, 12, `${list.path} 1440`);
   }
 });
 

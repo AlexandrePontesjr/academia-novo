@@ -205,6 +205,59 @@ test('action_animations_touch_only_opacity_transform_background', () => {
   }
 });
 
+/** As regras de um bloco CSS sem aninhamento, como `{ selector, declarations }`. */
+function rulesOf(block: string) {
+  return [...block.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selector: match[1]!
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    declarations: declarationsOf(match[2]!),
+  }));
+}
+
+/** O corpo do `@media (prefers-reduced-motion: reduce)` do movimento (door 5), da chave que abre até a que fecha. */
+function reducedMotionBlockOf(css: string) {
+  const start = css.indexOf('@media (prefers-reduced-motion: reduce)', css.indexOf('/* Movimento (motion'));
+  expect(start, 'bloco de movimento reduzido').toBeGreaterThan(-1);
+  const open = css.indexOf('{', start);
+  let depth = 0;
+  for (let index = open; index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    if (css[index] === '}') depth -= 1;
+    if (depth === 0) return css.slice(open + 1, index);
+  }
+  throw new Error('@media de movimento reduzido sem fim');
+}
+
+test('reduced_motion_block_turns_off_every_door_five_rule', () => {
+  const rules = rulesOf(reducedMotionBlockOf(read(GLOBALS)));
+  const bySelector = new Map(rules.map((rule) => [rule.selector, rule.declarations]));
+  // o bloco tem exatamente as regras que a door 5 nomeia, nenhuma a mais e nenhuma a menos
+  expect([...bySelector.keys()]).toEqual([
+    '.pressable, .pressable:active',
+    "[data-slot='dialog-overlay'][data-state='open'], [data-slot='dialog-content'][data-state='open'], [data-slot='spinner']",
+    "[data-slot='skeleton']",
+    "[role='alert'], [data-motion='feedback']",
+  ]);
+  expect(bySelector.get('.pressable, .pressable:active')).toEqual([
+    ['transition', 'none'],
+    ['transform', 'none'],
+  ]);
+  expect(bySelector.get("[data-slot='dialog-overlay'][data-state='open'], [data-slot='dialog-content'][data-state='open'], [data-slot='spinner']")).toEqual([
+    ['animation', 'none'],
+  ]);
+  expect(bySelector.get("[data-slot='skeleton']")).toEqual([
+    ['animation', 'none'],
+    ['opacity', '0.5'],
+  ]);
+  expect(bySelector.get("[role='alert'], [data-motion='feedback']")).toEqual([
+    ['animation', 'none'],
+    ['transition', 'none'],
+    ['transform', 'none'],
+  ]);
+});
+
 // S7 - menu flutuante da landing
 
 test('site_header_reads_every_text_from_site', () => {
