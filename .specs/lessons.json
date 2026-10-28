@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 38,
+  "next_id": 42,
   "lessons": [
     {
       "id": "L-001",
@@ -672,6 +672,78 @@
       ],
       "created": "2026-10-19T22:07:48Z",
       "last_seen": "2026-10-19T22:07:48Z"
+    },
+    {
+      "id": "L-038",
+      "key": "ac_gap::enumerate a set of rendered messages by grepping every state setter that fires on a success result not by the attribute the messages already carry at the base commit",
+      "text": "Enumerate a set of rendered messages by grepping every state setter that fires on a success result, not by the attribute the messages already carry at the base commit",
+      "signal": "ac_gap",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "motion"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/web/src/app/account/change-password-form.tsx:38 (C24, AC 24) (web)"
+      ],
+      "created": "2026-10-23T00:37:32Z",
+      "last_seen": "2026-10-23T00:37:32Z"
+    },
+    {
+      "id": "L-039",
+      "key": "surviving_mutant::when a shared hook decides a breakpoint for several components assert the breakpoint branch through each component that consumes it not only through one",
+      "text": "When a shared hook decides a breakpoint for several components, assert the breakpoint branch through each component that consumes it, not only through one",
+      "signal": "surviving_mutant",
+      "scope": "web",
+      "status": "candidate",
+      "features": [
+        "motion"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F5 packages/ui/src/motion.tsx:65 (Test policy row 1) (web)"
+      ],
+      "created": "2026-10-23T00:37:32Z",
+      "last_seen": "2026-10-23T00:37:32Z"
+    },
+    {
+      "id": "L-040",
+      "key": "ac_gap::when a test policy asks for a literal test of a css block assert every rule inside the block not only the one the first feature slice added",
+      "text": "When a test policy asks for a literal test of a CSS block, assert every rule inside the block, not only the one the first feature slice added",
+      "signal": "ac_gap",
+      "scope": "ui",
+      "status": "candidate",
+      "features": [
+        "motion"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "packages/ui/src/globals.css:182-206 (Test policy row 3) (ui)"
+      ],
+      "created": "2026-10-23T00:37:32Z",
+      "last_seen": "2026-10-23T00:37:32Z"
+    },
+    {
+      "id": "L-041",
+      "key": "gate_fail::prove the repo gate command itself in the environment that runs verification and record any per package substitute as not proving the gate",
+      "text": "Prove the repo gate command itself in the environment that runs verification, and record any per-package substitute as not proving the gate",
+      "signal": "gate_fail",
+      "scope": "repo",
+      "status": "candidate",
+      "features": [
+        "motion"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C37 pnpm verify exit 1 (turbo EPERM in %TEMP%, testcontainers runtime not found) (repo)"
+      ],
+      "created": "2026-10-23T00:37:32Z",
+      "last_seen": "2026-10-23T00:37:32Z"
     }
   ]
 }

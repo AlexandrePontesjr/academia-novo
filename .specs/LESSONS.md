@@ -234,6 +234,30 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C18 - apps/web/e2e/identidade.spec.ts:118-137 / :680-693 (ui)
 - last seen: 2026-10-19T22:07:48Z
 
+### L-038 - Enumerate a set of rendered messages by grepping every state setter that fires on a success result, not by the attribute the messages already carry at the base commit
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: motion
+- evidence: apps/web/src/app/account/change-password-form.tsx:38 (C24, AC 24) (web)
+- last seen: 2026-10-23T00:37:32Z
+
+### L-039 - When a shared hook decides a breakpoint for several components, assert the breakpoint branch through each component that consumes it, not only through one
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: motion
+- evidence: F5 packages/ui/src/motion.tsx:65 (Test policy row 1) (web)
+- last seen: 2026-10-23T00:37:32Z
+
+### L-040 - When a test policy asks for a literal test of a CSS block, assert every rule inside the block, not only the one the first feature slice added
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `ui` · harmful: 0
+- features: motion
+- evidence: packages/ui/src/globals.css:182-206 (Test policy row 3) (ui)
+- last seen: 2026-10-23T00:37:32Z
+
+### L-041 - Prove the repo gate command itself in the environment that runs verification, and record any per-package substitute as not proving the gate
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `repo` · harmful: 0
+- features: motion
+- evidence: C37 pnpm verify exit 1 (turbo EPERM in %TEMP%, testcontainers runtime not found) (repo)
+- last seen: 2026-10-23T00:37:32Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
