@@ -35,7 +35,11 @@ export function ChangePasswordForm() {
 
   return (
     <form noValidate className="grid gap-4" onSubmit={form.handleSubmit(submit)}>
-      {notice && <Alert variant={notice.failed ? 'destructive' : 'default'}>{notice.text}</Alert>}
+      {notice && (
+        <Alert variant={notice.failed ? 'destructive' : 'default'} {...(notice.failed ? {} : { 'data-motion': 'feedback' })}>
+          {notice.text}
+        </Alert>
+      )}
       <TextField
         label="Senha atual"
         type="password"
