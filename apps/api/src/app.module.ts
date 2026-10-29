@@ -30,6 +30,8 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
+import { PasswordResetController, PasswordTokensController, PortalController } from './portal/portal.controller.ts';
+import { PortalService } from './portal/portal.service.ts';
 import { PrivacyRetention } from './privacy/privacy-retention.ts';
 import { PrivacySettingsController, StaffPrivacyController, StudentPrivacyController } from './privacy/privacy.controller.ts';
 import { PrivacyService } from './privacy/privacy.service.ts';
@@ -80,6 +82,9 @@ export class AppModule implements OnApplicationShutdown {
         PrivacySettingsController,
         LeadsController,
         LeadsGoogleController,
+        PortalController,
+        PasswordTokensController,
+        PasswordResetController,
         OpenApiController,
       ],
       providers: [
@@ -172,6 +177,12 @@ export class AppModule implements OnApplicationShutdown {
               new URL(env.WEB_ORIGIN).origin,
               env.GOOGLE_CLIENT_ID !== undefined && env.GOOGLE_CLIENT_SECRET !== undefined,
             ),
+          inject: [DATABASE, MailService],
+        },
+        {
+          provide: PortalService,
+          useFactory: (database: Database, mail: MailService) =>
+            new PortalService(database.db, mail, new URL(env.WEB_ORIGIN).origin),
           inject: [DATABASE, MailService],
         },
         {

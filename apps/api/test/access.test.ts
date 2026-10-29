@@ -169,5 +169,8 @@ test('only_listed_routes_answer_without_session', async () => {
     'POST /api/auth/two-factor/verify',
     'POST /api/leads',
     'POST /api/leads/confirm',
+    'POST /api/password-reset',
+    'POST /api/password-tokens/consume',
+    'POST /api/portal/first-access',
   ].sort());
 });

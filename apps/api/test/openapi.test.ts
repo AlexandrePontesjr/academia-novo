@@ -3,6 +3,7 @@ import {
   checkInsReportQuerySchema,
   studentCheckInsQuerySchema,
   changePasswordRequestSchema,
+  consumePasswordTokenRequestSchema,
   createEnrollmentRequestSchema,
   createPaymentRequestSchema,
   confirmLeadRequestSchema,
@@ -11,6 +12,7 @@ import {
   createStaffRequestSchema,
   createStudentRequestSchema,
   createUserRequestSchema,
+  firstAccessRequestSchema,
   grantConsentRequestSchema,
   leadsQuerySchema,
   guardianRequestSchema,
@@ -21,6 +23,7 @@ import {
   photoQuerySchema,
   privacySettingsSchema,
   passwordConfirmationRequestSchema,
+  passwordResetRequestSchema,
   resetPasswordRequestSchema,
   studentsQuerySchema,
   twoFactorConfirmRequestSchema,
@@ -153,8 +156,11 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['post', '/api/leads', createLeadRequestSchema],
     ['post', '/api/leads/confirm', confirmLeadRequestSchema],
     ['patch', '/api/leads/{id}', updateLeadRequestSchema],
+    ['post', '/api/portal/first-access', firstAccessRequestSchema],
+    ['post', '/api/password-tokens/consume', consumePasswordTokenRequestSchema],
+    ['post', '/api/password-reset', passwordResetRequestSchema],
   ];
-  expect(contracts).toHaveLength(23);
+  expect(contracts).toHaveLength(26);
 
   const { paths } = await document();
 

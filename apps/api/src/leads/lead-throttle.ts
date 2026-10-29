@@ -14,9 +14,20 @@ type Executor = Pick<Database['db'], 'execute'>;
  * tempo até o envio mais antigo da janela sair dela. Quem chama passa a transação do envio: se ele
  * é recusado depois (termo, trilha), a contagem é desfeita junto.
  */
-export async function attemptLead(executor: Executor, kind: keyof typeof LEAD_LIMITS, value: string): Promise<LeadAttempt> {
-  const key = `${kind}:${value}`;
-  const max = LEAD_LIMITS[kind];
+export function attemptLead(executor: Executor, kind: keyof typeof LEAD_LIMITS, value: string): Promise<LeadAttempt> {
+  return attemptKey(executor, `${kind}:${value}`, LEAD_LIMITS[kind]);
+}
+
+/** Pedidos públicos do portal aceitos por chave numa hora (portal-aluno, door 4, AD-122), na mesma tabela. */
+export const PORTAL_LIMITS = { 'access-ip': 10, 'access-cpf': 3, 'reset-ip': 10, 'reset-email': 3 } as const;
+
+/** A contagem de `attemptLead` para os pedidos públicos do portal: mesma janela, chave e limite próprios. */
+export function attemptPortal(executor: Executor, kind: keyof typeof PORTAL_LIMITS, value: string): Promise<LeadAttempt> {
+  return attemptKey(executor, `${kind}:${value}`, PORTAL_LIMITS[kind]);
+}
+
+/** Conta um envio sob `key` em `lead_throttles`, aceitando até `max` na última hora. */
+async function attemptKey(executor: Executor, key: string, max: number): Promise<LeadAttempt> {
   const counted = await executor.execute(sql`
     insert into lead_throttles as t (key, hits)
     values (${key}, array[now()])

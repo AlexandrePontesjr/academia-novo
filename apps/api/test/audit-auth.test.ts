@@ -10,6 +10,8 @@ import { totpCode } from './support/totp.ts';
 import { leadBody, postConfirm, postLead } from './support/leads.ts';
 import { captureMail, confirmLink } from './support/mail.ts';
 import { WEB_ORIGIN } from './support/app.ts';
+import { passwordLink, postConsume, postFirstAccess, postReset } from './support/portal.ts';
+import { cpfOf, maskCpf } from './support/students.ts';
 
 const WRONG = 'senha-errada-000';
 
@@ -380,6 +382,18 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
      returning id`,
   );
   await stack.api.leadRetention(); // lead.purged
+  const portalEmail = 'portal.percorre@example.com';
+  await admin.post('/api/students', {
+    name: 'Aluna Portal Percorre',
+    cpf: maskCpf(cpfOf(91_001)),
+    birthDate: '2000-01-01',
+    phone: '11912345678',
+    email: portalEmail,
+  }); // student.created
+  await postFirstAccess(stack.client(), { cpf: maskCpf(cpfOf(91_001)), email: portalEmail }); // student.portal_access_requested
+  const { token: portalToken } = passwordLink(mail.sent.findLast((message) => message.to === portalEmail)!);
+  await postConsume(stack.client(), { token: portalToken, password: 'senha-do-portal-123' }); // student.portal_password_set
+  await postReset(stack.client(), { email: portalEmail }); // student.portal_reset_requested
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
@@ -387,9 +401,6 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
   // catraca do batch A da `portal-aluno`: as ações do vocabulário que ainda não têm rota; o batch B a esvazia
   const notYetWritten: string[] = [
-    'student.portal_access_requested',
-    'student.portal_password_set',
-    'student.portal_reset_requested',
     'student.photo_approved',
     'student.photo_rejected',
   ];

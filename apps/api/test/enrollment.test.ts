@@ -15,6 +15,9 @@ const PUBLIC = [
   'GET /api/leads/google/start',
   'GET /api/leads/google/callback',
   'GET /api/leads/google/profile',
+  'POST /api/portal/first-access',
+  'POST /api/password-tokens/consume',
+  'POST /api/password-reset',
 ];
 const EXEMPT = [
   'GET /api/auth/session',
