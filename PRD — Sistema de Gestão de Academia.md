@@ -37,7 +37,7 @@ Academias pequenas e médias controlam cadastros em planilhas ou sistemas legado
 | **Recepção** | Atendimento | Cadastrar/editar alunos, enviar fotos, registrar presença; sem acesso a dados de funcionários |
 | **RH/Financeiro** | Gestão de pessoas | Cadastro de funcionários, matrículas, pagamentos |
 | **Instrutor** | Professor | Consulta de alunos (nome, foto, status); sem dados sensíveis |
-| **Aluno** *(fase 2)* | Portal do aluno | Ver/atualizar os próprios dados, solicitar exclusão |
+| **Aluno** *(antecipado do pós-MVP, §15)* | Portal do aluno | Ver os próprios dados e pagamentos, atualizar os dados de contato, enviar foto para aprovação; solicitar exclusão segue fase 2 |
 
 ---
 
@@ -279,3 +279,23 @@ packages/
 - Toda ação sensível aparece em `audit_logs`.
 - Backup e restauração validados em ambiente de homologação.
 - Teste de segurança básico (OWASP Top 10) sem falhas críticas.
+
+---
+
+## 15. Adendo — Portal do aluno (2026-10-28)
+
+O perfil Aluno, previsto como fase 2 no §2, entra antes do go-live a pedido do dono do produto,
+como a feature `portal-aluno` (`.specs/features/portal-aluno/plan.md`).
+
+- **Primeiro acesso pelo aluno**: a ficha continua sendo cadastrada pela Recepção. O aluno maior
+  de idade, sem responsável legal, informa CPF e e-mail em `/primeiro-acesso`; se batem com a ficha,
+  recebe no e-mail da ficha um link (24 h) para criar a senha. "Esqueci minha senha" envia um link de 1 h.
+- **O que o aluno faz**: vê o próprio perfil e os períodos de matrícula com a situação (pago,
+  pendente, atrasado); altera telefone, endereço e contato de emergência; envia
+  uma foto nova, que só substitui a da ficha depois da aprovação da Recepção ou do Administrador.
+- **O que fica com a equipe**: nome, CPF, e-mail, nascimento, observações de saúde, situação, matrículas,
+  pagamentos e consentimentos.
+- **Fora deste adendo**: menores e responsáveis com login, histórico de check-ins e consentimentos
+  no portal, pagamento online, pedido de exclusão pelo portal.
+- **Segurança e LGPD**: o aluno só alcança a própria ficha; e-mail e CPF não mudam pelo portal; inativar ou anonimizar corta
+  o acesso (suspender não); toda ação do portal entra em `audit_logs`.
