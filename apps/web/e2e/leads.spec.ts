@@ -1,4 +1,4 @@
-import type { Role, Student } from '@academia/contracts';
+import type { StaffRole, Student } from '@academia/contracts';
 import type { Page } from '@playwright/test';
 import { expect, problem, sessionOf, test } from './support/fake-api.ts';
 import { leadOf, listCalls, serveLeads } from './support/leads.ts';
@@ -131,7 +131,7 @@ test('row_buttons_by_status_and_role', async ({ page, api }) => {
     (await rowOf(page, id).locator('button, a').allInnerTexts()).map((text) => text.trim()).sort();
 
   // RH/Financeiro vê e marca, mas não cadastra aluno: sem "Matricular" (corrigido pelo usuário em 2026-10-23)
-  const expected: Record<Role, Record<string, string[]>> = {
+  const expected: Record<StaffRole, Record<string, string[]>> = {
     hr_finance: {
       [fresh.id]: ['Descartar', 'Marcar contatado'],
       [contacted.id]: ['Descartar'],

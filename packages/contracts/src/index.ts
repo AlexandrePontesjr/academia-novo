@@ -8,6 +8,7 @@ export * from './leads.ts';
 export * from './payments.ts';
 export * from './photos.ts';
 export * from './plans.ts';
+export * from './portal.ts';
 export { saoPauloToday } from './person.ts';
 export * from './privacy.ts';
 export * from './problem.ts';

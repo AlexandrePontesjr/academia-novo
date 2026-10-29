@@ -52,6 +52,11 @@ export const AUDIT_ACTIONS = [
   'lead.confirmed',
   'lead.status_changed',
   'lead.purged',
+  'student.portal_access_requested',
+  'student.portal_password_set',
+  'student.portal_reset_requested',
+  'student.photo_approved',
+  'student.photo_rejected',
 ] as const;
 export const auditActionSchema = z.enum(AUDIT_ACTIONS, 'Escolha uma ação válida.');
 export type AuditAction = z.infer<typeof auditActionSchema>;

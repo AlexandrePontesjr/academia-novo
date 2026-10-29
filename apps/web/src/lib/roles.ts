@@ -6,4 +6,5 @@ export const ROLE_LABELS: Record<Role, string> = {
   reception: 'Recepção',
   hr_finance: 'RH/Financeiro',
   instructor: 'Instrutor',
+  student: 'Aluno',
 };

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Problem, Role } from '@academia/contracts';
+import type { Problem, Role, StaffRole } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { PhotoSigner } from '../src/photos/photo-signer.ts';
 import { PHOTO_URL_SECRET } from './support/app.ts';
@@ -330,7 +330,7 @@ const FICHA_KEYS = {
   hr_finance: ['address', 'birthDate', 'cpf', 'email', 'emergencyContactName', 'emergencyContactPhone', 'id', 'name', 'phone', 'photoUrl', 'sex', 'status'],
   instructor: ['id', 'name', 'photoUrl', 'status'],
 };
-const ficha = (role: Role) => (role === 'reception' ? FICHA_KEYS.admin : FICHA_KEYS[role]);
+const ficha = (role: StaffRole) => (role === 'reception' ? FICHA_KEYS.admin : FICHA_KEYS[role]);
 
 /** Um aluno com uma versão antiga não corrente e a corrente, inseridas direto: só a corrente é a foto. */
 async function studentWithTwoVersions(overrides: Record<string, unknown> = {}) {

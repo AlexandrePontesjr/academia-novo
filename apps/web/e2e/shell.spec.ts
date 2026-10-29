@@ -1,4 +1,4 @@
-import type { Role } from '@academia/contracts';
+import type { Role, StaffRole } from '@academia/contracts';
 import { expect, sessionOf, test } from './support/fake-api.ts';
 
 test('anonymous_is_redirected_to_login', async ({ page, api }) => {
@@ -12,7 +12,7 @@ test('anonymous_is_redirected_to_login', async ({ page, api }) => {
 });
 
 test('users_link_only_for_admin', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: false,
     hr_finance: false,
@@ -42,7 +42,7 @@ test('students_link_for_all_four_roles', async ({ page, api }) => {
 });
 
 test('audit_link_only_for_admin', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: false,
     hr_finance: false,
@@ -59,7 +59,7 @@ test('audit_link_only_for_admin', async ({ page, api }) => {
 });
 
 test('staff_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: false,
     hr_finance: true,
@@ -79,7 +79,7 @@ test('staff_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
 });
 
 test('plans_link_for_admin_hr_finance_and_reception', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: true,
     hr_finance: true,
@@ -99,7 +99,7 @@ test('plans_link_for_admin_hr_finance_and_reception', async ({ page, api }) => {
 });
 
 test('payments_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: false,
     hr_finance: true,
@@ -119,7 +119,7 @@ test('payments_link_only_for_admin_and_hr_finance', async ({ page, api }) => {
 });
 
 test('check_in_link_only_for_admin_and_reception', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: true,
     hr_finance: false,
@@ -138,7 +138,7 @@ test('check_in_link_only_for_admin_and_reception', async ({ page, api }) => {
 });
 
 test('check_ins_link_only_for_admin_and_reception', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: true,
     hr_finance: false,
@@ -179,7 +179,7 @@ test('signed_in_user_leaves_login', async ({ page, api }) => {
 });
 
 test('privacy_link_only_for_admin', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: false,
     hr_finance: false,
@@ -198,7 +198,7 @@ test('privacy_link_only_for_admin', async ({ page, api }) => {
 });
 
 test('leads_link_only_for_admin_reception_hr_finance', async ({ page, api }) => {
-  const visible: Record<Role, boolean> = {
+  const visible: Record<StaffRole, boolean> = {
     admin: true,
     reception: true,
     hr_finance: true,

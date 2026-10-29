@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema, newPasswordSchema, roleSchema } from './auth.ts';
+import { emailSchema, newPasswordSchema, roleSchema, staffRoleSchema } from './auth.ts';
 
 const nameSchema = z
   .string('Informe o nome.')
@@ -26,14 +26,15 @@ export type UsersResponse = z.infer<typeof usersResponseSchema>;
 export const createUserRequestSchema = z.object({
   name: nameSchema,
   email: emailSchema,
-  role: roleSchema,
+  // o perfil `student` só nasce pelo primeiro acesso do portal (AD-119)
+  role: staffRoleSchema,
   password: newPasswordSchema,
 });
 export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
 
 export const updateUserRequestSchema = z.object({
   name: nameSchema.optional(),
-  role: roleSchema.optional(),
+  role: staffRoleSchema.optional(),
   active: z.boolean('Informe se o usuário está ativo.').optional(),
 });
 export type UpdateUserRequest = z.infer<typeof updateUserRequestSchema>;

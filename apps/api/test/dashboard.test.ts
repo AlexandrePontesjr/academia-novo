@@ -1,4 +1,4 @@
-import { type CheckInsReport, type DashboardResponse, dashboardResponseSchema, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role } from '@academia/contracts';
+import { type CheckInsReport, type DashboardResponse, dashboardResponseSchema, EXPIRING_SOON_DAYS, type OpenPaymentsResponse, type Role, type StaffRole } from '@academia/contracts';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { auditCount } from './support/audit.ts';
 import { insertCheckIn } from './support/check-ins.ts';
@@ -166,7 +166,7 @@ test('four_roles_200_with_today_in_sao_paulo', async () => {
 
 test('top_level_keys_exactly_by_role_four_roles', async () => {
   await newPeriod();
-  const expected: Record<Role, string[]> = {
+  const expected: Record<StaffRole, string[]> = {
     admin: ['checkIns', 'enrollments', 'payments', 'students', 'today'],
     hr_finance: ['enrollments', 'payments', 'students', 'today'],
     reception: ['checkIns', 'enrollments', 'students', 'today'],

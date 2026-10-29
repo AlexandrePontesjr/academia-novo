@@ -5,7 +5,7 @@ import {
   createUserRequestSchema,
   type ResetPasswordRequest,
   resetPasswordRequestSchema,
-  USER_ROLES,
+  STAFF_ROLES,
   type User,
 } from '@academia/contracts';
 import {
@@ -251,7 +251,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
           aria-describedby={errors.role ? `${roleId}-error` : undefined}
           {...form.register('role')}
         >
-          {USER_ROLES.map((role) => (
+          {STAFF_ROLES.map((role) => (
             <option key={role} value={role}>
               {ROLE_LABELS[role]}
             </option>

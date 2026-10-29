@@ -75,6 +75,11 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'lead.confirmed': 'E-mail do pré-cadastro confirmado',
   'lead.status_changed': 'Situação do interessado alterada',
   'lead.purged': 'Pré-cadastro expirado',
+  'student.portal_access_requested': 'Primeiro acesso ao portal pedido',
+  'student.portal_password_set': 'Senha do portal definida',
+  'student.portal_reset_requested': 'Redefinição de senha do portal pedida',
+  'student.photo_approved': 'Foto enviada pelo aluno aprovada',
+  'student.photo_rejected': 'Foto enviada pelo aluno recusada',
 };
 
 export const actionLabel = (action: string) => ACTION_LABELS[action as AuditAction] ?? action;

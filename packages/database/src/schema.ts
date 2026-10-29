@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -28,7 +29,7 @@ const userId = () =>
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' });
 
-export const USER_ROLES = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
+export const USER_ROLES = ['admin', 'reception', 'hr_finance', 'instructor', 'student'] as const;
 
 export const users = pgTable(
   'users',
@@ -43,10 +44,18 @@ export const users = pgTable(
     twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
     createdAt: instant('created_at').notNull().defaultNow(),
     updatedAt: instant('updated_at').notNull().defaultNow(),
+    /**
+     * A ficha do aluno que tem login (portal-aluno, door 1): presente se e somente se `role = 'student'`,
+     * única e sem cascata - a ficha com usuário não é apagada por SQL.
+     */
+    studentId: uuid('student_id')
+      .unique()
+      .references((): AnyPgColumn => students.id),
   },
   (table) => [
     check('users_email_lowercase', sql`${table.email} = lower(${table.email})`),
-    check('users_role_valid', sql`${table.role} in ('admin', 'reception', 'hr_finance', 'instructor')`),
+    check('users_role_valid', sql`${table.role} in ('admin', 'reception', 'hr_finance', 'instructor', 'student')`),
+    check('users_student_link', sql`(${table.role} = 'student') = (${table.studentId} is not null)`),
   ],
 );
 
@@ -315,6 +324,11 @@ export const photos = pgTable(
     createdAt: instant('created_at').notNull().defaultNow(),
     /** Prazo da versão guardada: nulo se e somente se a foto é a corrente (foto-captura, door 1). */
     expiresAt: instant('expires_at'),
+    /**
+     * Enviada pelo aluno e ainda não revista pela recepção (portal-aluno, door 3): nunca corrente, só de
+     * aluno, no máximo uma por aluno; nasce com prazo e o `PhotoPurge` leva a abandonada.
+     */
+    pending: boolean('pending').notNull().default(false),
   },
   (table) => [
     check('photos_version_positive', sql`${table.version} >= 1`),
@@ -324,6 +338,9 @@ export const photos = pgTable(
     unique('photos_staff_id_version_unique').on(table.staffId, table.version),
     uniqueIndex('photos_one_current_idx').on(table.studentId).where(sql`${table.isCurrent}`),
     uniqueIndex('photos_one_current_staff_idx').on(table.staffId).where(sql`${table.isCurrent}`),
+    check('photos_pending_not_current', sql`not (${table.pending} and ${table.isCurrent})`),
+    check('photos_pending_student', sql`not ${table.pending} or ${table.studentId} is not null`),
+    uniqueIndex('photos_one_pending_idx').on(table.studentId).where(sql`${table.pending}`),
   ],
 );
 
@@ -497,3 +514,25 @@ export const leadThrottles = pgTable('lead_throttles', {
   key: text('key').primaryKey(),
   hits: instant('hits').array().notNull(),
 });
+
+export const PASSWORD_TOKEN_PURPOSES = ['first_access', 'reset'] as const;
+
+// Links de senha do aluno (portal-aluno, door 2): primeiro acesso (24 h) e redefinição (1 h). O token só
+// existe no e-mail; aqui fica o SHA-256 em hex. `used_at` muda uma vez, e emitir um novo marca os abertos
+// do mesmo usuário e propósito. Apagar o usuário apaga os tokens dele.
+export const passwordTokens = pgTable(
+  'password_tokens',
+  {
+    id: id(),
+    userId: userId(),
+    purpose: text('purpose', { enum: PASSWORD_TOKEN_PURPOSES }).notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+    expiresAt: instant('expires_at').notNull(),
+    usedAt: instant('used_at'),
+  },
+  (table) => [
+    check('password_tokens_purpose_valid', sql`${table.purpose} in ('first_access', 'reset')`),
+    index('password_tokens_user_id_idx').on(table.userId),
+  ],
+);

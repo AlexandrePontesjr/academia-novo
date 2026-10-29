@@ -1,4 +1,4 @@
-import type { Role } from '@academia/contracts';
+import type { Role, StaffRole } from '@academia/contracts';
 import type { Page } from '@playwright/test';
 import { expect, problem, sessionOf, test } from './support/fake-api.ts';
 
@@ -20,7 +20,7 @@ test('login_page_shows_form_in_pt_br', async ({ page }) => {
 
 test('home_shows_name_and_role_label_for_four_roles', async ({ page, api }) => {
   // o cabeçalho DukFit mostra o perfil como "Perfil: <perfil>" (dukfit-app, AC 2)
-  const labels: Record<Role, string> = {
+  const labels: Record<StaffRole, string> = {
     admin: 'Perfil: Administrador',
     reception: 'Perfil: Recepção',
     hr_finance: 'Perfil: RH/Financeiro',

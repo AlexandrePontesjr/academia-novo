@@ -383,9 +383,21 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
-  expect(auditActionSchema.options).toHaveLength(47);
+  expect(auditActionSchema.options).toHaveLength(52);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  expect(written).toEqual([...auditActionSchema.options].sort());
+  // catraca do batch A da `portal-aluno`: as ações do vocabulário que ainda não têm rota; o batch B a esvazia
+  const notYetWritten: string[] = [
+    'student.portal_access_requested',
+    'student.portal_password_set',
+    'student.portal_reset_requested',
+    'student.photo_approved',
+    'student.photo_rejected',
+  ];
+  expect(written).toEqual(auditActionSchema.options.filter((action) => !notYetWritten.includes(action)).sort());
+  // `entity` igual a `student` nas cinco ações do portal
+  for (const action of auditActionSchema.options.slice(47)) {
+    expect(rows.filter((row) => row.action === action && row.entity !== 'student'), action).toEqual([]);
+  }
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter((row) => !['user', 'student', 'staff', 'plan', 'privacy_settings', 'lead'].includes(row.entity))).toEqual([]);
   // `entity` igual a `staff` nas onze ações de funcionário e nas duas de privacidade, e só nelas

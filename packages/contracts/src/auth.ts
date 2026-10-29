@@ -1,9 +1,14 @@
 import { z } from 'zod';
 
-/** Perfil único do usuário (AD-018). */
-export const USER_ROLES = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
+/** Perfil único do usuário (AD-018); `student` é o aluno com login (AD-119). */
+export const USER_ROLES = ['admin', 'reception', 'hr_finance', 'instructor', 'student'] as const;
 export const roleSchema = z.enum(USER_ROLES, 'Escolha um perfil válido.');
 export type Role = z.infer<typeof roleSchema>;
+
+/** Os perfis da equipe: os únicos que a gestão de usuários cria e que as rotas da equipe aceitam. */
+export const STAFF_ROLES = ['admin', 'reception', 'hr_finance', 'instructor'] as const satisfies readonly Role[];
+export const staffRoleSchema = z.enum(STAFF_ROLES, 'Escolha um perfil válido.');
+export type StaffRole = z.infer<typeof staffRoleSchema>;
 
 const required = (message: string) => z.string(message).min(1, message);
 

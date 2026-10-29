@@ -183,6 +183,29 @@ export const studentSchema = z.strictObject({
 });
 export type Student = z.infer<typeof studentSchema>;
 
+/**
+ * O acesso do aluno ao portal (AD-119), derivado de `users` e `accounts`: sem usuário, usuário sem senha,
+ * ativo com senha, ou desligado.
+ */
+export const PORTAL_STATES = ['none', 'pending', 'active', 'disabled'] as const;
+export const portalStateSchema = z.enum(PORTAL_STATES);
+export type PortalState = z.infer<typeof portalStateSchema>;
+
+/** A foto enviada pelo aluno que espera a recepção (AD-121). */
+export const pendingPhotoSchema = z.strictObject({
+  id: z.uuid(),
+  version: z.number().int().min(1),
+  createdAt: z.iso.datetime(),
+});
+export type PendingPhoto = z.infer<typeof pendingPhotoSchema>;
+
+/** A ficha de `GET /api/students/:id`: o aluno mais o estado do portal e a foto pendente. */
+export const studentDetailSchema = studentSchema.extend({
+  portal: portalStateSchema,
+  pendingPhoto: pendingPhotoSchema.nullable(),
+});
+export type StudentDetail = z.infer<typeof studentDetailSchema>;
+
 /** Um item da lista: `cpf` e `phone` ausentes para quem não os vê (door 4). */
 export const studentListItemSchema = z.strictObject({
   id: z.uuid(),

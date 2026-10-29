@@ -1,4 +1,4 @@
-import type { Problem, Role, TwoFactorEnableResponse } from '@academia/contracts';
+import type { Problem, Role, StaffRole, TwoFactorEnableResponse } from '@academia/contracts';
 import { createDatabase } from '@academia/database';
 import type { Type } from '@nestjs/common';
 import pg from 'pg';
@@ -51,7 +51,8 @@ export async function startStack(
     const user = await users.create({
       name: overrides.name ?? `Usuário ${seeded}`,
       email: overrides.email ?? `usuario${seeded}@exemplo.com`,
-      role: overrides.role ?? 'reception',
+      // o perfil `student` não nasce pela gestão de usuários: o apoio do portal o cria pela ficha
+      role: (overrides.role ?? 'reception') as StaffRole,
       password,
     });
     if (!user) throw new Error('e-mail de teste repetido');

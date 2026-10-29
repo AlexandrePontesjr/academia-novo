@@ -139,7 +139,7 @@ test('instants_shown_in_sao_paulo_time', async ({ page, api }) => {
 });
 
 test('ten_actions_shown_by_label', async ({ page, api }) => {
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   serve(
     api,
     AUDIT_ACTIONS.map((action) => logOf({ action })),
@@ -195,6 +195,11 @@ test('ten_actions_shown_by_label', async ({ page, api }) => {
     'E-mail do pré-cadastro confirmado',
     'Situação do interessado alterada',
     'Pré-cadastro expirado',
+    'Primeiro acesso ao portal pedido',
+    'Senha do portal definida',
+    'Redefinição de senha do portal pedida',
+    'Foto enviada pelo aluno aprovada',
+    'Foto enviada pelo aluno recusada',
   ]);
 });
 
@@ -246,6 +251,11 @@ const LABELS = [
   'E-mail do pré-cadastro confirmado',
   'Situação do interessado alterada',
   'Pré-cadastro expirado',
+  'Primeiro acesso ao portal pedido',
+  'Senha do portal definida',
+  'Redefinição de senha do portal pedida',
+  'Foto enviada pelo aluno aprovada',
+  'Foto enviada pelo aluno recusada',
 ];
 
 test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) => {
@@ -264,7 +274,7 @@ test('student_actions_labelled_and_filter_has_thirteen', async ({ page, api }) =
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(47);
+  expect(options.slice(1)).toHaveLength(52);
   expect(options.slice(11, 14)).toEqual(['Aluno criado', 'Aluno editado', 'Aluno inativado']);
 });
 
@@ -516,7 +526,7 @@ test('consent_actions_labelled_and_filter_has_sixteen', async ({ page, api }) =>
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(47);
+  expect(options.slice(1)).toHaveLength(52);
   expect(options.slice(14, 17)).toEqual(['Responsável do aluno salvo', 'Consentimento registrado', 'Consentimento revogado']);
   // a posição de cada uma é a 14, a 15 e a 16 do vocabulário
   expect(AUDIT_ACTIONS.slice(13, 16)).toEqual(consentActions);
@@ -577,7 +587,7 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
   expect(options).toEqual(['Todas', ...LABELS]);
-  expect(options.slice(1)).toHaveLength(47);
+  expect(options.slice(1)).toHaveLength(52);
   // a posição de cada uma é a 17 e a 18 do vocabulário
   expect(options.slice(17, 19)).toEqual(['Foto do aluno enviada', 'Foto do aluno removida']);
   expect(AUDIT_ACTIONS.slice(16, 18)).toEqual(photoActions);
@@ -600,7 +610,7 @@ test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, 
     'Versão anterior da foto excluída',
   ]);
   const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
-  expect(options.slice(1)).toHaveLength(47);
+  expect(options.slice(1)).toHaveLength(52);
   expect(options.slice(1, 19)).toEqual(LABELS.slice(0, 18));
   // a posição de cada uma é a 19 e a 20 do vocabulário
   expect(options.slice(19, 21)).toEqual(['Foto do aluno trocada', 'Versão anterior da foto excluída']);
@@ -669,7 +679,7 @@ test('staff_actions_labelled_filter_has_thirty_one_and_authorless_row_dashes', a
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(STAFF_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(47);
+  expect(options).toHaveLength(52);
   // as onze de funcionário ocupam as posições 21 a 31, nessa ordem
   expect(options.slice(20, 31)).toEqual(STAFF_LABELS);
   expect(AUDIT_ACTIONS.slice(20, 31)).toEqual(STAFF_ACTIONS);
@@ -769,7 +779,7 @@ test('plan_and_enrollment_actions_labelled_and_filter_has_thirty_six', async ({ 
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PLAN_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(47);
+  expect(options).toHaveLength(52);
   // as trinta e uma de antes, na ordem e com o texto de antes
   expect(options.slice(0, 31)).toEqual(LABELS.slice(0, 31));
   expect(options[30]).toBe('Versão anterior da foto do funcionário excluída');
@@ -928,14 +938,14 @@ test('action_filter_offers_all_38_with_the_two_payment_labels_last', async ({ pa
   expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(PAYMENT_LABELS);
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(47);
+  expect(options).toHaveLength(52);
   // as trinta e seis de antes, na ordem e com o texto de antes
   expect(options.slice(0, 36)).toEqual(LABELS.slice(0, 36));
   expect(options[35]).toBe('Matrícula cancelada');
   // as duas novas ocupam as posições 37 e 38, nessa ordem
   expect(options.slice(36, 38)).toEqual(PAYMENT_LABELS);
   expect(AUDIT_ACTIONS.slice(36, 38)).toEqual(PAYMENT_ACTIONS);
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
 });
 
 test('payment_confirmed_row_shows_inicio_valor_and_ver_aluno', async ({ page, api }) => {
@@ -1010,7 +1020,7 @@ test('five_privacy_action_labels', async ({ page, api }) => {
 
   // o filtro "Ação": as cinco por último, nessa ordem, depois das 38 de antes com o texto de antes
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(47);
+  expect(options).toHaveLength(52);
   expect(options.slice(0, 38)).toEqual(LABELS.slice(0, 38));
   expect(options.slice(38, 43)).toEqual(PRIVACY_LABELS);
   expect(AUDIT_ACTIONS.slice(38, 43)).toEqual(PRIVACY_ACTIONS);
@@ -1035,8 +1045,8 @@ test('four_lead_actions_labels_order_and_status_detail', async ({ page, api }) =
 
   expect((await page.locator('tbody tr td:nth-child(3)').allTextContents()).slice(0, 4)).toEqual(LEAD_LABELS);
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options.slice(43)).toEqual(LEAD_LABELS);
-  expect(AUDIT_ACTIONS.slice(43)).toEqual(LEAD_ACTIONS);
+  expect(options.slice(43, 47)).toEqual(LEAD_LABELS);
+  expect(AUDIT_ACTIONS.slice(43, 47)).toEqual(LEAD_ACTIONS);
   const details = page.locator('tbody tr:nth-child(5) td:nth-child(7)');
   await expect(details.getByText('Situação: Novo → Contatado', { exact: true })).toBeVisible();
 });
@@ -1050,7 +1060,7 @@ test('action_filter_lists_all_actions', async ({ page, api }) => {
   expect(await options.allTextContents()).toEqual(['Todas', ...LABELS]);
   // uma opção por ação do contrato, com o valor dela
   expect((await options.evaluateAll((items) => items.map((item) => (item as HTMLOptionElement).value))).slice(1)).toEqual([...AUDIT_ACTIONS]);
-  expect(LABELS).toHaveLength(47);
+  expect(LABELS).toHaveLength(52);
 });
 
 test('first_forty_three_actions_unchanged', async ({ page, api }) => {
@@ -1059,7 +1069,7 @@ test('first_forty_three_actions_unchanged', async ({ page, api }) => {
   await page.goto('/audit');
 
   const options = (await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents()).slice(1);
-  expect(options).toHaveLength(47);
+  expect(options).toHaveLength(52);
   // as quarenta e três de antes da `pre-cadastro`, na ordem e com o texto de antes
   expect(options.slice(0, 43)).toEqual(LABELS.slice(0, 43));
   expect(options[42]).toBe('Configuração de privacidade alterada');

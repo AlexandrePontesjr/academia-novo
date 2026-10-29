@@ -247,7 +247,7 @@ test('audit_actions_end_with_three_student_actions_in_order', () => {
     'user.two_factor_reset',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect([...AUDIT_ACTIONS].slice(0, 20)).toEqual([
     ...before,
     'student.created',
@@ -288,7 +288,7 @@ test('audit_actions_end_with_eleven_staff_actions_in_order', () => {
     'student.photo_version_purged',
   ];
 
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect([...AUDIT_ACTIONS].slice(0, 31)).toEqual([
     ...before,
     'staff.created',
@@ -504,7 +504,7 @@ test('cpf_taken_is_a_known_409_code', async () => {
 });
 
 test('audit_actions_end_with_three_consent_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(AUDIT_ACTIONS.slice(0, 13)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -524,7 +524,7 @@ test('audit_actions_end_with_three_consent_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_photo_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(AUDIT_ACTIONS.slice(0, 16)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -548,7 +548,7 @@ test('audit_actions_end_with_two_photo_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_replace_and_purge_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(AUDIT_ACTIONS.slice(0, 18)).toEqual([
     'auth.login_succeeded',
     'auth.login_failed',
@@ -967,7 +967,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
   ];
   expect(before).toHaveLength(31);
 
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect([...AUDIT_ACTIONS].slice(0, 36)).toEqual([
     ...before,
     'plan.created',
@@ -980,7 +980,7 @@ test('audit_actions_end_with_five_plan_and_enrollment_actions_in_order', () => {
 });
 
 test('audit_actions_end_with_two_payment_actions_in_order', () => {
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   // as trinta e seis de antes, na ordem de antes (a última é a de matrícula cancelada)
   expect(AUDIT_ACTIONS[0]).toBe('auth.login_succeeded');
   expect(AUDIT_ACTIONS[35]).toBe('student.enrollment_cancelled');
@@ -1039,7 +1039,7 @@ test('audit_actions_end_with_five_privacy_actions_in_order', () => {
   ];
   expect(before).toHaveLength(38);
 
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(AUDIT_ACTIONS.slice(0, 38)).toEqual(before);
   expect(AUDIT_ACTIONS.slice(38, 43)).toEqual([
     'student.exported',
@@ -1100,9 +1100,26 @@ test('audit_actions_end_with_four_lead_actions_in_order', () => {
   ];
   expect(before).toHaveLength(43);
 
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(AUDIT_ACTIONS.slice(0, 43)).toEqual(before);
-  expect(AUDIT_ACTIONS.slice(43)).toEqual(['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged']);
+  expect(AUDIT_ACTIONS.slice(43, 47)).toEqual(['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged']);
+  expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
+});
+
+test('audit_actions_end_with_five_portal_actions_in_order', () => {
+  // as quarenta e sete de antes, na ordem de antes: as quarenta e três até a privacidade e as quatro da `pre-cadastro`
+  expect(AUDIT_ACTIONS[0]).toBe('auth.login_succeeded');
+  expect(AUDIT_ACTIONS[42]).toBe('privacy.settings_updated');
+  expect(AUDIT_ACTIONS.slice(43, 47)).toEqual(['lead.created', 'lead.confirmed', 'lead.status_changed', 'lead.purged']);
+
+  expect(AUDIT_ACTIONS).toHaveLength(52);
+  expect(AUDIT_ACTIONS.slice(47)).toEqual([
+    'student.portal_access_requested',
+    'student.portal_password_set',
+    'student.portal_reset_requested',
+    'student.photo_approved',
+    'student.photo_rejected',
+  ]);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
 });
 
@@ -1310,13 +1327,13 @@ test('plan_and_enrollment_bodies_match_contract_schemas_and_three_new_codes', as
   }
 });
 
-test('audit_action_count_is_forty_seven', async () => {
+test('audit_action_count_is_fifty_two', async () => {
   const { ACTION_LABELS } = await import('../../web/src/lib/audit.ts');
-  expect(AUDIT_ACTIONS).toHaveLength(47);
+  expect(AUDIT_ACTIONS).toHaveLength(52);
   expect(auditActionSchema.options).toEqual([...AUDIT_ACTIONS]);
-  // a tela tem um rótulo para cada uma das 47, e só para elas
+  // a tela tem um rótulo para cada uma das 52, e só para elas
   expect(Object.keys(ACTION_LABELS).sort()).toEqual([...AUDIT_ACTIONS].sort());
-  // nenhum ponto que contava as ações ficou em 43
+  // nenhum ponto que contava as ações ficou em 47
   const { readdirSync, readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const sources = [
@@ -1325,6 +1342,6 @@ test('audit_action_count_is_forty_seven', async () => {
   ];
   for (const file of sources) {
     const text = readFileSync(file, 'utf8');
-    expect(text, file).not.toMatch(/(AUDIT_ACTIONS|auditActionSchema\.options|options\.slice\(1\)|options)\)\.toHaveLength\(43\)/);
+    expect(text, file).not.toMatch(/(AUDIT_ACTIONS|auditActionSchema\.options|options\.slice\(1\)|options)\)\.toHaveLength\(47\)/);
   }
 });

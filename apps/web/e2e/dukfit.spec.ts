@@ -1,4 +1,4 @@
-import type { DashboardResponse, Role } from '@academia/contracts';
+import type { DashboardResponse, Role, StaffRole } from '@academia/contracts';
 import type { Locator, Page } from '@playwright/test';
 import { CARD_TITLES, card, cardTitles, dashboardFor, dashboardOf, serveDashboard, under } from './support/dashboard.ts';
 import { expect, problem, sessionOf, test } from './support/fake-api.ts';
@@ -63,7 +63,7 @@ test('title_and_wordmark_are_dukfit_on_shell_login_and_landing', async ({ page, 
 
 test('header_shows_avatar_initials_name_and_profile_for_four_roles', async ({ page, api }) => {
   serveWorld(api, 'admin');
-  const profiles: Record<Role, string> = {
+  const profiles: Record<StaffRole, string> = {
     admin: 'Perfil: Administrador',
     reception: 'Perfil: Recepção',
     hr_finance: 'Perfil: RH/Financeiro',
@@ -123,7 +123,7 @@ test('mobile_shows_the_fixed_bottom_nav_with_five_items_and_no_side_nav', async 
 test('bottom_nav_items_follow_the_priority_for_four_roles', async ({ page, api }) => {
   await page.setViewportSize(MOBILE);
   serveWorld(api, 'admin');
-  const expected: Record<Role, string[]> = {
+  const expected: Record<StaffRole, string[]> = {
     admin: ['Início', 'Alunos', 'Check-in', 'Pagamentos', 'Mais'],
     hr_finance: ['Início', 'Alunos', 'Pagamentos', 'Planos', 'Mais'],
     reception: ['Início', 'Alunos', 'Check-in', 'Planos', 'Mais'],
@@ -164,7 +164,7 @@ test('active_nav_item_has_aria_current_dark_pill_and_lime_icon', async ({ page, 
 
 test('more_menu_lists_every_allowed_link_account_and_sign_out', async ({ page, api }) => {
   serveWorld(api, 'admin');
-  const expected: Partial<Record<Role, string[]>> = {
+  const expected: Partial<Record<StaffRole, string[]>> = {
     admin: [
       'Início',
       'Alunos',
