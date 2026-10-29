@@ -53,8 +53,8 @@ test('patch_200_changes_only_sent_fields', async () => {
       const response = await client().patch(`/api/students/${student.id}`, change);
 
       expect(response.status, `${role} ${JSON.stringify(change)}`).toBe(200);
-      // a ficha traz `photoUrl`; a resposta do `PATCH` não (foto-pipeline, Surface)
-      const patched = Object.fromEntries(Object.entries(before).filter(([key]) => key !== 'photoUrl'));
+      // a ficha traz `photoUrl`, `portal` e `pendingPhoto`; a resposta do `PATCH` não (foto-pipeline e portal-aluno, Surface)
+      const patched = Object.fromEntries(Object.entries(before).filter(([key]) => !['photoUrl', 'portal', 'pendingPhoto'].includes(key)));
       expect((await response.json()) as Student, `${role} ${JSON.stringify(change)}`).toEqual({ ...patched, ...change });
       expect(await fetchStudent(student.id)).toEqual({ ...before, ...change });
     }
