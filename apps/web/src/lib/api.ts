@@ -27,8 +27,9 @@ export async function callApi<T = undefined>(
     });
     if (response.status >= 500) return { kind: 'unavailable' };
     if (response.ok) {
-      const data = response.status === 204 ? undefined : await response.json();
-      return { kind: 'ok', data: data as T };
+      // o `202` dos pedidos públicos do portal também vem sem corpo
+      const text = response.status === 204 ? '' : await response.text();
+      return { kind: 'ok', data: (text ? JSON.parse(text) : undefined) as T };
     }
 
     const problem = problemSchema.safeParse(await response.json());

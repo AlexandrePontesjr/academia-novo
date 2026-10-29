@@ -93,3 +93,10 @@ test('empty_login_is_rejected_before_any_request', async ({ page, api }) => {
   expect(api.requests.filter((request) => request.path === '/api/auth/login')).toEqual([]);
   expect(api.writes()).toEqual([]);
 });
+
+test('login_links_first_access_and_forgot_password', async ({ page }) => {
+  await page.goto('/login');
+
+  await expect(page.getByRole('link', { name: 'Primeiro acesso', exact: true })).toHaveAttribute('href', '/primeiro-acesso');
+  await expect(page.getByRole('link', { name: 'Esqueci minha senha', exact: true })).toHaveAttribute('href', '/esqueci-senha');
+});

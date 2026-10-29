@@ -1,10 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { readSession } from './lib/session.ts';
 
+/** As páginas de senha do portal do aluno: públicas por ramo nomeado, nunca por prefixo (portal-aluno, door 6). */
+const PASSWORD_PAGES = ['/primeiro-acesso', '/definir-senha', '/esqueci-senha'];
+
+const isUnder = (pathname: string, root: string) => pathname === root || pathname.startsWith(`${root}/`);
+
 /**
  * Decide, antes de qualquer página, para onde vai quem a pediu: `/` é a landing pública, e `/matricula*`
- * o pré-cadastro, também público; sem sessão, para o login; com sessão, para fora dele e para o
- * painel; e o Administrador que ainda não cadastrou o 2FA, para o cadastro.
+ * o pré-cadastro, também público, como as páginas de senha do portal; sem sessão, para o login; com
+ * sessão, para fora dele e para o painel (o aluno, para `/minha-conta`); e o Administrador que ainda não
+ * cadastrou o 2FA, para o cadastro. O aluno só alcança `/minha-conta*` e `/two-factor/*`, e a equipe não
+ * alcança `/minha-conta*` (door 6).
  * `/api/*` não passa por aqui: é repassado à API, que responde por si.
  *
  * Também gera o nonce do CSP a cada requisição (door 2): o nonce vai na requisição, para o Next
@@ -28,17 +35,25 @@ export async function proxy(request: NextRequest) {
 
   let response: NextResponse;
   if (pathname === '/login' || pathname.startsWith('/login/')) {
-    response = session ? goTo('/dashboard') : NextResponse.next({ request: { headers: requestHeaders } });
+    const home = session?.user.role === 'student' ? '/minha-conta' : '/dashboard';
+    response = session ? goTo(home) : NextResponse.next({ request: { headers: requestHeaders } });
   } else if (pathname === '/') {
     // a landing é pública, com ou sem sessão, e com o 2FA pendente também (dukfit-app, door 1)
     response = NextResponse.next({ request: { headers: requestHeaders } });
   } else if (pathname === '/matricula' || pathname.startsWith('/matricula/')) {
     // o pré-cadastro é público como a landing, por um ramo nomeado e nunca por prefixo (pre-cadastro, door 11)
     response = NextResponse.next({ request: { headers: requestHeaders } });
+  } else if (PASSWORD_PAGES.includes(pathname)) {
+    // com ou sem sessão, e com o 2FA pendente também: o link do e-mail abre onde quer que a pessoa esteja
+    response = NextResponse.next({ request: { headers: requestHeaders } });
   } else if (!session) {
     response = goTo('/login');
   } else if (session.twoFactorEnrollmentRequired && pathname !== '/two-factor/setup') {
     response = goTo('/two-factor/setup');
+  } else if (session.user.role === 'student' && !isUnder(pathname, '/minha-conta') && !isUnder(pathname, '/two-factor')) {
+    response = goTo('/minha-conta');
+  } else if (session.user.role !== 'student' && isUnder(pathname, '/minha-conta')) {
+    response = goTo('/dashboard');
   } else {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }

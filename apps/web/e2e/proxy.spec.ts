@@ -164,3 +164,61 @@ test('matricula_pages_public_with_csp_and_no_prefix_leak', async ({ page }) => {
     await expect(page, path).toHaveURL('/login');
   }
 });
+
+const PORTAL_USER = { id: '018f0000-0000-7000-8000-000000000009', name: 'Ana Souza', email: 'ana@example.com' };
+const studentSession = { user: { ...PORTAL_USER, role: 'student', twoFactorEnabled: false }, twoFactorEnrollmentRequired: false };
+
+test('student_session_reaches_only_portal_two_factor_and_public_pages', async ({ page }) => {
+  sessionReply = studentSession;
+  const staffPages = [
+    '/dashboard',
+    '/students',
+    '/students/018f0000-0000-7000-8000-0000000000aa',
+    '/users',
+    '/audit',
+    '/check-in',
+    '/payments',
+    '/plans',
+    '/leads',
+    '/staff',
+    '/privacy',
+    '/account',
+  ];
+  for (const path of staffPages) {
+    await page.goto(path);
+    await expect(page, path).toHaveURL('/minha-conta');
+  }
+
+  const open = ['/minha-conta', '/two-factor/setup', '/', '/matricula', '/primeiro-acesso', '/definir-senha?token=x', '/esqueci-senha'];
+  for (const path of open) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(200);
+    expect(response?.request().redirectedFrom(), path).toBeNull();
+    expect(new URL(page.url()).pathname, path).toBe(path.split('?')[0]);
+  }
+  expect(staffPages.length + open.length).toBe(19);
+});
+
+test('staff_session_on_minha_conta_redirects_to_dashboard', async ({ page }) => {
+  for (const role of ['admin', 'reception', 'hr_finance', 'instructor']) {
+    sessionReply = { user: { ...PORTAL_USER, role, twoFactorEnabled: true }, twoFactorEnrollmentRequired: false };
+    for (const path of ['/minha-conta', '/minha-conta/qualquer']) {
+      await page.goto(path);
+      await expect(page, `${role} ${path}`).toHaveURL('/dashboard');
+    }
+  }
+});
+
+test('login_with_student_session_goes_to_minha_conta', async ({ page }) => {
+  sessionReply = studentSession;
+  await page.goto('/login');
+  await expect(page).toHaveURL('/minha-conta');
+
+  sessionReply = { user: { ...PORTAL_USER, role: 'reception', twoFactorEnabled: false }, twoFactorEnrollmentRequired: false };
+  await page.goto('/login');
+  await expect(page).toHaveURL('/dashboard');
+
+  sessionReply = undefined;
+  await page.goto('/minha-conta');
+  await expect(page).toHaveURL('/login');
+});
