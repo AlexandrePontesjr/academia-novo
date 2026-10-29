@@ -15,7 +15,8 @@ async function load(id: string): Promise<Student | 'notfound' | 'failed'> {
     const response = await fetchApi(`/api/students/${encodeURIComponent(id)}`, await headers());
     if (response.status === 404) return 'notfound';
     if (response.status !== 200) return 'failed';
-    return studentSchema.parse(await response.json());
+    // o estado do portal e a foto pendente (portal-aluno) não são do formulário
+    return studentSchema.strip().parse(await response.json());
   } catch {
     return 'failed';
   }

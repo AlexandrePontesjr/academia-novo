@@ -3,17 +3,16 @@ import {
   enrollmentsResponseSchema,
   isMinor,
   saoPauloToday,
-  type Student,
   type StudentCheckInsResponse,
   studentCheckInsResponseSchema,
   type StudentConsentsResponse,
   type StudentPayment,
   studentConsentsResponseSchema,
   studentPaymentsResponseSchema,
-  studentSchema,
 } from '@academia/contracts';
 import { Button } from '@academia/ui';
 import { headers } from 'next/headers';
+import type { z } from 'zod';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { PrivacyBlock } from '../../../components/privacy/privacy-block.tsx';
@@ -24,7 +23,7 @@ import { canReadPayments } from '../../../lib/payments.ts';
 import { canReadPlans, canWritePlans } from '../../../lib/plans.ts';
 import { canUsePrivacy } from '../../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
-import { canWriteStudents, FICHA_FIELDS, fichaValue, STATUS_LABELS } from '../../../lib/students.ts';
+import { canWriteStudents, FICHA_FIELDS, fichaSchema, fichaValue, PORTAL_LABELS, STATUS_LABELS } from '../../../lib/students.ts';
 import { StudentsLoadError } from '../students-load-error.tsx';
 import { CheckInsBlock } from './check-ins-block.tsx';
 import { CheckInsLoadError } from './check-ins-load-error.tsx';
@@ -40,12 +39,12 @@ import { PAGE_BODY } from '../../../components/page-body.ts';
 export const dynamic = 'force-dynamic';
 
 /** A ficha como a API a devolve para este perfil, `notfound` ou `failed`. */
-async function load(id: string): Promise<Student | 'notfound' | 'failed'> {
+async function load(id: string): Promise<z.infer<typeof fichaSchema> | 'notfound' | 'failed'> {
   try {
     const response = await fetchApi(`/api/students/${encodeURIComponent(id)}`, await headers());
     if (response.status === 404) return 'notfound';
     if (response.status !== 200) return 'failed';
-    return studentSchema.parse(await response.json());
+    return fichaSchema.parse(await response.json());
   } catch {
     return 'failed';
   }
@@ -145,6 +144,12 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                 <dt className="text-sm text-muted-foreground">Situação</dt>
                 <dd>{STATUS_LABELS[student.status]}</dd>
               </div>
+              {student.portal && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Portal do aluno</dt>
+                  <dd>{PORTAL_LABELS[student.portal]}</dd>
+                </div>
+              )}
               {FICHA_FIELDS.filter(({ key }) => key in student).map(({ key, label }) => (
                 <div key={key}>
                   <dt className="text-sm text-muted-foreground">{label}</dt>

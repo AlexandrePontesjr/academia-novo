@@ -811,3 +811,34 @@ test('new_student_without_lead_does_not_read_leads', async ({ page, api }) => {
   }
   expect(api.requests.filter((request) => request.path.startsWith('/api/leads'))).toEqual([]);
 });
+
+test('ficha_shows_four_portal_states_without_mail_button', async ({ page, api }) => {
+  api.session = sessionOf('reception');
+  const labels = {
+    none: 'Sem acesso ao portal',
+    pending: 'Primeiro acesso pedido',
+    active: 'Acesso ativo',
+    disabled: 'Acesso desligado',
+  } as const;
+
+  for (const [portal, label] of Object.entries(labels)) {
+    const student = studentOf();
+    api.on('GET', `/api/students/${student.id}`, { status: 200, body: { ...student, portal, pendingPhoto: null } });
+
+    await page.goto(`/students/${student.id}`);
+
+    await expect(page.getByText(label, { exact: true }), portal).toBeVisible();
+    for (const other of Object.values(labels).filter((text) => text !== label)) {
+      await expect(page.getByText(other, { exact: true }), `${portal}: ${other}`).toHaveCount(0);
+    }
+    // nenhum botão nem link que mande e-mail, peça acesso ou mexa em senha
+    const controls = [
+      ...(await page.getByRole('button').allTextContents()),
+      ...(await page.getByRole('link').allTextContents()),
+    ];
+    expect(controls.filter((text) => /acesso|senha|e-mail|link|convite|portal/i.test(text)), portal).toEqual([]);
+    const hrefs = await page.locator('a[href]').evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
+    expect(hrefs.filter((href) => /portal|password|senha|primeiro-acesso/.test(href)), portal).toEqual([]);
+  }
+  expect(api.requests.filter((request) => /^\/api\/(portal|password-tokens|password-reset)/.test(request.path))).toEqual([]);
+});

@@ -1,4 +1,18 @@
-import type { Role, Student, StudentStatus } from '@academia/contracts';
+import { type PortalState, type Role, type Student, studentDetailSchema, type StudentStatus } from '@academia/contracts';
+
+/**
+ * A ficha de `GET /api/students/:id` como o web a lê: `portal` e `pendingPhoto` (portal-aluno, AC 15)
+ * opcionais, para a tela seguir de pé com uma API que ainda não os mande.
+ */
+export const fichaSchema = studentDetailSchema.partial({ portal: true, pendingPhoto: true });
+
+/** O acesso do aluno ao portal por extenso, como a ficha o mostra (AC 16). */
+export const PORTAL_LABELS: Record<PortalState, string> = {
+  none: 'Sem acesso ao portal',
+  pending: 'Primeiro acesso pedido',
+  active: 'Acesso ativo',
+  disabled: 'Acesso desligado',
+};
 
 /** A situação por extenso, como aparece nas telas. */
 export const STATUS_LABELS: Record<StudentStatus, string> = {
