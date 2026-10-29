@@ -1,6 +1,7 @@
 import {
   type CreateStudentRequest,
   createStudentRequestSchema,
+  STAFF_ROLES,
   type Student,
   studentSchema,
   type StudentsQuery,
@@ -19,8 +20,6 @@ import { Input, Output, QueryInput, ValidatedQuery } from '../validation.ts';
 import { StudentsService } from './students.service.ts';
 import { seesHealthNotes, viewListItem, viewStudent } from './students.view.ts';
 
-const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
-
 /** Cadastro de alunos: `admin` e `reception` escrevem; os quatro perfis leem, cada um com os seus campos (door 4). */
 @Controller('api/students')
 export class StudentsController {
@@ -30,7 +29,7 @@ export class StudentsController {
   ) {}
 
   @Get()
-  @Roles(...ALL)
+  @Roles(...STAFF_ROLES)
   @QueryInput(studentsQuerySchema)
   @Output(200, studentsResponseSchema)
   async list(@ValidatedQuery() query: StudentsQuery, @CurrentUser() user: CurrentUser): Promise<StudentsResponse> {
@@ -57,7 +56,7 @@ export class StudentsController {
   }
 
   @Get(':id')
-  @Roles(...ALL)
+  @Roles(...STAFF_ROLES)
   @Output(200, studentSchema)
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUser): Promise<Student> {
     const student = await this.students.find(id, seesHealthNotes(user.role));

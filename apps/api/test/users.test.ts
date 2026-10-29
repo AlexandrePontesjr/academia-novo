@@ -3,6 +3,7 @@ import type { User, UsersResponse } from '@academia/contracts';
 import pg from 'pg';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import type { Client } from './support/client.ts';
+import { insertStudentUser } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 
 let stack: Stack;
@@ -307,4 +308,47 @@ test('input_the_database_cannot_store_is_422', async () => {
   }
   expect(await stack.query('select id from users')).toHaveLength(before.length);
   expect(await stack.query('select name from users where id = $1', [target.id])).toEqual([{ name: 'Nome intacto' }]);
+});
+
+test('list_users_omits_students', async () => {
+  // dois usuários `student` e os quatro perfis da equipe
+  await insertStudentUser(stack);
+  await insertStudentUser(stack);
+  for (const role of ['reception', 'hr_finance', 'instructor'] as const) await stack.seed({ role });
+  const staffInDatabase = await stack.query<{ id: string }>("select id from users where role <> 'student'");
+  expect(staffInDatabase.length).toBeGreaterThanOrEqual(4);
+  expect(await stack.query("select id from users where role = 'student'")).toHaveLength(2);
+
+  const response = await admin.get('/api/users');
+  const { users } = (await response.json()) as UsersResponse;
+
+  expect(response.status).toBe(200);
+  expect(users.map((user) => user.id).sort()).toEqual(staffInDatabase.map((user) => user.id).sort());
+  expect(users.filter((user) => (user.role as string) === 'student')).toEqual([]);
+  // a ordem de `list_users_200_sorted_with_six_keys`
+  const names = users.map((user) => user.name);
+  expect(names).toEqual([...names].sort(new Intl.Collator('pt-BR').compare));
+});
+
+test('role_student_422_on_create_and_patch', async () => {
+  const before = await stack.query('select count(*)::int as n from users');
+  const created = await admin.post('/api/users', { name: 'Aluna', email: 'aluna-perfil@exemplo.com', role: 'student', password: 'senha-valida-123' });
+  expect(created.status).toBe(422);
+  expect((await problem(created)).errors?.map((error) => error.path)).toEqual(['role']);
+  expect(await stack.query('select count(*)::int as n from users')).toEqual(before);
+
+  const reception = await stack.seed({ role: 'reception' });
+  const receptionRow = () => stack.query('select to_jsonb(u)::text as row from users u where id = $1', [reception.id]);
+  const receptionBefore = await receptionRow();
+  const patched = await admin.patch(`/api/users/${reception.id}`, { role: 'student' });
+  expect(patched.status).toBe(422);
+  expect((await problem(patched)).errors?.map((error) => error.path)).toEqual(['role']);
+  expect(await receptionRow()).toEqual(receptionBefore);
+
+  // o usuário do aluno não é da gestão de usuários: `404` com qualquer corpo
+  const student = await insertStudentUser(stack);
+  for (const body of [{ name: 'Outro nome' }, { active: false }, { role: 'reception' }, {}]) {
+    const response = await admin.patch(`/api/users/${student.id}`, body);
+    expect(response.status, JSON.stringify(body)).toBe(404);
+  }
 });

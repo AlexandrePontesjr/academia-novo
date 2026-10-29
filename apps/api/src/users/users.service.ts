@@ -32,8 +32,9 @@ export type UserChange =
 export class UsersService {
   constructor(private readonly db: Database['db']) {}
 
+  /** Só a equipe: o usuário do aluno (AD-119) não aparece na gestão de usuários. */
   async list(): Promise<User[]> {
-    const rows = await this.db.select(publicColumns).from(users);
+    const rows = await this.db.select(publicColumns).from(users).where(ne(users.role, 'student'));
     return rows.sort((a, b) => byName.compare(a.name, b.name));
   }
 
@@ -93,7 +94,8 @@ export class UsersService {
         .orderBy(users.id)
         .for('update');
       const [current] = await tx.select(publicColumns).from(users).where(eq(users.id, id)).for('update');
-      if (!current) return { outcome: 'not_found' };
+      // o usuário do aluno não é da gestão de usuários: nasce e muda pelo portal (AD-119)
+      if (!current || current.role === 'student') return { outcome: 'not_found' };
 
       const next = { ...current, ...change };
       const diff = diffOf(current, next, ['name', 'role', 'active'], REGISTRABLE);

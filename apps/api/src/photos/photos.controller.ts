@@ -7,6 +7,7 @@ import {
   photoFileQuerySchema,
   photoQuerySchema,
   photoUrlResponseSchema,
+  STAFF_ROLES,
 } from '@academia/contracts';
 import { Controller, Delete, Get, Header, Inject, NotFoundException, Param, Post, Put, Req, StreamableFile } from '@nestjs/common';
 import type { Request } from 'express';
@@ -17,8 +18,6 @@ import { Multipart, Output, QueryInput, ValidatedQuery } from '../validation.ts'
 import { isPhotoVariant } from './photo-keys.ts';
 import { readFilePart } from './photo-upload.ts';
 import { PhotosService } from './photos.service.ts';
-
-const ALL = ['admin', 'reception', 'hr_finance', 'instructor'] as const;
 
 /**
  * A foto do aluno (door 7: o processamento é síncrono, dentro da requisição). `admin` e `reception`
@@ -53,7 +52,7 @@ export class PhotosController {
   }
 
   @Get('students/:id/photo')
-  @Roles(...ALL)
+  @Roles(...STAFF_ROLES)
   @QueryInput(photoQuerySchema)
   @Output(200, photoUrlResponseSchema)
   async url(@Param('id') id: string, @ValidatedQuery() query: PhotoQuery): Promise<PhotoUrlResponse> {

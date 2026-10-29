@@ -1,7 +1,8 @@
+import { STAFF_ROLES } from '@academia/contracts';
 import { Controller, Get, Inject } from '@nestjs/common';
 import { DiscoveryService } from '@nestjs/core';
 import { z } from 'zod';
-import { Authenticated } from './access.ts';
+import { Roles } from './access.ts';
 import { isApiRoute, listRoutes, type Route } from './routes.ts';
 import { inputOf, isMultipart, outputOf, queryOf } from './validation.ts';
 
@@ -70,7 +71,8 @@ export class OpenApiController {
   constructor(@Inject(DiscoveryService) private readonly discovery: DiscoveryService) {}
 
   @Get('openapi.json')
-  @Authenticated()
+  // só a equipe: o aluno com login (AD-119) não alcança nada que já existia
+  @Roles(...STAFF_ROLES)
   document() {
     return buildOpenApi(listRoutes(this.discovery));
   }
