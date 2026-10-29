@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { INVALID_PASSWORD_LINK_MESSAGE, isMinor, saoPauloToday } from '@academia/contracts';
+import { INVALID_PASSWORD_LINK_MESSAGE, isMinor, type PortalState, saoPauloToday } from '@academia/contracts';
 import { and, type Database, eq, isNull, schema, sql } from '@academia/database';
 import { audit, type AuditActor } from '../audit/audit.ts';
 import { attemptPortal } from '../leads/lead-throttle.ts';
@@ -69,6 +69,16 @@ export function firstAccessDecision(facts: FirstAccessFacts): FirstAccessDecisio
   if (facts.emailOfAnotherUser) return 'none';
   if (!facts.user) return 'create';
   return facts.user.active && facts.user.hasPassword ? 'none' : 'reuse';
+}
+
+/**
+ * O acesso do aluno ao portal (AC 15), pelo usuário dele: sem usuário, `none`; sem senha, `pending` (ativo
+ * ou não); com senha, `active` ou `disabled` conforme `users.active`.
+ */
+export function portalState(user: { active: boolean; hasPassword: boolean } | null): PortalState {
+  if (!user) return 'none';
+  if (!user.hasPassword) return 'pending';
+  return user.active ? 'active' : 'disabled';
 }
 
 /**
@@ -209,6 +219,16 @@ export class PortalService {
         entityId: found.studentId,
       });
     });
+  }
+
+  /** O estado do portal de uma ficha, para `GET /api/students/:id`. */
+  async portalOf(studentId: string): Promise<PortalState> {
+    const [user] = await this.db
+      .select({ active: users.active, password: accounts.password })
+      .from(users)
+      .leftJoin(accounts, and(eq(accounts.userId, users.id), eq(accounts.providerId, CREDENTIAL)))
+      .where(eq(users.studentId, studentId));
+    return portalState(user ? { active: user.active, hasPassword: typeof user.password === 'string' } : null);
   }
 
   /** Marca os abertos do mesmo usuário e propósito como usados e grava um novo; só o hash fica no banco. */

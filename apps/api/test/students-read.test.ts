@@ -2,6 +2,7 @@ import type { Problem, Role } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { auditCount } from './support/audit.ts';
 import type { Client } from './support/client.ts';
+import { insertAdultStudent, insertStudentUser } from './support/portal.ts';
 import { type Stack, startStack } from './support/stack.ts';
 import { createStudent, fullStudentBody, studentBody, unknownId } from './support/students.ts';
 
@@ -36,6 +37,8 @@ test('ficha_twelve_keys_for_admin_and_reception', async () => {
     'emergencyContactPhone',
     'healthNotes',
     'photoUrl',
+    'portal',
+    'pendingPhoto',
   ].sort();
 
   for (const role of ['admin', 'reception'] as Role[]) {
@@ -65,6 +68,8 @@ test('ficha_hr_finance_without_health_notes_key', async () => {
       'emergencyContactName',
       'emergencyContactPhone',
       'photoUrl',
+      'portal',
+      'pendingPhoto',
     ].sort(),
   );
   expect('healthNotes' in body).toBe(false);
@@ -74,7 +79,7 @@ test('ficha_instructor_three_keys_only', async () => {
   const response = await sessions.instructor.get(`/api/students/${studentId}`);
 
   expect(response.status).toBe(200);
-  expect(await keysOf(response)).toEqual(['id', 'name', 'photoUrl', 'status']);
+  expect(await keysOf(response)).toEqual(['id', 'name', 'pendingPhoto', 'photoUrl', 'portal', 'status']);
 });
 
 test('ficha_404_for_non_uuid_and_unknown_uuid', async () => {
@@ -102,4 +107,26 @@ test('reading_students_writes_no_audit_row', async () => {
     }
   }
   expect(cases).toBe(8);
+});
+
+test('ficha_portal_four_states_and_pending_photo_null', async () => {
+  const none = await insertAdultStudent(stack);
+  const pending = await insertStudentUser(stack, { active: false, withPassword: false });
+  const active = await insertStudentUser(stack);
+  const disabled = await insertStudentUser(stack, { active: false });
+  const cases: Array<[portal: string, id: string]> = [
+    ['none', none.id],
+    ['pending', pending.student.id],
+    ['active', active.student.id],
+    ['disabled', disabled.student.id],
+  ];
+
+  for (const [portal, id] of cases) {
+    const response = await sessions.reception.get(`/api/students/${id}`);
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status, portal).toBe(200);
+    expect(body.portal, portal).toBe(portal);
+    expect(body.pendingPhoto, portal).toBeNull();
+  }
 });

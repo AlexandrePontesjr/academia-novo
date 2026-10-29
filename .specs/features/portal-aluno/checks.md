@@ -134,7 +134,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-throttle.test.ts 
 **C25** - Dois `POST /api/portal/first-access` simultâneos do mesmo aluno respondem `202` os dois, e o aluno termina com exatamente um usuário e exatamente um token `first_access` com `used_at` nulo (AC 8, AC 11)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-first-access.test.ts -t "two_concurrent_requests_one_user_one_open_token"`
 
-**C26** - `GET /api/students/:id`, de `reception`, devolve `portal` `none` para aluno sem usuário, `pending` para usuário sem linha em `accounts`, `active` para usuário ativo com senha e `disabled` para usuário inativo com senha, e `pendingPhoto` nulo sem pendente; os testes de `students-read.test.ts` de antes passam sem edição de asserção (AC 15)
+**C26** - `GET /api/students/:id`, de `reception`, devolve `portal` `none` para aluno sem usuário, `pending` para usuário sem linha em `accounts`, `active` para usuário ativo com senha e `disabled` para usuário inativo com senha, e `pendingPhoto` nulo sem pendente; os testes de `students-read.test.ts` de antes passam com só as duas chaves novas acrescentadas às listas de chaves, para os quatro perfis (AC 15)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/students-read.test.ts -t "ficha_portal_four_states_and_pending_photo_null"`
 
 **C27** - A ficha `/students/<id>` mostra "Sem acesso ao portal", "Primeiro acesso pedido", "Acesso ativo" e "Acesso desligado" para `portal` `none`, `pending`, `active` e `disabled` devolvidos pela `FakeApi`, e não tem botão nem link cujo clique chame rota de portal ou de senha (AC 16)
@@ -349,7 +349,7 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-first-access.test
 **C90** - O estado `portal` é uma função pura testada sem banco sobre a tabela de quatro linhas (sem usuário, usuário sem senha, ativo com senha, inativo com senha) e mais duas de borda (inativo sem senha é `pending`; ativo sem senha é `pending`) (AC 15, Test policy)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-first-access.test.ts -t "portal_state_table_six_rows"`
 
-**C91** - As provas de foto existentes não mudam: `photos-replace.test.ts`, `photos-upload.test.ts` e `photos-urls.test.ts` passam sem edição de asserção com a coluna `pending` (Impact "comportamento existente")
+**C91** - As provas de foto existentes não mudam: `photos-replace.test.ts`, `photos-upload.test.ts` e `photos-urls.test.ts` passam com a coluna `pending`, com só as duas chaves novas (`portal` e `pendingPhoto`) acrescentadas às listas de chaves da ficha de `photos-urls.test.ts` (Impact "comportamento existente")
 Proof: `pnpm --filter "./apps/api" exec vitest run test/photos-replace.test.ts -t "previous_row_kept_with_expiry_30_days_and_new_one_is_the_only_current"`
 Proof: `pnpm --filter "./apps/api" exec vitest run test/photos-urls.test.ts -t "ficha_photo_url_medium_for_four_profiles_null_when_absent"`
 

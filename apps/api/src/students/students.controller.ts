@@ -3,6 +3,8 @@ import {
   createStudentRequestSchema,
   STAFF_ROLES,
   type Student,
+  type StudentDetail,
+  studentDetailSchema,
   studentSchema,
   type StudentsQuery,
   type StudentsResponse,
@@ -15,6 +17,7 @@ import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch,
 import { CurrentUser, Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
 import { PhotosService } from '../photos/photos.service.ts';
+import { PortalService } from '../portal/portal.service.ts';
 import { ProblemException, validationProblem } from '../problem.filter.ts';
 import { Input, Output, QueryInput, ValidatedQuery } from '../validation.ts';
 import { StudentsService } from './students.service.ts';
@@ -26,6 +29,7 @@ export class StudentsController {
   constructor(
     @Inject(StudentsService) private readonly students: StudentsService,
     @Inject(PhotosService) private readonly photos: PhotosService,
+    @Inject(PortalService) private readonly portal: PortalService,
   ) {}
 
   @Get()
@@ -57,12 +61,17 @@ export class StudentsController {
 
   @Get(':id')
   @Roles(...STAFF_ROLES)
-  @Output(200, studentSchema)
-  async get(@Param('id') id: string, @CurrentUser() user: CurrentUser): Promise<Student> {
+  @Output(200, studentDetailSchema)
+  async get(@Param('id') id: string, @CurrentUser() user: CurrentUser): Promise<StudentDetail> {
     const student = await this.students.find(id, seesHealthNotes(user.role));
     if (!student) throw new NotFoundException();
     const photoUrl = (await this.photos.photoUrls([student.id], 'medium')).get(student.id) ?? null;
-    return viewStudent(user.role, { ...student, photoUrl });
+    // o estado do portal e a foto pendente vão aos quatro perfis (decisão do usuário em 2026-10-28)
+    return {
+      ...viewStudent(user.role, { ...student, photoUrl }),
+      portal: await this.portal.portalOf(student.id),
+      pendingPhoto: await this.photos.pendingOf(student.id),
+    };
   }
 
   @Patch(':id')

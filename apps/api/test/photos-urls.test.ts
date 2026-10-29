@@ -326,9 +326,9 @@ test('five_secrets_never_reach_the_log', async () => {
 });
 
 const FICHA_KEYS = {
-  admin: ['address', 'birthDate', 'cpf', 'email', 'emergencyContactName', 'emergencyContactPhone', 'healthNotes', 'id', 'name', 'phone', 'photoUrl', 'sex', 'status'],
-  hr_finance: ['address', 'birthDate', 'cpf', 'email', 'emergencyContactName', 'emergencyContactPhone', 'id', 'name', 'phone', 'photoUrl', 'sex', 'status'],
-  instructor: ['id', 'name', 'photoUrl', 'status'],
+  admin: ['address', 'birthDate', 'cpf', 'email', 'emergencyContactName', 'emergencyContactPhone', 'healthNotes', 'id', 'name', 'pendingPhoto', 'phone', 'photoUrl', 'portal', 'sex', 'status'],
+  hr_finance: ['address', 'birthDate', 'cpf', 'email', 'emergencyContactName', 'emergencyContactPhone', 'id', 'name', 'pendingPhoto', 'phone', 'photoUrl', 'portal', 'sex', 'status'],
+  instructor: ['id', 'name', 'pendingPhoto', 'photoUrl', 'portal', 'status'],
 };
 const ficha = (role: StaffRole) => (role === 'reception' ? FICHA_KEYS.admin : FICHA_KEYS[role]);
 

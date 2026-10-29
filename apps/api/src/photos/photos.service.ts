@@ -1,5 +1,6 @@
 import {
   type AuditAction,
+  type PendingPhoto,
   PHOTO_VARIANTS,
   type PhotoCreated,
   type PhotoUrlResponse,
@@ -263,6 +264,15 @@ export class PhotosService {
       if (purged) outcome.purged += 1;
     }
     return outcome;
+  }
+
+  /** A foto enviada pelo aluno que espera a recepção (AD-121), ou `null`. */
+  async pendingOf(studentId: string): Promise<PendingPhoto | null> {
+    const [row] = await this.db
+      .select({ id: photos.id, version: photos.version, createdAt: photos.createdAt })
+      .from(photos)
+      .where(and(eq(photos.studentId, studentId), eq(photos.pending, true)));
+    return row ? { id: row.id, version: row.version, createdAt: row.createdAt.toISOString() } : null;
   }
 
   /** O `photoId` da foto corrente do dono, ou `undefined`. */

@@ -34,6 +34,7 @@ import {
   staffListItemSchema,
   staffListResponseSchema,
   staffSchema,
+  studentDetailSchema,
   studentSchema,
   studentsResponseSchema,
   twoFactorEnableResponseSchema,
@@ -471,7 +472,7 @@ test('students_bodies_match_contract_schemas', async () => {
       Object.entries(sessions).map(async ([role, client]) => [
         `GET /api/students/:id (${role})`,
         200,
-        studentSchema,
+        studentDetailSchema,
         await client.get(`/api/students/${student.id}`),
       ] as [string, number, z.ZodType, Response]),
     )),
@@ -771,7 +772,7 @@ test('photo_bodies_match_contract_schemas', async () => {
             [
               `GET /api/students/:id (${role}, ${student === withPhoto ? 'com' : 'sem'} foto)`,
               200,
-              studentSchema,
+              studentDetailSchema,
               await client.get(`/api/students/${student.id}`),
             ] as [string, number, z.ZodType, Response],
         ),
