@@ -42,7 +42,7 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 
 **Corte de acesso**
 
-1. `StudentsService.inactivate` (exists) - na mesma transação que deixa a ficha `inactive`, desativa o usuário vinculado e apaga as sessões dele; o `PATCH` continua sem chegar a `inactive` (`## Intent` de `checks.md`), e `suspended` não mexe no usuário
+1. `StudentsService.inactivate` (exists) - na mesma transação que deixa a ficha `inactive`, desativa o usuário vinculado, apaga as sessões dele e marca como usados os tokens abertos; o `PATCH` continua sem chegar a `inactive` (`## Intent` de `checks.md`), e `suspended` não mexe no usuário
 2. `PrivacyService.anonymizeStudent` (exists) - na mesma transação, limpa o usuário vinculado (door 5)
 
 ## Impact
