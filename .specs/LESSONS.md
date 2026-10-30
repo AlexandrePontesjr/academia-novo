@@ -294,6 +294,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: verification.md portal-aluno round 1 (api)
 - last seen: 2026-10-30T19:04:03Z
 
+### L-048 - Prove a side effect over every enumerated value it touches, not one representative
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: F6b apps/api/test/portal-cutoff.test.ts:157 (api) (api)
+- last seen: 2026-10-30T23:25:54Z
+
+### L-049 - Compare every table a transactional write touches in the rollback branch of its proof
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: F13 apps/api/test/portal-cutoff.test.ts:55 (api) (api)
+- last seen: 2026-10-30T23:25:54Z
+
+### L-050 - Check database constraints before writing a defensive clause that may be unreachable
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: F12b apps/api/src/portal/portal.service.ts:202 (api) (api)
+- last seen: 2026-10-30T23:25:54Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

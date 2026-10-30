@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 48,
+  "next_id": 51,
   "lessons": [
     {
       "id": "L-001",
@@ -852,6 +852,60 @@
       ],
       "created": "2026-10-30T19:04:03Z",
       "last_seen": "2026-10-30T19:04:03Z"
+    },
+    {
+      "id": "L-048",
+      "key": "surviving_mutant::prove a side effect over every enumerated value it touches not one representative",
+      "text": "Prove a side effect over every enumerated value it touches, not one representative",
+      "signal": "surviving_mutant",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F6b apps/api/test/portal-cutoff.test.ts:157 (api) (api)"
+      ],
+      "created": "2026-10-30T23:25:54Z",
+      "last_seen": "2026-10-30T23:25:54Z"
+    },
+    {
+      "id": "L-049",
+      "key": "surviving_mutant::compare every table a transactional write touches in the rollback branch of its proof",
+      "text": "Compare every table a transactional write touches in the rollback branch of its proof",
+      "signal": "surviving_mutant",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F13 apps/api/test/portal-cutoff.test.ts:55 (api) (api)"
+      ],
+      "created": "2026-10-30T23:25:54Z",
+      "last_seen": "2026-10-30T23:25:54Z"
+    },
+    {
+      "id": "L-050",
+      "key": "surviving_mutant::check database constraints before writing a defensive clause that may be unreachable",
+      "text": "Check database constraints before writing a defensive clause that may be unreachable",
+      "signal": "surviving_mutant",
+      "scope": "api",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F12b apps/api/src/portal/portal.service.ts:202 (api) (api)"
+      ],
+      "created": "2026-10-30T23:25:54Z",
+      "last_seen": "2026-10-30T23:25:54Z"
     }
   ]
 }
