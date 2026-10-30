@@ -10,7 +10,7 @@ import { totpCode } from './support/totp.ts';
 import { leadBody, postConfirm, postLead } from './support/leads.ts';
 import { captureMail, confirmLink } from './support/mail.ts';
 import { WEB_ORIGIN } from './support/app.ts';
-import { passwordLink, postConsume, postFirstAccess, postReset } from './support/portal.ts';
+import { passwordLink, pendingPath, postConsume, postFirstAccess, postMyPhoto, postReset } from './support/portal.ts';
 import { cpfOf, maskCpf } from './support/students.ts';
 
 const WRONG = 'senha-errada-000';
@@ -394,17 +394,18 @@ test('ten_actions_written_equal_contract_vocabulary', async () => {
   const { token: portalToken } = passwordLink(mail.sent.findLast((message) => message.to === portalEmail)!);
   await postConsume(stack.client(), { token: portalToken, password: 'senha-do-portal-123' }); // student.portal_password_set
   await postReset(stack.client(), { email: portalEmail }); // student.portal_reset_requested
+  const portalStudent = await stack.signIn({ email: portalEmail, password: 'senha-do-portal-123' });
+  const [{ id: portalStudentId }] = (await stack.query<{ id: string }>('select id from students where email = $1', [portalEmail])) as [{ id: string }];
+  await postMyPhoto(portalStudent, await jpegBytes()); // student.photo_uploaded
+  await admin.post(pendingPath(portalStudentId, 'approve')); // student.photo_approved
+  await postMyPhoto(portalStudent, await jpegBytes());
+  await admin.post(pendingPath(portalStudentId, 'reject')); // student.photo_rejected
 
   const rows = await auditRows(stack);
   const written = [...new Set(rows.map((row) => row.action))].sort();
   expect(auditActionSchema.options).toHaveLength(52);
   expect([...AUDIT_ACTIONS].sort()).toEqual([...auditActionSchema.options].sort());
-  // catraca do batch A da `portal-aluno`: as ações do vocabulário que ainda não têm rota; o batch B a esvazia
-  const notYetWritten: string[] = [
-    'student.photo_approved',
-    'student.photo_rejected',
-  ];
-  expect(written).toEqual(auditActionSchema.options.filter((action) => !notYetWritten.includes(action)).sort());
+  expect(written).toEqual([...auditActionSchema.options].sort());
   // `entity` igual a `student` nas cinco ações do portal
   for (const action of auditActionSchema.options.slice(47)) {
     expect(rows.filter((row) => row.action === action && row.entity !== 'student'), action).toEqual([]);

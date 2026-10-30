@@ -221,6 +221,12 @@ export class PortalService {
     });
   }
 
+  /** A ficha do aluno da sessão: `/api/me/*` nunca toma o aluno do caminho, da query nem do corpo (AC 32). */
+  async studentIdOf(userId: string): Promise<string> {
+    const [user] = await this.db.select({ studentId: users.studentId }).from(users).where(eq(users.id, userId));
+    return user!.studentId!;
+  }
+
   /** O estado do portal de uma ficha, para `GET /api/students/:id`. */
   async portalOf(studentId: string): Promise<PortalState> {
     const [user] = await this.db

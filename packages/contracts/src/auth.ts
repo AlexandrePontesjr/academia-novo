@@ -23,11 +23,15 @@ export const PASSWORD_MAX_LENGTH = 128;
 const maxPasswordLength = (value: string) => value.length <= PASSWORD_MAX_LENGTH;
 const PASSWORD_TOO_LONG = `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`;
 
+/** Um substituto UTF-16 solto não chega inteiro ao banco: o valor gravado não seria o enviado. */
+export const noLoneSurrogate = (value: string) => !/\p{Cs}/u.test(value);
+
 /** Senha nova: 12 a 128 caracteres, sem regra de composição. */
 export const newPasswordSchema = z
   .string('Informe a senha.')
   .min(12, 'A senha deve ter pelo menos 12 caracteres.')
-  .refine(maxPasswordLength, PASSWORD_TOO_LONG);
+  .refine(maxPasswordLength, PASSWORD_TOO_LONG)
+  .refine(noLoneSurrogate, 'A senha contém um caractere inválido.');
 
 /** 254 caracteres é o maior endereço que cabe num envelope SMTP (RFC 5321). */
 export const emailSchema = z

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema } from './auth.ts';
+import { emailSchema, noLoneSurrogate } from './auth.ts';
 import { cpfSchema, isRealDay, isValidCpf, nameSchema, noNul, phoneSchema, today } from './person.ts';
 
 export const STUDENT_STATUSES = ['active', 'inactive', 'suspended'] as const;
@@ -35,7 +35,10 @@ const birthDateSchema = z
   .refine((value) => value >= BIRTH_DATE_MIN, 'A data de nascimento deve ser a partir de 1900.')
   .refine((value) => value <= today(), 'A data de nascimento não pode ser no futuro.');
 
-const addressSchema = text(200, 'Informe um endereço válido.', 'O endereço deve ter no máximo 200 caracteres.');
+const addressSchema = text(200, 'Informe um endereço válido.', 'O endereço deve ter no máximo 200 caracteres.').refine(
+  noLoneSurrogate,
+  'O endereço contém um caractere inválido.',
+);
 // sem aparar: a ficha devolve exatamente o texto enviado
 const healthNotesSchema = z
   .string('Informe uma observação válida.')
@@ -196,6 +199,8 @@ export const pendingPhotoSchema = z.strictObject({
   id: z.uuid(),
   version: z.number().int().min(1),
   createdAt: z.iso.datetime(),
+  /** A URL assinada da variante `medium`, nas leituras: a ficha e o portal mostram a pendente. */
+  url: z.string().optional(),
 });
 export type PendingPhoto = z.infer<typeof pendingPhotoSchema>;
 

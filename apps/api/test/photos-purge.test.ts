@@ -110,6 +110,27 @@ test('purge_removes_expired_rows_and_their_objects', async () => {
   expect(await purgedRowsOf(two.studentId)).toHaveLength(2);
 });
 
+test('purge_removes_expired_pending_photo', async () => {
+  const studentId = await newStudent();
+  const current = await uploaded(await uploadPhoto(reception, studentId, await jpegBytes()));
+  const currentRow = await photoRowsText(env.stack, studentId);
+  // a pendente nasce como o `POST /api/me/photo` a grava, com os objetos no bucket
+  const moved = await uploaded(await replacePhoto(reception, studentId, await jpegBytes()));
+  await env.stack.query(`delete from photos where id = $1`, [moved.id]);
+  await env.stack.query(`update photos set is_current = true, expires_at = null where id = $1`, [current.id]);
+  await env.stack.query(
+    `insert into photos (id, student_id, version, is_current, pending, expires_at) values ($1, $2, 2, false, true, ${EXPIRED})`,
+    [moved.id, studentId],
+  );
+  expect(await uploadKeys(env.minio, studentId)).toEqual([...keysOf(studentId, current.id), ...keysOf(studentId, moved.id)].sort());
+
+  await env.stack.api.purge();
+
+  expect(await photoRowsText(env.stack, studentId)).toEqual(currentRow);
+  expect(await uploadKeys(env.minio, studentId)).toEqual(keysOf(studentId, current.id));
+  expect(await purgedRowsOf(studentId)).toHaveLength(1);
+});
+
 test('purge_keeps_unexpired_version_and_every_current_photo', async () => {
   const unexpired = await studentWithVersions(UNEXPIRED);
   const old = await newStudent();

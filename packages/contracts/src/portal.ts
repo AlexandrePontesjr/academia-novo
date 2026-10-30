@@ -64,3 +64,10 @@ export const myProfileSchema = z.strictObject({
   pendingPhoto: pendingPhotoSchema.nullable(),
 });
 export type MyProfile = z.infer<typeof myProfileSchema>;
+
+/** Corpo do `200` de `GET /api/me/photo`: a URL assinada da corrente e a da pendente, `null` sem ela. */
+export const myPhotoResponseSchema = z.strictObject({
+  currentUrl: z.string().nullable(),
+  pendingUrl: z.string().nullable(),
+});
+export type MyPhotoResponse = z.infer<typeof myPhotoResponseSchema>;

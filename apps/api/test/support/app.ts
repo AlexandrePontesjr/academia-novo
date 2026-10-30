@@ -1,5 +1,6 @@
 import type { Server } from 'node:http';
 import { Controller, Get, type Type } from '@nestjs/common';
+import { DiscoveryService } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import type { Express } from 'express';
 import { Public } from '../../src/access.ts';
@@ -10,6 +11,7 @@ import { LeadRetention } from '../../src/leads/lead-retention.ts';
 import type { MailTransport } from '../../src/mail/mail.service.ts';
 import { PhotoPurge } from '../../src/photos/photo-purge.ts';
 import { PrivacyRetention } from '../../src/privacy/privacy-retention.ts';
+import { listRoutes } from '../../src/routes.ts';
 import { MAIL_TRANSPORT } from '../../src/tokens.ts';
 
 export const BOOM_MESSAGE = 'segredo-da-excecao-42';
@@ -89,11 +91,13 @@ export async function startApi(
         : [],
     );
   };
+  /** As rotas com o controller e o handler, de onde sai a declaração de acesso. */
+  const declaredRoutes = () => listRoutes(app.get(DiscoveryService, { strict: false }));
   /** Uma execução do expurgo, esperada até o fim: a mesma função que o temporizador da API chama. */
   const purge = () => app.get(PhotoPurge).run();
   /** Uma execução da retenção de inativos, esperada até o fim: a mesma que o temporizador chama. */
   const retention = () => app.get(PrivacyRetention).run();
   /** Uma execução da retenção de interessados, esperada até o fim: a mesma que o temporizador chama. */
   const leadRetention = () => app.get(LeadRetention).run();
-  return { url: `http://127.0.0.1:${port}`, server, routes, purge, retention, leadRetention, close: () => app.close() };
+  return { url: `http://127.0.0.1:${port}`, server, routes, declaredRoutes, purge, retention, leadRetention, close: () => app.close() };
 }

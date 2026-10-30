@@ -4,6 +4,7 @@ import {
   studentCheckInsQuerySchema,
   changePasswordRequestSchema,
   consumePasswordTokenRequestSchema,
+  updateMyProfileRequestSchema,
   createEnrollmentRequestSchema,
   createPaymentRequestSchema,
   confirmLeadRequestSchema,
@@ -159,8 +160,9 @@ test('request_bodies_come_from_contract_schemas', async () => {
     ['post', '/api/portal/first-access', firstAccessRequestSchema],
     ['post', '/api/password-tokens/consume', consumePasswordTokenRequestSchema],
     ['post', '/api/password-reset', passwordResetRequestSchema],
+    ['patch', '/api/me/profile', updateMyProfileRequestSchema],
   ];
-  expect(contracts).toHaveLength(26);
+  expect(contracts).toHaveLength(27);
 
   const { paths } = await document();
 
@@ -182,6 +184,7 @@ test('request_bodies_come_from_contract_schemas', async () => {
       'put /api/students/{id}/photo',
       'post /api/staff/{id}/photo',
       'put /api/staff/{id}/photo',
+      'post /api/me/photo',
     ].sort(),
   );
 });
@@ -348,7 +351,9 @@ test('payment_paths_and_status_query_parameter_come_from_contract_schema', async
   expect(Object.keys(paths['/api/students/{id}/payments'] ?? {}).sort()).toEqual(['get', 'post']);
   expect(Object.keys(paths['/api/students/{id}/payments/{paymentId}'] ?? {})).toEqual(['delete']);
   expect(Object.keys(paths['/api/payments'] ?? {})).toEqual(['get']);
-  expect(Object.keys(paths).filter((path) => path.includes('/payments'))).toHaveLength(3);
+  // a quarta é a do aluno (`portal-aluno`), fora dos dois prefixos
+  expect(Object.keys(paths).filter((path) => path.includes('/payments'))).toHaveLength(4);
+  expect(Object.keys(paths['/api/me/payments'] ?? {})).toEqual(['get']);
 
   // `status` é o único parâmetro de `GET /api/payments`, opcional, e o schema é o do contrato
   const parameters = paths['/api/payments']?.get?.parameters ?? [];
@@ -461,6 +466,29 @@ test('privacy_paths_declared_with_settings_body_from_contract', async () => {
   const content = paths['/api/privacy-settings']?.put?.requestBody?.content ?? {};
   expect(Object.keys(content)).toEqual(['application/json']);
   expect(content['application/json']?.schema).toEqual(JSON.parse(JSON.stringify(z.toJSONSchema(privacySettingsSchema))));
+});
+
+test('portal_routes_listed_with_surface_methods', async () => {
+  const { paths } = await document();
+
+  // as dez rotas da Surface da `portal-aluno`, e nenhuma outra sob os prefixos dela
+  const surface = [
+    'post /api/portal/first-access',
+    'post /api/password-tokens/consume',
+    'post /api/password-reset',
+    'get /api/me/profile',
+    'patch /api/me/profile',
+    'get /api/me/payments',
+    'post /api/me/photo',
+    'get /api/me/photo',
+    'post /api/students/{id}/photo/pending/approve',
+    'post /api/students/{id}/photo/pending/reject',
+  ];
+  expect(surface).toHaveLength(10);
+  const documented = Object.entries(paths)
+    .filter(([path]) => /^\/api\/(portal|me|password-tokens|password-reset)\b/.test(path) || path.includes('/photo/pending/'))
+    .flatMap(([path, operations]) => Object.keys(operations).map((method) => `${method} ${path}`));
+  expect(documented.sort()).toEqual([...surface].sort());
 });
 
 test('lead_routes_listed_with_surface_methods', async () => {

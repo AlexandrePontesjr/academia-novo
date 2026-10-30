@@ -14,6 +14,7 @@ import {
   STUDENT_PERSONAL_COLUMNS,
   subjectRows,
 } from './support/privacy.ts';
+import { insertStudentUser } from './support/portal.ts';
 import { problem } from './support/stack.ts';
 import { insertStaff } from './support/staff.ts';
 import { cpfOf, insertStudents, releasedTogether, studentRow, unknownId } from './support/students.ts';
@@ -235,6 +236,81 @@ test('open_period_ends_at_the_sao_paulo_turn', async () => {
 
   clockAt(AFTER_TURN);
   expect((await anonymize(id)).status).toBe(204);
+});
+
+/** Um aluno completo com login: usuário, senha, sessão, 2FA, token aberto e uma linha de trilha de autor. */
+async function withStudentUser() {
+  const subject = await seedFullStudent(env.stack, env.minio);
+  const [{ name, cpf, email }] = (await env.stack.query<{ name: string; cpf: string; email: string }>(
+    'select name, cpf, email from students where id = $1',
+    [subject.id],
+  )) as [{ name: string; cpf: string; email: string }];
+  const user = await insertStudentUser(env.stack, { student: { id: subject.id, name, cpf, email } });
+  await env.stack.signIn(user);
+  await env.stack.query(`insert into two_factors (user_id, secret, backup_codes) values ($1, 'segredo', 'codigos')`, [user.id]);
+  await env.stack.query(
+    `insert into password_tokens (user_id, purpose, token_hash, expires_at) values ($1, 'reset', $2, now() + interval '1 hour')`,
+    [user.id, `hash-${user.id}`],
+  );
+  await env.stack.query(`insert into audit_logs (user_id, action, entity, entity_id) values ($1, 'student.updated', 'student', $2)`, [user.id, subject.id]);
+  return { subject, user, name, email };
+}
+
+const credentialCounts = async (userId: string) => {
+  const counts: Record<string, number> = {};
+  for (const table of ['accounts', 'sessions', 'two_factors', 'password_tokens']) {
+    const [row] = await env.stack.query<{ n: string }>(`select count(*) as n from ${table} where user_id = $1`, [userId]);
+    counts[table] = Number(row!.n);
+  }
+  return counts;
+};
+
+test('anonymize_clears_linked_student_user_and_its_credentials', async () => {
+  const { subject, user, name, email } = await withStudentUser();
+  const trail = async () => env.stack.query('select id from audit_logs where user_id = $1 order by id', [user.id]);
+  const authored = await trail();
+  expect(authored.length).toBeGreaterThan(0);
+
+  const response = await anonymize(subject.id);
+
+  expect(response.status).toBe(204);
+  const [row] = await env.stack.query('select name, email, active, student_id from users where id = $1', [user.id]);
+  expect(row).toEqual({ name: ANONYMIZED_NAME, email: `anonimizado+${user.id}@invalid`, active: false, student_id: subject.id });
+  expect(await credentialCounts(user.id)).toEqual({ accounts: 0, sessions: 0, two_factors: 0, password_tokens: 0 });
+  expect(await env.stack.query('select id from users where name = $1 or email = $2', [name, email])).toEqual([]);
+  expect(await trail()).toEqual(authored);
+});
+
+test('anonymize_failure_keeps_linked_user_identical', async () => {
+  const { subject, user } = await withStudentUser();
+  const proxy = await flakyStorage(env.minio.endpoint);
+  const api = await startApi(env.stack.postgres.url, [], { ...env.minio.env, S3_ENDPOINT: proxy.endpoint });
+  const snapshot = async () => ({
+    user: await env.stack.query('select to_jsonb(u)::text as row from users u where id = $1', [user.id]),
+    accounts: await env.stack.query('select to_jsonb(a)::text as row from accounts a where user_id = $1', [user.id]),
+    tokens: await env.stack.query('select to_jsonb(t)::text as row from password_tokens t where user_id = $1', [user.id]),
+  });
+  try {
+    const seeded = await env.stack.seed({ role: 'admin' });
+    const client = await env.stack.signIn(seeded, createClient(api.url));
+    await env.stack.query('update users set two_factor_enabled = true where id = $1', [seeded.id]);
+    const before = await snapshot();
+    proxy.failDeleteOf = 'large';
+
+    const failed = await client.post(anonymizationPath(subject.id));
+
+    expect(failed.status).toBe(503);
+    expect(await snapshot()).toEqual(before);
+
+    proxy.failDeleteOf = null;
+    expect((await client.post(anonymizationPath(subject.id))).status).toBe(204);
+    const [row] = await env.stack.query('select name, email, active, student_id from users where id = $1', [user.id]);
+    expect(row).toEqual({ name: ANONYMIZED_NAME, email: `anonimizado+${user.id}@invalid`, active: false, student_id: subject.id });
+    expect(await credentialCounts(user.id)).toEqual({ accounts: 0, sessions: 0, two_factors: 0, password_tokens: 0 });
+  } finally {
+    await api.close();
+    await proxy.stop();
+  }
 });
 
 test('storage_failure_is_503_rolls_back_rows_and_retry_succeeds', async () => {

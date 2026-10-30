@@ -3,8 +3,12 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { Public } from '../src/access.ts';
 import { WEB_ORIGIN } from './support/app.ts';
 import { leadBody, postLead, recorded } from './support/leads.ts';
+import type { Client } from './support/client.ts';
 import { captureMail, confirmLink } from './support/mail.ts';
+import { multipart } from './support/photos.ts';
+import { firstAccessBody, insertAdultStudent, passwordLink, pendingPath, portalRecorded, portalSession, postFirstAccess } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
+import { studentRowText } from './support/students.ts';
 
 const FOREIGN = 'https://outro.example';
 
@@ -165,6 +169,46 @@ test('lead_public_writes_under_origin_check', async () => {
   const confirmed = await stack.client().request('POST', '/api/leads/confirm', { body: { token }, ...sameOrigin });
   expect(confirmed.status).toBe(200);
   expect(await confirmed.json()).toEqual({ status: 'confirmed' });
+});
+
+test('portal_writes_under_origin_check', async () => {
+  const student = await insertAdultStudent(stack);
+  mail.clear();
+  const asked = await postFirstAccess(stack.client(), firstAccessBody(student));
+  expect(asked.status).toBe(202);
+  const { token } = passwordLink(mail.sent.find((message) => message.to === student.email)!);
+  const owner = await portalSession(stack, mail);
+  const reception = (await stack.session('reception')).client;
+  const bytes = Buffer.from('nao chega a ser lido');
+  const { body: file, contentType } = multipart([{ name: 'file', bytes, filename: 'foto.jpg', type: 'image/jpeg' }]);
+
+  const writes: Array<[method: string, path: string, client: Client, options: { body?: unknown; headers?: Record<string, string> }]> = [
+    ['POST', '/api/portal/first-access', stack.client(), { body: firstAccessBody(student) }],
+    ['POST', '/api/password-tokens/consume', stack.client(), { body: { token, password: 'senha-do-portal-123' } }],
+    ['POST', '/api/password-reset', stack.client(), { body: { email: owner.user.email } }],
+    ['PATCH', '/api/me/profile', owner.client, { body: { phone: '11955556666' } }],
+    ['POST', '/api/me/photo', owner.client, { body: file, headers: { 'Content-Type': contentType } }],
+    ['POST', pendingPath(owner.student.id, 'approve'), reception, {}],
+    ['POST', pendingPath(owner.student.id, 'reject'), reception, {}],
+  ];
+  expect(writes).toHaveLength(7);
+
+  for (const [label, origin] of [
+    ['sem Origin e sem Sec-Fetch-Site', null],
+    ['Origin de outro site', 'https://evil.example'],
+  ] as const) {
+    for (const [method, path, client, options] of writes) {
+      const before = await portalRecorded(stack);
+      const row = await studentRowText(stack, owner.student.id);
+
+      const response = await client.request(method, path, { ...options, origin });
+
+      expect(response.status, `${label} ${path}`).toBe(403);
+      expect((await problem(response)).code, `${label} ${path}`).toBe('csrf_rejected');
+      expect(await portalRecorded(stack), `${label} ${path}`).toEqual(before);
+      expect(await studentRowText(stack, owner.student.id), `${label} ${path}`).toBe(row);
+    }
+  }
 });
 
 test('lead_patch_under_origin_check', async () => {

@@ -4,6 +4,7 @@ import { crc32, deflateSync } from 'node:zlib';
 import { GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { expect } from 'vitest';
+import type { MailTransport } from '../../src/mail/mail.service.ts';
 import { type StorageEnv, startApi } from './app.ts';
 import { type Client, createClient } from './client.ts';
 import { type Minio, startMinio } from './servers.ts';
@@ -295,9 +296,9 @@ export async function snapshotOf(stack: Stack, minio: Pick<Minio, 'client' | 'bu
 }
 
 /** Postgres, API e MinIO reais, montados juntos: o ambiente de um arquivo de teste de foto. */
-export async function startPhotoStack(storage?: Minio['env']) {
+export async function startPhotoStack(storage?: Minio['env'], options: { mail?: MailTransport } = {}) {
   const minio = await startMinio();
-  const stack = await startStack([], storage ?? minio.env);
+  const stack = await startStack([], storage ?? minio.env, options);
   return {
     minio,
     stack,

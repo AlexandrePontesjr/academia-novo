@@ -115,6 +115,44 @@ test('patch_422_ten_cases_leave_row_unchanged', async () => {
   }
 });
 
+test('email_change_follows_to_linked_user_or_409_email_in_use', async () => {
+  const student = await createStudent(reception, studentBody(next(), { email: 'antes@example.com' }));
+  await stack.query(
+    `insert into users (name, email, role, student_id, active) values ('Aluno', 'antes@example.com', 'student', $1, true)`,
+    [student.id],
+  );
+  const emails = async () =>
+    (
+      await stack.query<{ student: string; user: string }>(
+        `select s.email as student, u.email as "user" from students s join users u on u.student_id = s.id where s.id = $1`,
+        [student.id],
+      )
+    )[0];
+
+  const changed = await reception.patch(`/api/students/${student.id}`, { email: 'Novo@Example.com' });
+
+  expect(changed.status).toBe(200);
+  expect(await emails()).toEqual({ student: 'novo@example.com', user: 'novo@example.com' });
+
+  const instructor = await stack.seed({ role: 'instructor' });
+  const before = await studentRowText(stack, student.id);
+  const userBefore = await stack.query('select to_jsonb(u)::text as row from users u where student_id = $1', [student.id]);
+
+  const taken = await reception.patch(`/api/students/${student.id}`, { email: instructor.email });
+
+  expect(taken.status).toBe(409);
+  expect(((await taken.json()) as Problem).code).toBe('email_in_use');
+  expect(await studentRowText(stack, student.id)).toBe(before);
+  expect(await stack.query('select to_jsonb(u)::text as row from users u where student_id = $1', [student.id])).toEqual(userBefore);
+
+  const free = await createStudent(reception, studentBody(next(), { email: 'livre@example.com' }));
+  const usersBefore = await stack.query('select to_jsonb(u)::text as row from users u order by id');
+  const plain = await reception.patch(`/api/students/${free.id}`, { email: instructor.email });
+  expect(plain.status).toBe(200);
+  expect(((await plain.json()) as Student).email).toBe(instructor.email);
+  expect(await stack.query('select to_jsonb(u)::text as row from users u order by id')).toEqual(usersBefore);
+});
+
 test('emergency_pair_rule_counts_stored_value', async () => {
   const withPair = await createStudent(reception, fullStudentBody(next()));
   const clearName = await reception.patch(`/api/students/${withPair.id}`, { emergencyContactName: null });

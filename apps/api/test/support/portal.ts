@@ -4,6 +4,7 @@ import { WEB_ORIGIN } from './app.ts';
 import type { Client } from './client.ts';
 import { nextIp } from './leads.ts';
 import type { CapturedMail } from './mail.ts';
+import { multipart, type Part } from './photos.ts';
 import { PASSWORD, type Stack } from './stack.ts';
 import { cpfOf, maskCpf } from './students.ts';
 
@@ -85,6 +86,18 @@ export const postConsume = (client: Client, body: unknown, ip = nextIp()) =>
 /** `POST /api/password-reset` vindo do IP dado. */
 export const postReset = (client: Client, body: unknown, ip = nextIp()) =>
   client.post('/api/password-reset', body, { headers: { 'X-Forwarded-For': ip } });
+
+/** `POST /api/me/photo` com as partes dadas. */
+export function postMyParts(client: Client, parts: Part[], origin?: string | null) {
+  const { body, contentType } = multipart(parts);
+  return client.request('POST', '/api/me/photo', { origin, body, headers: { 'Content-Type': contentType } });
+}
+
+/** `POST /api/me/photo` com a parte `file` dada. */
+export const postMyPhoto = (client: Client, bytes: Buffer, origin?: string | null) =>
+  postMyParts(client, [{ name: 'file', bytes, filename: 'foto.jpg', type: 'image/jpeg' }], origin);
+
+export const pendingPath = (studentId: string, action: 'approve' | 'reject') => `/api/students/${studentId}/photo/pending/${action}`;
 
 /** O corpo do primeiro acesso de uma ficha: o CPF mascarado e o e-mail dela. */
 export const firstAccessBody = (student: PortalStudent, overrides: Record<string, unknown> = {}) => ({

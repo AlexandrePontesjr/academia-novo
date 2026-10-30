@@ -15,8 +15,24 @@ import { photoKey } from '../photos/photo-keys.ts';
 import { type PhotoStorage, StorageUnavailable } from '../photos/photo-storage.ts';
 import { ProblemException } from '../problem.filter.ts';
 
-const { checkIns, consentTerms, consents, enrollments, guardians, payments, photos, plans, privacySettings, staff, students, users } =
-  schema;
+const {
+  accounts,
+  checkIns,
+  consentTerms,
+  consents,
+  enrollments,
+  guardians,
+  passwordTokens,
+  payments,
+  photos,
+  plans,
+  privacySettings,
+  sessions,
+  staff,
+  students,
+  twoFactors,
+  users,
+} = schema;
 
 /** Os dois campos da configuração, na ordem da trilha; os dois guardam o valor (door 6). */
 const SETTINGS_FIELDS = ['inactiveStudentRetentionYears', 'photoVersionRetentionDays'] as const;
@@ -197,9 +213,27 @@ export class PrivacyService {
           updatedAt: new Date(),
         })
         .where(eq(students.id, row.id));
+      await this.clearStudentUser(tx, row.id);
       await audit.record(tx, { actor, action: 'student.anonymized', entity: 'student', entityId: row.id });
       return 'anonymized';
     });
+  }
+
+  /**
+   * O login do aluno na anonimização (portal-aluno, door 5): o usuário fica, porque `audit_logs` aponta para
+   * ele, sem nome, sem e-mail e sem nada que entre; `student_id` continua e a ficha já não diz quem é.
+   */
+  private async clearStudentUser(tx: Tx, studentId: string) {
+    const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.studentId, studentId)).for('update');
+    if (!user) return;
+    await tx
+      .update(users)
+      .set({ name: ANONYMIZED_NAME, email: `anonimizado+${user.id}@invalid`, active: false, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+    await tx.delete(accounts).where(eq(accounts.userId, user.id));
+    await tx.delete(sessions).where(eq(sessions.userId, user.id));
+    await tx.delete(twoFactors).where(eq(twoFactors.userId, user.id));
+    await tx.delete(passwordTokens).where(eq(passwordTokens.userId, user.id));
   }
 
   /** Tudo o que o sistema guarda do funcionário (door 5): a ficha, o usuário vinculado e as fotos. */

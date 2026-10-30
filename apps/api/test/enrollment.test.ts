@@ -129,8 +129,38 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
       'GET /api/leads',
       'PATCH /api/leads/:id',
       'GET /api/openapi.json',
+      'GET /api/me/profile',
+      'PATCH /api/me/profile',
+      'GET /api/me/payments',
+      'GET /api/me/photo',
+      'POST /api/me/photo',
+      'POST /api/students/:id/photo/pending/approve',
+      'POST /api/students/:id/photo/pending/reject',
     ].sort(),
   );
+});
+
+test('student_never_required_to_enroll', async () => {
+  const user = await stack.seed({ role: 'reception' });
+  const [student] = await stack.query<{ id: string }>(
+    `insert into students (name, cpf, birth_date, phone, email) values ('Aluna Sem 2FA', '52998224725', '2000-01-01', '11912345678', 'sem2fa@example.com') returning id`,
+  );
+  await stack.query(`update users set role = 'student', student_id = $2, two_factor_enabled = false where id = $1`, [user.id, student!.id]);
+  const client = await stack.signIn(user);
+
+  expect(await enrollmentRequired(client)).toBe(false);
+  for (const [method, path] of [
+    ['GET', '/api/me/profile'],
+    ['PATCH', '/api/me/profile'],
+    ['GET', '/api/me/payments'],
+    ['GET', '/api/me/photo'],
+    ['POST', '/api/me/photo'],
+  ] as const) {
+    const response = await client.request(method, path, method === 'PATCH' ? { body: {} } : {});
+    const text = await response.text();
+    expect(text, `${method} ${path}`).not.toContain('two_factor_enrollment_required');
+    expect(response.status, `${method} ${path}`).not.toBe(403);
+  }
 });
 
 test('four_exempt_routes_stay_reachable', async () => {

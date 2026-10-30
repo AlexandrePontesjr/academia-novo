@@ -1,5 +1,6 @@
 import {
   type AuditAction,
+  type MyPhotoResponse,
   type PendingPhoto,
   PHOTO_VARIANTS,
   type PhotoCreated,
@@ -19,6 +20,16 @@ import { type PhotoStorage, StorageUnavailable } from './photo-storage.ts';
 const { photos, privacySettings, staff, students } = schema;
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+/** Quanto a foto do aluno espera a revisão da recepção (door 3 da `portal-aluno`). */
+const PENDING_DAYS = 30;
+
+/** O prazo da versão que deixa de ser corrente: os dias lidos da configuração na hora (privacidade, door 4). */
+const retentionDeadline = () =>
+  sql`now() + make_interval(days => (select ${privacySettings.photoVersionRetentionDays} from ${privacySettings}))`;
+
+const pendingPhotoExists = () => new ProblemException(409, 'pending_photo_exists');
+const noPendingPhoto = () => new ProblemException(404, 'no_pending_photo');
 
 /** A foto pertence a um aluno ou a um funcionário (funcionarios, door 2). */
 export type PhotoOwner = 'student' | 'staff';
@@ -69,6 +80,9 @@ const OWNERS: Record<PhotoOwner, OwnerSpec> = {
 
 type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 
+/** `create` recusa quem tem corrente, `replace` a troca, `pending` espera a recepção sem tocar a corrente. */
+type StoreMode = 'create' | 'replace' | 'pending';
+
 /**
  * Envio, troca, remoção e leitura da foto do aluno e do funcionário: as variantes vão ao bucket, a
  * linha e a trilha de auditoria entram juntas na mesma transação, e a URL é assinada pela aplicação
@@ -110,12 +124,57 @@ export class PhotosService {
 
   /** O envio da primeira foto: com foto corrente, `409`. */
   create(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
-    return this.store(target, file, actor, false);
+    return this.store(target, file, actor, 'create');
   }
 
   /** A troca (foto-captura, door 2): guarda a corrente com prazo e põe a nova; sem corrente, cria a primeira. */
   replace(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
-    return this.store(target, file, actor, true);
+    return this.store(target, file, actor, 'replace');
+  }
+
+  /** A foto enviada pelo aluno (portal-aluno, door 3): com outra pendente, `409`. */
+  submit(target: PhotoTarget, file: Buffer, actor: AuditActor): Promise<PhotoCreated> {
+    return this.store(target, file, actor, 'pending');
+  }
+
+  /**
+   * Aprova a pendente (AC 47): a corrente ganha o prazo da troca, e a pendente vira a corrente. A trava do
+   * dono serializa aprovar, recusar e trocar: quem chega depois não acha pendente e responde `404`.
+   */
+  async approvePending(target: PhotoTarget, actor: AuditActor): Promise<PhotoCreated> {
+    return this.db.transaction(async (tx) => {
+      if (!(await this.lockOwner(tx, target))) throw new NotFoundException();
+      const [pending] = await tx
+        .select({ id: photos.id })
+        .from(photos)
+        .where(and(eq(photos.studentId, target.id), eq(photos.pending, true)));
+      if (!pending) throw noPendingPhoto();
+      await tx
+        .update(photos)
+        .set({ isCurrent: false, expiresAt: retentionDeadline() })
+        .where(and(eq(photos.studentId, target.id), eq(photos.isCurrent, true)));
+      const [row] = await tx
+        .update(photos)
+        .set({ pending: false, isCurrent: true, expiresAt: null })
+        .where(eq(photos.id, pending.id))
+        .returning();
+      await audit.record(tx, { actor, action: 'student.photo_approved', entity: 'student', entityId: target.id });
+      return { id: row!.id, version: row!.version, createdAt: row!.createdAt.toISOString() };
+    });
+  }
+
+  /** Recusa a pendente (AC 48): o prazo vence agora, e o `PhotoPurge` leva objetos e linha no ciclo seguinte. */
+  async rejectPending(target: PhotoTarget, actor: AuditActor): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      if (!(await this.lockOwner(tx, target))) throw new NotFoundException();
+      const rejected = await tx
+        .update(photos)
+        .set({ pending: false, expiresAt: sql`now()` })
+        .where(and(eq(photos.studentId, target.id), eq(photos.pending, true)))
+        .returning({ id: photos.id });
+      if (rejected.length === 0) throw noPendingPhoto();
+      await audit.record(tx, { actor, action: 'student.photo_rejected', entity: 'student', entityId: target.id });
+    });
   }
 
   /**
@@ -133,12 +192,13 @@ export class PhotosService {
   /**
    * Grava as três variantes, depois a linha e a auditoria numa transação. O que não entrou no banco
    * não fica no bucket: a trava do dono decide a corrida entre dois envios, e quem perde remove os
-   * objetos que gravou. Com `replacing`, a foto corrente deixa de sê-lo e ganha o prazo do relógio do
-   * banco (door 1) em vez de recusar o envio.
+   * objetos que gravou. Com `replace`, a foto corrente deixa de sê-lo e ganha o prazo do relógio do
+   * banco (door 1) em vez de recusar o envio. A pendente não mexe na corrente, e entra na contagem de versões.
    */
-  private async store(target: PhotoTarget, file: Buffer, actor: AuditActor, replacing: boolean): Promise<PhotoCreated> {
+  private async store(target: PhotoTarget, file: Buffer, actor: AuditActor, mode: StoreMode): Promise<PhotoCreated> {
     if (!detectFormat(file)) throw new ProblemException(415, 'unsupported_media_type');
-    if (!replacing) await this.assertNoCurrent(target);
+    if (mode === 'create') await this.assertNoCurrent(target);
+    if (mode === 'pending' && (await this.pendingOf(target.id))) throw pendingPhotoExists();
     const variants = await makeVariants(file);
     const owner = OWNERS[target.owner];
 
@@ -160,24 +220,29 @@ export class PhotosService {
       return await this.db.transaction(async (tx) => {
         // quem perde para a anonimização responde `404`, e o `catch` remove os objetos gravados
         if (!(await this.lockOwner(tx, target))) throw new NotFoundException();
-        const previous = replacing
-          ? await tx
-              .update(photos)
-              // os dias lidos da configuração na hora da troca; o que já foi guardado mantém o prazo (privacidade, door 4)
-              .set({
-                isCurrent: false,
-                expiresAt: sql`now() + make_interval(days => (select ${privacySettings.photoVersionRetentionDays} from ${privacySettings}))`,
-              })
-              .where(and(eq(owner.column, target.id), eq(photos.isCurrent, true)))
-              .returning({ id: photos.id })
-          : [];
+        const previous =
+          mode === 'replace'
+            ? await tx
+                .update(photos)
+                // o que já foi guardado mantém o prazo (privacidade, door 4)
+                .set({ isCurrent: false, expiresAt: retentionDeadline() })
+                .where(and(eq(owner.column, target.id), eq(photos.isCurrent, true)))
+                .returning({ id: photos.id })
+            : [];
         const [last] = await tx
           .select({ version: sql<number>`coalesce(max(${photos.version}), 0)` })
           .from(photos)
           .where(eq(owner.column, target.id));
         const [row] = await tx
           .insert(photos)
-          .values({ id: photoId, ...owner.ownerOf(target.id), version: Number(last!.version) + 1, isCurrent: true })
+          .values({
+            id: photoId,
+            ...owner.ownerOf(target.id),
+            version: Number(last!.version) + 1,
+            ...(mode === 'pending'
+              ? { pending: true, isCurrent: false, expiresAt: sql`now() + make_interval(days => ${PENDING_DAYS})` }
+              : { isCurrent: true }),
+          })
           .returning();
         await audit.record(tx, {
           actor,
@@ -189,8 +254,8 @@ export class PhotosService {
       });
     } catch (error) {
       await this.removeObjects(photoId, keys);
-      // só o `POST` chega aqui com corrente: outro envio entrou entre a checagem e a trava
-      if (isUniqueViolation(error)) throw new ProblemException(409, 'photo_exists');
+      // outro envio entrou entre a checagem e a trava
+      if (isUniqueViolation(error)) throw mode === 'pending' ? pendingPhotoExists() : new ProblemException(409, 'photo_exists');
       throw error;
     }
   }
@@ -266,13 +331,30 @@ export class PhotosService {
     return outcome;
   }
 
-  /** A foto enviada pelo aluno que espera a recepção (AD-121), ou `null`. */
+  /** A foto enviada pelo aluno que espera a recepção (AD-121), com a URL assinada, ou `null`. */
   async pendingOf(studentId: string): Promise<PendingPhoto | null> {
     const [row] = await this.db
       .select({ id: photos.id, version: photos.version, createdAt: photos.createdAt })
       .from(photos)
       .where(and(eq(photos.studentId, studentId), eq(photos.pending, true)));
-    return row ? { id: row.id, version: row.version, createdAt: row.createdAt.toISOString() } : null;
+    if (!row) return null;
+    return {
+      id: row.id,
+      version: row.version,
+      createdAt: row.createdAt.toISOString(),
+      url: this.signer.issue(row.id, 'medium').url,
+    };
+  }
+
+  /** As URLs da corrente e da pendente do aluno, na variante dada; `undefined` se ele não tem nenhuma das duas. */
+  async ownUrls(studentId: string, variant: PhotoVariant): Promise<MyPhotoResponse | undefined> {
+    const currentId = await this.currentId('student', studentId);
+    const pending = await this.pendingOf(studentId);
+    if (!currentId && !pending) return undefined;
+    return {
+      currentUrl: currentId ? this.signer.issue(currentId, variant).url : null,
+      pendingUrl: pending ? this.signer.issue(pending.id, variant).url : null,
+    };
   }
 
   /** O `photoId` da foto corrente do dono, ou `undefined`. */

@@ -1,15 +1,19 @@
 import { saoPauloToday } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import type { Client } from './support/client.ts';
+import { captureMail } from './support/mail.ts';
 import { jpegBytes } from './support/photos.ts';
 import { createPlan, enroll, planBody } from './support/plans.ts';
+import { portalSession } from './support/portal.ts';
 import { type Stack, startStack } from './support/stack.ts';
 import { createStaff, sendStaffPhoto, staffBody, staffPhotoPath } from './support/staff.ts';
 import { createStudent, studentBody } from './support/students.ts';
 
 let stack: Stack;
+const mail = captureMail();
 
 beforeAll(async () => {
-  stack = await startStack();
+  stack = await startStack([], undefined, { mail: mail.transport });
 }, 180_000);
 
 afterAll(() => stack?.close());
@@ -115,6 +119,41 @@ test('hostile_input_never_answers_5xx', async () => {
   expect(results.length).toBeGreaterThan(100);
   expect(results.filter((line) => line.startsWith('5'))).toEqual([]);
 }, 120_000);
+
+test('portal_hostile_bodies', async () => {
+  const student = await portalSession(stack, mail);
+  const json = { 'Content-Type': 'application/json' };
+  const routes: Array<[method: string, path: string, client: Client, valid: Record<string, unknown>]> = [
+    ['POST', '/api/portal/first-access', stack.client(), { cpf: '529.982.247-25', email: 'hostil@example.com' }],
+    ['POST', '/api/password-tokens/consume', stack.client(), { token: 'x'.repeat(43), password: 'senha-do-portal-123' }],
+    ['POST', '/api/password-reset', stack.client(), { email: 'hostil@example.com' }],
+    ['PATCH', '/api/me/profile', student.client, { address: 'Rua Nova, 1' }],
+  ];
+
+  for (const [method, path, client, valid] of routes) {
+    const notJson = await client.request(method, path, { body: '{"cpf": "1",', headers: json });
+    expect(notJson.status, path).toBe(400);
+    expect(((await notJson.json()) as { code: string }).code, path).toBe('bad_request');
+
+    const huge = await client.request(method, path, { body: JSON.stringify({ ...valid, padding: 'x'.repeat(1024 * 1024) }), headers: json });
+    expect(huge.status, path).toBe(413);
+    await huge.text();
+  }
+
+  const address = await student.client.request('PATCH', '/api/me/profile', {
+    body: JSON.stringify({ address: 'Rua \ud800 Nova' }),
+    headers: json,
+  });
+  expect(address.status).toBe(422);
+  expect(((await address.json()) as { errors: Array<{ path: string }> }).errors.map((error) => error.path)).toEqual(['address']);
+
+  const password = await stack.client().request('POST', '/api/password-tokens/consume', {
+    body: JSON.stringify({ token: 'x'.repeat(43), password: 'senha-\ud800-do-portal' }),
+    headers: json,
+  });
+  expect(password.status).toBe(422);
+  expect(((await password.json()) as { errors: Array<{ path: string }> }).errors.map((error) => error.path)).toEqual(['password']);
+});
 
 test('lead_create_hostile_bodies', async () => {
   const anonymous = stack.client();

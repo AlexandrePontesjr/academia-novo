@@ -23,6 +23,15 @@ import { Input, Output, QueryInput, ValidatedQuery } from '../validation.ts';
 import { StudentsService } from './students.service.ts';
 import { seesHealthNotes, viewListItem, viewStudent } from './students.view.ts';
 
+/** A recusa do par do contato de emergência, que depende do que já está gravado. */
+export const incompleteContact = (missing: 'emergencyContactName' | 'emergencyContactPhone') =>
+  validationProblem([
+    {
+      path: missing,
+      message: missing === 'emergencyContactName' ? 'Informe o nome do contato de emergência.' : 'Informe o telefone do contato de emergência.',
+    },
+  ]);
+
 /** Cadastro de alunos: `admin` e `reception` escrevem; os quatro perfis leem, cada um com os seus campos (door 4). */
 @Controller('api/students')
 export class StudentsController {
@@ -85,24 +94,14 @@ export class StudentsController {
   ): Promise<Student> {
     const change = await this.students.update(id, body, actor);
     if (change.outcome === 'not_found') throw new NotFoundException();
-    if (change.outcome === 'cpf_taken') throw new ProblemException(409, 'cpf_taken');
+    if (change.outcome === 'cpf_taken' || change.outcome === 'email_in_use') throw new ProblemException(409, change.outcome);
     if (change.outcome === 'guardian_required') {
       throw validationProblem([{ path: 'guardian', message: 'Informe o responsável legal do aluno menor de 18 anos.' }]);
     }
     if (change.outcome === 'guardian_cpf_is_students') {
       throw validationProblem([{ path: 'guardian.cpf', message: 'O CPF do responsável deve ser diferente do CPF do aluno.' }]);
     }
-    if (change.outcome === 'incomplete_contact') {
-      throw validationProblem([
-        {
-          path: change.missing,
-          message:
-            change.missing === 'emergencyContactName'
-              ? 'Informe o nome do contato de emergência.'
-              : 'Informe o telefone do contato de emergência.',
-        },
-      ]);
-    }
+    if (change.outcome === 'incomplete_contact') throw incompleteContact(change.missing);
     return change.student;
   }
 

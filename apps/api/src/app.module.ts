@@ -30,6 +30,7 @@ import { PhotosController } from './photos/photos.controller.ts';
 import { PhotosService } from './photos/photos.service.ts';
 import { PlansController } from './plans/plans.controller.ts';
 import { PlansService } from './plans/plans.service.ts';
+import { MeController } from './portal/me.controller.ts';
 import { PasswordResetController, PasswordTokensController, PortalController } from './portal/portal.controller.ts';
 import { PortalService } from './portal/portal.service.ts';
 import { PrivacyRetention } from './privacy/privacy-retention.ts';
@@ -85,6 +86,7 @@ export class AppModule implements OnApplicationShutdown {
         PortalController,
         PasswordTokensController,
         PasswordResetController,
+        MeController,
         OpenApiController,
       ],
       providers: [

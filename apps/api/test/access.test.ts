@@ -1,8 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import type { Role } from '@academia/contracts';
+import { type Role, STAFF_ROLES } from '@academia/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { Authenticated, Public, Roles } from '../src/access.ts';
+import { accessOf, Authenticated, Public, Roles } from '../src/access.ts';
 import type { Client } from './support/client.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 
@@ -139,6 +140,35 @@ test('non_admin_403_on_audit_logs', async () => {
 
     expect(response.status, role).toBe(403);
     expect((await problem(response)).code, role).toBe('forbidden');
+  }
+});
+
+test('portal_routes_declare_public_student_or_photo_review_roles', async () => {
+  const declared = (route: string) => {
+    const found = stack.api.declaredRoutes().find(({ method, path }) => `${method} ${path}` === route);
+    expect(found, route).toBeDefined();
+    return accessOf(found!.controller, found!.handler);
+  };
+
+  for (const route of ['POST /api/portal/first-access', 'POST /api/password-tokens/consume', 'POST /api/password-reset']) {
+    expect(declared(route), route).toEqual([{ kind: 'public' }]);
+  }
+  for (const route of ['GET /api/me/profile', 'PATCH /api/me/profile', 'GET /api/me/payments', 'GET /api/me/photo', 'POST /api/me/photo']) {
+    expect(declared(route), route).toEqual([{ kind: 'roles', roles: ['student'] }]);
+  }
+  for (const route of ['POST /api/students/:id/photo/pending/approve', 'POST /api/students/:id/photo/pending/reject']) {
+    expect(declared(route), route).toEqual([{ kind: 'roles', roles: ['admin', 'reception'] }]);
+  }
+
+  // os `ALL` locais viraram `STAFF_ROLES`: a leitura da ficha e a da URL da foto declaram os quatro, nessa ordem
+  expect(STAFF_ROLES).toEqual(['admin', 'reception', 'hr_finance', 'instructor']);
+  for (const route of ['GET /api/students', 'GET /api/students/:id', 'GET /api/students/:id/photo']) {
+    expect(declared(route), route).toEqual([{ kind: 'roles', roles: [...STAFF_ROLES] }]);
+  }
+  for (const file of ['students/students.controller.ts', 'photos/photos.controller.ts']) {
+    const source = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+    expect(source, file).toContain('@Roles(...STAFF_ROLES)');
+    expect(source, file).not.toMatch(/const ALL\b/);
   }
 });
 

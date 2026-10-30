@@ -62,6 +62,25 @@ export class PhotosController {
     return url;
   }
 
+  /** A foto enviada pelo aluno, revista pela recepção (portal-aluno, door 3). */
+  @Post('students/:id/photo/pending/approve')
+  @Roles('admin', 'reception')
+  @Output(200, photoCreatedSchema)
+  async approvePending(@Param('id') id: string, @Actor() actor: AuditActor): Promise<PhotoCreated> {
+    const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    return this.photos.approvePending(target, actor);
+  }
+
+  @Post('students/:id/photo/pending/reject')
+  @Roles('admin', 'reception')
+  @Output(204)
+  async rejectPending(@Param('id') id: string, @Actor() actor: AuditActor): Promise<void> {
+    const target = await this.photos.findStudent(id);
+    if (!target) throw new NotFoundException();
+    await this.photos.rejectPending(target, actor);
+  }
+
   @Delete('students/:id/photo')
   @Roles('admin', 'reception')
   @Output(204)

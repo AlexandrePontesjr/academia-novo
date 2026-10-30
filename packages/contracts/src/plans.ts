@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { noLoneSurrogate } from './auth.ts';
 import { isRealDay, noNul, saoPauloToday, today } from './person.ts';
 
 /** As quatro periodicidades (planos-matriculas, door 1), fixadas no cadastro do plano. */
@@ -17,7 +18,6 @@ export type PlanStatus = z.infer<typeof planStatusSchema>;
 export const PRICE_CENTS_MAX = 9_999_999;
 
 // um substituto UTF-16 solto não é texto: o `jsonb` da trilha, que guarda o nome do plano (door 6), o recusa
-const noLoneSurrogate = (value: string) => !/\p{Cs}/u.test(value);
 
 const planNameSchema = z
   .string('Informe o nome.')

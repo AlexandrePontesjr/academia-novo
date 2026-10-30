@@ -42,7 +42,7 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 
 **Corte de acesso**
 
-1. `StudentsService.inactivate` e `update` (exist) - na mesma transação que deixa a ficha `inactive`, desativa o usuário vinculado e apaga as sessões dele; `suspended` não mexe no usuário
+1. `StudentsService.inactivate` (exists) - na mesma transação que deixa a ficha `inactive`, desativa o usuário vinculado e apaga as sessões dele; o `PATCH` continua sem chegar a `inactive` (`## Intent` de `checks.md`), e `suspended` não mexe no usuário
 2. `PrivacyService.anonymizeStudent` (exists) - na mesma transação, limpa o usuário vinculado (door 5)
 
 ## Impact
@@ -58,7 +58,7 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 | contrato | `AUDIT_ACTIONS` passa de 47 para 52 (door 7). `ACTION_LABELS` de `apps/web/src/lib/audit.ts` obriga o rótulo; `apps/web/e2e/audit.spec.ts` fixa a contagem e passa a 52 |
 | contrato | códigos de erro novos: `404` `no_pending_photo`, `409` `pending_photo_exists`, `409` `email_in_use`; o `429` reusa `too_many_attempts` |
 | comportamento existente | `PATCH /api/students/:id` com e-mail diferente, quando o aluno tem usuário, passa a trocar também `users.email` na mesma transação (a equipe continua sendo a única que muda o e-mail) |
-| comportamento existente | inativar a ficha (`DELETE` e `PATCH` de `/api/students/:id`) passa a desligar o login vinculado; reativar não o religa; suspender não mexe nele |
+| comportamento existente | inativar a ficha (`DELETE /api/students/:id`, a única via até `inactive`) passa a desligar o login vinculado; reativar não o religa; suspender não mexe nele |
 | comportamento existente | `PhotosService.store` e as listagens de versão passam a ignorar a linha pendente; `currentId`/`urlFor` (check-in, lista, ficha) não mudam, porque a pendente nunca é `is_current` |
 | comportamento existente | a anonimização de aluno passa a mexer em `users`, `accounts`, `sessions`, `two_factors` e `password_tokens` (door 5); a de funcionário não muda (segue recusando `user_linked`) |
 | web | `proxy.ts` ganha os ramos públicos `/primeiro-acesso`, `/definir-senha` e `/esqueci-senha` e o desvio por perfil (door 6); `/login` com sessão de `student` vai a `/minha-conta`, não a `/dashboard`, e ganha os links "Primeiro acesso" e "Esqueci minha senha" |
