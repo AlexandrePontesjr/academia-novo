@@ -1,5 +1,6 @@
 import type { Problem } from '@academia/contracts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { attemptLead, attemptPortal, LEAD_LIMITS, PORTAL_LIMITS } from '../src/leads/lead-throttle.ts';
 import { nextIp } from './support/leads.ts';
 import { type CapturedMail, captureMail } from './support/mail.ts';
 import { firstAccessBody, insertAdultStudent, insertStudentUser, nextPortalEmail, postFirstAccess, postReset } from './support/portal.ts';
@@ -25,6 +26,59 @@ const tokenCount = async () => (await stack.query<{ n: number }>('select count(*
 let cpfs = 0;
 /** Um CPF válido de aluno nenhum: o pedido conta e responde `202` sem gravar. */
 const strangerCpf = () => maskCpf(cpfOf(97_000 + ++cpfs));
+
+test('throttle_module_four_keys_bounds_and_window_edges', async () => {
+  const { db } = stack.database;
+  expect(PORTAL_LIMITS).toEqual({ 'access-ip': 10, 'access-cpf': 3, 'reset-ip': 10, 'reset-email': 3 });
+  const portal = [
+    ['access-ip', 10],
+    ['access-cpf', 3],
+    ['reset-ip', 10],
+    ['reset-email', 3],
+  ] as const;
+  let keys = 0;
+  const nextValue = () => `modulo-${++keys}`;
+
+  // os dois lados do limite, nas quatro chaves
+  for (const [kind, max] of portal) {
+    const value = nextValue();
+    for (let index = 1; index <= max; index += 1) {
+      expect(await attemptPortal(db, kind, value), `${kind} ${index}`).toEqual({ allowed: true });
+    }
+    // o primeiro acabou de entrar: falta a hora inteira, arredondada para cima
+    expect(await attemptPortal(db, kind, value), `${kind} ${max + 1}`).toEqual({ allowed: false, retryAfter: 3600 });
+  }
+
+  // a janela nas duas bordas: o mais antigo a 59:59 ainda conta, a 60:01 já não
+  for (const [kind, max] of portal) {
+    for (const [age, expected] of [
+      ['59 minutes 59 seconds', { allowed: false, retryAfter: 1 }],
+      ['59 minutes', { allowed: false, retryAfter: 60 }],
+      ['60 minutes 1 second', { allowed: true }],
+    ] as const) {
+      const value = nextValue();
+      await stack.query(
+        `insert into lead_throttles (key, hits)
+         values ($1, array[now() - $2::interval] || array(select now() - interval '1 minute' from generate_series(2, $3)))`,
+        [`${kind}:${value}`, age, max],
+      );
+      expect(await attemptPortal(db, kind, value), `${kind} ${age}`).toEqual(expected);
+    }
+  }
+
+  // as chaves da `pre-cadastro` seguem com os limites de antes, na mesma tabela
+  expect(LEAD_LIMITS).toEqual({ ip: 5, email: 3 });
+  for (const [kind, max] of [
+    ['ip', 5],
+    ['email', 3],
+  ] as const) {
+    const value = nextValue();
+    for (let index = 1; index <= max; index += 1) {
+      expect(await attemptLead(db, kind, value), `${kind} ${index}`).toEqual({ allowed: true });
+    }
+    expect(await attemptLead(db, kind, value), `${kind} ${max + 1}`).toEqual({ allowed: false, retryAfter: 3600 });
+  }
+});
 
 test('first_access_fourth_cpf_and_eleventh_ip_429_and_window_edge', async () => {
   // o mesmo CPF de três IPs, e o quarto pedido de um quarto IP

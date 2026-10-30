@@ -1,5 +1,7 @@
 import type { Problem } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import { MailService } from '../src/mail/mail.service.ts';
+import { PortalService, portalState } from '../src/portal/portal.service.ts';
 import { WEB_ORIGIN } from './support/app.ts';
 import { auditRows, withAuditInsertFailing, written } from './support/audit.ts';
 import { nextIp, sha256 } from './support/leads.ts';
@@ -198,6 +200,93 @@ async function nineIneligible() {
   cases.push(['sem e-mail na ficha', firstAccessBody(noEmail, { email: 'sem-ficha@example.com' })]);
   return cases;
 }
+
+test('eligibility_decision_table_thirteen_rows', async () => {
+  const service = new PortalService(stack.database.db, new MailService(mail.transport), WEB_ORIGIN);
+  const [{ today }] = (await stack.query<{ today: string }>(
+    `select to_char((now() at time zone 'America/Sao_Paulo')::date - interval '18 years', 'YYYY-MM-DD') as today`,
+  )) as [{ today: string }];
+  const tomorrow = await turnsEighteenTomorrow();
+  const reception = await stack.seed({ role: 'reception' });
+  const anonymize = async (id: string) =>
+    stack.query(
+      `update students set name = 'Titular anonimizado', status = 'inactive', inactivated_at = now(), anonymized_at = now(),
+         cpf = null, birth_date = null, sex = null, email = null, phone = null, address = null,
+         emergency_contact_name = null, emergency_contact_phone = null, health_notes_enc = null where id = $1`,
+      [id],
+    );
+
+  type Effect = 'created' | 'reused' | 'nothing';
+  type Row = { situation: string; effect: Effect; cpf: string; email: string; studentId: string; userId?: string };
+  const row = (situation: string, effect: Effect, student: { id: string; cpf: string; email: string | null }, userId?: string, email?: string): Row => ({
+    situation,
+    effect,
+    cpf: student.cpf,
+    email: email ?? student.email!,
+    studentId: student.id,
+    userId,
+  });
+
+  const guarded = await insertAdultStudent(stack);
+  await stack.query(`insert into guardians (student_id, name, cpf, phone, relationship) values ($1, 'Bia Souza', $2, '11912345678', 'mother')`, [
+    guarded.id,
+    cpfOf(99_101),
+  ]);
+  const anonymized = await insertAdultStudent(stack);
+  const anonymizedRow = row('anonimizado', 'nothing', anonymized);
+  await anonymize(anonymized.id);
+  const pendingUser = await insertStudentUser(stack, { active: false, withPassword: false });
+  const disabledUser = await insertStudentUser(stack, { active: false });
+  const activeUser = await insertStudentUser(stack);
+  const noEmail = await insertAdultStudent(stack, { email: null });
+
+  const rows: Row[] = [
+    row('ativo adulto sem usuário', 'created', await insertAdultStudent(stack)),
+    row('suspenso adulto sem usuário', 'created', await insertAdultStudent(stack, { status: 'suspended' })),
+    row('18 anos completos hoje', 'created', await insertAdultStudent(stack, { birth_date: today })),
+    row('18 anos completos amanhã', 'nothing', await insertAdultStudent(stack, { birth_date: tomorrow })),
+    row('com responsável', 'nothing', guarded),
+    row('inativo', 'nothing', await insertAdultStudent(stack, { status: 'inactive' })),
+    anonymizedRow,
+    row('e-mail diferente', 'nothing', await insertAdultStudent(stack), undefined, 'diferente@example.com'),
+    row('e-mail de outro usuário', 'nothing', await insertAdultStudent(stack, { email: reception.email })),
+    row('usuário pendente sem senha', 'reused', pendingUser.student, pendingUser.id),
+    row('usuário inativo com senha', 'reused', disabledUser.student, disabledUser.id),
+    row('usuário ativo com senha', 'nothing', activeUser.student, activeUser.id),
+    row('ficha sem e-mail', 'nothing', noEmail, undefined, 'sem-ficha@example.com'),
+  ];
+  expect(rows).toHaveLength(13);
+
+  for (const { situation, effect, cpf, email, studentId, userId } of rows) {
+    const before = await portalRecorded(stack);
+
+    await service.requestFirstAccess({ cpf, email }, { userId: null, ip: nextIp(), userAgent: null });
+
+    const users = await usersOf(studentId);
+    if (effect === 'nothing') {
+      expect(await portalRecorded(stack), situation).toEqual(before);
+      continue;
+    }
+    expect(users, situation).toHaveLength(1);
+    if (effect === 'reused') expect(users[0]!.id, situation).toBe(userId);
+    else expect(userId, situation).toBeUndefined();
+    const open = (await tokenRows(stack, users[0]!.id)).filter((token) => token.used_at === null);
+    expect(open.map((token) => token.purpose), situation).toEqual(['first_access']);
+  }
+});
+
+test('portal_state_table_six_rows', () => {
+  const rows: Array<[situation: string, user: { active: boolean; hasPassword: boolean } | null, state: string]> = [
+    ['sem usuário', null, 'none'],
+    ['usuário sem senha', { active: false, hasPassword: false }, 'pending'],
+    ['ativo com senha', { active: true, hasPassword: true }, 'active'],
+    ['inativo com senha', { active: false, hasPassword: true }, 'disabled'],
+    ['inativo sem senha', { active: false, hasPassword: false }, 'pending'],
+    ['ativo sem senha', { active: true, hasPassword: false }, 'pending'],
+  ];
+  expect(rows).toHaveLength(6);
+  for (const [situation, user, state] of rows) expect(portalState(user), situation).toBe(state);
+});
 
 test('nine_ineligible_cases_202_and_nothing_recorded', async () => {
   const cases = await nineIneligible();
