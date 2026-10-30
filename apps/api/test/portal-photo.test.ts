@@ -1,4 +1,4 @@
-import type { PendingPhoto, PhotoCreated, StudentDetail } from '@academia/contracts';
+import type { MyProfile, PendingPhoto, PhotoCreated, StudentDetail } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest';
 import { auditRows, written } from './support/audit.ts';
 import { readStatus } from './support/check-ins.ts';
@@ -178,6 +178,8 @@ test('pending_never_served_and_staff_replace_leaves_it_alone', async () => {
   const ficha = (await (await reception.get(`/api/students/${student.id}`)).json()) as StudentDetail;
   signs(ficha.photoUrl, currentId);
   expect(ficha.pendingPhoto?.id).toBe(pending.id);
+  // a ficha mostra a imagem da pendente: a URL assinada vem da API, na variante `medium`
+  expect(ficha.pendingPhoto?.url).toContain(`/api/photo-files/${pending.id}/medium?`);
 
   signs((await readStatus(reception, student.id)).photoUrl, currentId);
 
@@ -284,6 +286,10 @@ test('me_photo_get_signs_current_and_pending_or_404', async () => {
   expect(only.pendingUrl).toBeNull();
 
   const pending = (await (await postMyPhoto(client, await jpegBytes())).json()) as PendingPhoto;
+  // o perfil leva a mesma pendente, com a URL que `/minha-conta` mostra
+  const profile = (await (await client.get('/api/me/profile')).json()) as MyProfile;
+  expect(profile.pendingPhoto).toMatchObject({ id: pending.id, version: 2 });
+  expect(profile.pendingPhoto?.url).toContain(`/api/photo-files/${pending.id}/medium?`);
   const medium = await client.get('/api/me/photo');
   expect(medium.status).toBe(200);
   const both = (await medium.json()) as { currentUrl: string; pendingUrl: string };
@@ -293,6 +299,10 @@ test('me_photo_get_signs_current_and_pending_or_404', async () => {
   const thumbs = (await (await client.get('/api/me/photo?variant=thumb')).json()) as { currentUrl: string; pendingUrl: string };
   expect(thumbs.currentUrl).toContain(`/api/photo-files/${currentId}/thumb?`);
   expect(thumbs.pendingUrl).toContain(`/api/photo-files/${pending.id}/thumb?`);
+
+  const invalid = await client.get('/api/me/photo?variant=gigante');
+  expect(invalid.status).toBe(422);
+  expect((await problem(invalid)).errors?.map((error) => error.path)).toEqual(['variant']);
 });
 
 test('concurrent_approve_and_reject_one_wins', async () => {

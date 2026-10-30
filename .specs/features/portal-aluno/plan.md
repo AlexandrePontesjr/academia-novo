@@ -91,6 +91,8 @@ One-way constraints: `users.student_id` único e presente se e somente se `role 
 | `POST /api/students/:id/photo/pending/approve` | - | foto corrente | `200`, `401`, `403`, `404` |
 | `POST /api/students/:id/photo/pending/reject` | - | - | `204`, `401`, `403`, `404` |
 
+Acrescentado no Build, sem mudar as linhas acima: `POST /api/me/photo` também responde `415`, como o envio da equipe, e `GET /api/me/photo` também responde `422` com `variant` inválido.
+
 ## Landing
 
 | One-way door | Literal shape | Alternative rejected |

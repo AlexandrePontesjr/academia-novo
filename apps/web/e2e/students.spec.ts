@@ -813,7 +813,9 @@ test('new_student_without_lead_does_not_read_leads', async ({ page, api }) => {
 });
 
 test('pending_photo_approve_and_reject_with_confirmation', async ({ page, api }) => {
-  const student = studentOf();
+  const currentPhoto = '/api/photo-files/018f0000-0000-7000-8000-000000000997/medium';
+  const student = studentOf({ photoUrl: `${currentPhoto}?exp=2000000000&sig=assinatura` });
+  servePhotoFile(api, currentPhoto);
   const pendingPhoto = {
     id: '018f0000-0000-7000-8000-000000000998',
     version: 2,
@@ -832,6 +834,13 @@ test('pending_photo_approve_and_reject_with_confirmation', async ({ page, api })
     await page.goto(`/students/${student.id}`);
     const photo = page.getByRole('img', { name: `Foto enviada por ${student.name}` });
     await expect(photo).toHaveAttribute('src', pendingPhoto.url);
+
+    // ao lado da corrente: mesma faixa de altura, à direita dela
+    const current = await page.getByRole('img', { name: `Foto de ${student.name}` }).boundingBox();
+    const beside = await photo.boundingBox();
+    expect(beside!.x).toBeGreaterThanOrEqual(current!.x + current!.width);
+    expect(beside!.y).toBeLessThan(current!.y + current!.height);
+    expect(current!.y).toBeLessThan(beside!.y + beside!.height);
 
     // "Recusar" pergunta antes, e "Voltar" não envia nada
     await page.getByRole('button', { name: 'Recusar', exact: true }).click();

@@ -71,6 +71,17 @@ test('admin_without_2fa_gets_403_everywhere_else', async () => {
     expect(text, route).not.toContain('two_factor_enrollment_required');
   }
 
+  // as três públicas do portal também: nenhuma pede o cadastro do 2FA
+  const portalPublic = PUBLIC.filter((route) => /first-access|password-tokens|password-reset/.test(route));
+  expect(portalPublic).toHaveLength(3);
+  for (const route of portalPublic) {
+    const [method, path] = route.split(' ') as [string, string];
+    const response = await client.request(method, path, { body: {} });
+    const text = await response.text();
+    expect(response.status, route).toBe(422);
+    expect(text, route).not.toContain('two_factor_enrollment_required');
+  }
+
   expect(blocked.map(({ method, path }) => `${method} ${path}`).sort()).toEqual(
     [
       'PUT /api/auth/password',

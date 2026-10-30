@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { withAuditInsertFailing } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import { type CapturedMail, captureMail } from './support/mail.ts';
-import { firstAccessBody, passwordLink, portalSession, postConsume, postFirstAccess } from './support/portal.ts';
+import { firstAccessBody, passwordLink, portalSession, postConsume, postFirstAccess, postReset } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { fieldErrorPaths, studentRowText } from './support/students.ts';
 
@@ -108,6 +108,21 @@ test('disabled_student_login_401_like_inactive_staff', async () => {
   expect(await withoutRequestId(response)).toEqual(await withoutRequestId(inactive));
   expect(response.headers.getSetCookie()).toEqual([]);
   expect(await sessionsOf(user.id)).toEqual([]);
+});
+
+test('reactivation_does_not_revive_links_issued_before_inactivation', async () => {
+  const { student, user } = await portalSession(stack, mail);
+  mail.clear();
+  expect((await postReset(stack.client(), { email: user.email })).status).toBe(202);
+  const { token } = passwordLink(mail.sent[0]!);
+  expect((await reception.request('DELETE', `/api/students/${student.id}`)).status).toBe(204);
+  expect((await reception.patch(`/api/students/${student.id}`, { status: 'active' })).status).toBe(200);
+
+  const response = await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-2' });
+
+  expect(response.status).toBe(422);
+  expect(await fieldErrorPaths(response)).toEqual(['token']);
+  expect(await userActive(user.id)).toBe(false);
 });
 
 test('reactivation_keeps_user_disabled_until_new_first_access', async () => {

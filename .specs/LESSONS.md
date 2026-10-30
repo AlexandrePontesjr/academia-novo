@@ -258,6 +258,42 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C37 pnpm verify exit 1 (turbo EPERM in %TEMP%, testcontainers runtime not found) (repo)
 - last seen: 2026-10-23T00:37:32Z
 
+### L-042 - Assert at the HTTP boundary every response field a screen reads, not only in the fake API the screen test uses
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: F1 apps/api/src/photos/photos.service.ts:345 (api)
+- last seen: 2026-10-30T19:04:02Z
+
+### L-043 - When a claim says a guard does not apply to a set of routes, call every route of that set, including routes added by the feature
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: C79 apps/api/test/enrollment.test.ts:64 (api)
+- last seen: 2026-10-30T19:04:02Z
+
+### L-044 - Before citing a baseline in a check, confirm the screen is a key in the baseline file
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: portal-aluno
+- evidence: C86 apps/web/e2e/motion.spec.ts:920 (web)
+- last seen: 2026-10-30T19:04:02Z
+
+### L-045 - When a check says one element sits next to another, assert both elements, not only the new one
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web` · harmful: 0
+- features: portal-aluno
+- evidence: C67 apps/web/e2e/students.spec.ts:834 (web)
+- last seen: 2026-10-30T19:04:03Z
+
+### L-046 - When a check says same as an existing route, read that route's statuses before listing them
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: C59 apps/api/test/portal-photo.test.ts:168 (api)
+- last seen: 2026-10-30T19:04:03Z
+
+### L-047 - Enumerate the query parameters of each new route in the Surface and give an invalid value its status and proof
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `api` · harmful: 0
+- features: portal-aluno
+- evidence: verification.md portal-aluno round 1 (api)
+- last seen: 2026-10-30T19:04:03Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
