@@ -33,6 +33,7 @@ import { EnrollmentsBlock } from './enrollments-block.tsx';
 import { EnrollmentsLoadError } from './enrollments-load-error.tsx';
 import { PaymentsBlock } from './payments-block.tsx';
 import { PaymentsLoadError } from './payments-load-error.tsx';
+import { PendingPhotoReview } from './pending-photo-review.tsx';
 import { StatusActions } from './status-actions.tsx';
 import { PAGE_BODY } from '../../../components/page-body.ts';
 
@@ -132,13 +133,18 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
             )}
           </div>
           <div className={PAGE_BODY}>
-            <PhotoBlock
-              url={`/api/students/${student.id}/photo`}
-              conflict="Este aluno já tem foto."
-              name={student.name}
-              photoUrl={student.photoUrl}
-              canWrite={canWrite}
-            />
+            <div className="flex flex-wrap gap-6">
+              <PhotoBlock
+                url={`/api/students/${student.id}/photo`}
+                conflict="Este aluno já tem foto."
+                name={student.name}
+                photoUrl={student.photoUrl}
+                canWrite={canWrite}
+              />
+              {canWrite && student.pendingPhoto && (
+                <PendingPhotoReview studentId={student.id} name={student.name} pending={student.pendingPhoto} />
+              )}
+            </div>
             <dl className="grid gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-sm text-muted-foreground">Situação</dt>

@@ -1,6 +1,6 @@
 import type { Role, Student, StudentListItem, StudentStatus } from '@academia/contracts';
 import type { Page } from '@playwright/test';
-import { expect, type FakeApi, problem, type Recorded, sessionOf, test } from './support/fake-api.ts';
+import { expect, type FakeApi, problem, type Recorded, servePhotoFile, sessionOf, test } from './support/fake-api.ts';
 import { formHydrated } from './support/motion.ts';
 
 let counter = 0;
@@ -810,6 +810,61 @@ test('new_student_without_lead_does_not_read_leads', async ({ page, api }) => {
     await expect(page.getByLabel('Telefone', { exact: true }), role).toHaveValue('');
   }
   expect(api.requests.filter((request) => request.path.startsWith('/api/leads'))).toEqual([]);
+});
+
+test('pending_photo_approve_and_reject_with_confirmation', async ({ page, api }) => {
+  const student = studentOf();
+  const pendingPhoto = {
+    id: '018f0000-0000-7000-8000-000000000998',
+    version: 2,
+    createdAt: '2026-10-30T12:00:00.000Z',
+    url: '/api/photo-files/018f0000-0000-7000-8000-000000000998/medium?exp=2000000000&sig=assinatura',
+  };
+  const path = `/api/students/${student.id}`;
+  servePhotoFile(api, '/api/photo-files/018f0000-0000-7000-8000-000000000998/medium');
+  const state = { pending: true };
+  api.on('GET', path, () => ({ status: 200, body: { ...student, portal: 'active', pendingPhoto: state.pending ? pendingPhoto : null } }));
+  const decided = (action: string) => api.requests.filter((request) => request.method === 'POST' && request.path === `${path}/photo/pending/${action}`);
+
+  for (const role of ['reception', 'admin'] as const) {
+    api.session = sessionOf(role);
+    state.pending = true;
+    await page.goto(`/students/${student.id}`);
+    const photo = page.getByRole('img', { name: `Foto enviada por ${student.name}` });
+    await expect(photo).toHaveAttribute('src', pendingPhoto.url);
+
+    // "Recusar" pergunta antes, e "Voltar" não envia nada
+    await page.getByRole('button', { name: 'Recusar', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(decided('reject')).toHaveLength(role === 'reception' ? 0 : 1);
+
+    const rejected = decided('reject').length;
+    api.on('POST', `${path}/photo/pending/reject`, () => ((state.pending = false), { status: 204 }));
+    await page.getByRole('button', { name: 'Recusar', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Recusar foto', exact: true }).click();
+    await expect(photo).toHaveCount(0);
+    expect(decided('reject')).toHaveLength(rejected + 1);
+  }
+
+  state.pending = true;
+  const approved = decided('approve').length;
+  api.on('POST', `${path}/photo/pending/approve`, () => ((state.pending = false), { status: 200, body: { id: pendingPhoto.id, version: 2, createdAt: pendingPhoto.createdAt } }));
+  await page.goto(`/students/${student.id}`);
+  await page.getByRole('button', { name: 'Aprovar', exact: true }).click();
+  await expect(page.getByRole('img', { name: `Foto enviada por ${student.name}` })).toHaveCount(0);
+  expect(decided('approve')).toHaveLength(approved + 1);
+
+  state.pending = true;
+  for (const role of ['hr_finance', 'instructor'] as const) {
+    api.session = sessionOf(role);
+    await page.goto(`/students/${student.id}`);
+    await expect(page.getByRole('heading', { name: student.name })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Aprovar', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Recusar', exact: true })).toHaveCount(0);
+  }
 });
 
 test('ficha_shows_four_portal_states_without_mail_button', async ({ page, api }) => {

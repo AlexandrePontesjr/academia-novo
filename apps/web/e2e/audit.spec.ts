@@ -594,6 +594,29 @@ test('photo_actions_labelled_and_filter_has_eighteen', async ({ page, api }) => 
 });
 
 
+test('portal_actions_labelled_and_filter_has_fifty_two', async ({ page, api }) => {
+  const studentId = '018f0000-0000-7000-8000-0000000005ab';
+  const portal = [
+    ['student.portal_access_requested', 'Primeiro acesso ao portal pedido'],
+    ['student.portal_password_set', 'Senha do portal definida'],
+    ['student.portal_reset_requested', 'Redefinição de senha do portal pedida'],
+    ['student.photo_approved', 'Foto enviada pelo aluno aprovada'],
+    ['student.photo_rejected', 'Foto enviada pelo aluno recusada'],
+  ] as const;
+  serve(api, portal.map(([action]) => logOf({ action, entity: 'student', entityId: studentId })));
+
+  await page.goto('/audit');
+
+  await expect(page.locator('tbody tr')).toHaveCount(5);
+  expect(await page.locator('tbody tr td:nth-child(3)').allTextContents()).toEqual(portal.map(([, label]) => label));
+  const options = await page.getByLabel('Ação', { exact: true }).locator('option').allTextContents();
+  expect(options.slice(1)).toHaveLength(52);
+  // as 47 de antes, na ordem e com o texto de antes, e as cinco novas no fim
+  expect(options.slice(1, 48)).toEqual(LABELS.slice(0, 47));
+  expect(options.slice(48)).toEqual(portal.map(([, label]) => label));
+  expect(AUDIT_ACTIONS.slice(47)).toEqual(portal.map(([action]) => action));
+});
+
 test('replace_and_purge_actions_labelled_and_filter_has_twenty', async ({ page, api }) => {
   const studentId = '018f0000-0000-7000-8000-0000000005ab';
   serve(api, [

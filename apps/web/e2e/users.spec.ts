@@ -1,4 +1,5 @@
 import { expect, problem, sessionOf, test, userOf } from './support/fake-api.ts';
+import { ROLE_LABELS } from '../src/lib/roles.ts';
 
 const USERS = [
   userOf(1, { name: 'Zuleica Prado', email: 'zuleica@exemplo.com', role: 'instructor' }),
@@ -41,6 +42,20 @@ test('non_admin_sees_no_permission_and_no_data', async ({ page, api }) => {
     expect(content).not.toContain(user.email);
   }
   await expect(page.getByRole('table')).toHaveCount(0);
+});
+
+test('role_select_lists_only_staff_roles', async ({ page, api }) => {
+  api.session = sessionOf('admin');
+  api.on('GET', '/api/users', { status: 200, body: { users: USERS } });
+
+  await page.goto('/users');
+  await page.getByRole('button', { name: 'Novo usuário' }).click();
+
+  const options = await page.getByRole('dialog').getByLabel('Perfil', { exact: true }).locator('option').allTextContents();
+  expect(options).toHaveLength(4);
+  expect(options.sort()).toEqual([ROLE_LABELS.admin, ROLE_LABELS.reception, ROLE_LABELS.hr_finance, ROLE_LABELS.instructor].sort());
+  expect(options).not.toContain('Aluno');
+  expect(ROLE_LABELS.student).toBe('Aluno');
 });
 
 test('three_actions_confirm_naming_the_user', async ({ page, api }) => {

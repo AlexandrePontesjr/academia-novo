@@ -165,6 +165,38 @@ test('matricula_pages_public_with_csp_and_no_prefix_leak', async ({ page }) => {
   }
 });
 
+test('portal_public_pages_with_csp_and_no_prefix_leak', async ({ page }) => {
+  const user = { id: '018f0000-0000-7000-8000-000000000001', name: 'Marina Duarte', email: 'marina@exemplo.com' };
+  const sessions: Array<[label: string, reply: object | undefined]> = [
+    ['sem sessão', undefined],
+    ['com sessão', { user: { ...user, role: 'reception', twoFactorEnabled: false }, twoFactorEnrollmentRequired: false }],
+    ['2FA pendente', { user: { ...user, role: 'admin', twoFactorEnabled: false }, twoFactorEnrollmentRequired: true }],
+  ];
+  let cases = 0;
+  for (const [label, reply] of sessions) {
+    sessionReply = reply;
+    for (const path of ['/primeiro-acesso', '/definir-senha?token=x', '/esqueci-senha']) {
+      const response = await page.goto(path);
+      cases += 1;
+      expect(response?.status(), `${label} ${path}`).toBe(200);
+      expect(new URL(page.url()).pathname, `${label} ${path}`).toBe(path.split('?')[0]);
+      // nenhum redirecionamento no caminho: a resposta é a da própria página
+      expect(response?.request().redirectedFrom(), `${label} ${path}`).toBeNull();
+      const policy = response?.headers()['content-security-policy'] ?? '';
+      expect(policy, `${label} ${path}`).toContain("'nonce-");
+      expect(policy, `${label} ${path}`).toContain("form-action 'self'");
+    }
+  }
+  expect(cases).toBe(9);
+
+  // o ramo é nomeado: o que só começa com o nome da página continua exigindo sessão
+  sessionReply = undefined;
+  for (const path of ['/primeiro-acessos', '/esqueci-senha-x']) {
+    await page.goto(path);
+    await expect(page, path).toHaveURL('/login');
+  }
+});
+
 const PORTAL_USER = { id: '018f0000-0000-7000-8000-000000000009', name: 'Ana Souza', email: 'ana@example.com' };
 const studentSession = { user: { ...PORTAL_USER, role: 'student', twoFactorEnabled: false }, twoFactorEnrollmentRequired: false };
 
