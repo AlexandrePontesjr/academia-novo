@@ -1667,6 +1667,73 @@ describe('stack de pé', () => {
     ]);
   }, 300_000);
 
+  test('student_first_access_set_password_and_minha_conta_through_real_stack', async () => {
+    const env = readDotenv(join(stack.dir, '.env'));
+    const psql = (sql: string) => {
+      const result = stack.compose(`exec -T postgres psql -U ${env.POSTGRES_USER} -d ${env.POSTGRES_DB} -tAc "${sql}"`);
+      expect(result.status, result.output).toBe(0);
+      return result.output.trim();
+    };
+    const json = { 'Content-Type': 'application/json', Origin: stack.webOrigin };
+    const email = 'aluna.da.stack@exemplo.com';
+    const name = 'Aluna da Stack';
+    const cpf = '16899535009';
+    psql(`insert into students (name, cpf, birth_date, phone, email) values ('${name}', '${cpf}', '2000-01-01', '11912345678', '${email}')`);
+
+    // o primeiro acesso pelo web real: a página e a mensagem que o formulário mostra depois do `202`
+    const page = await fetch(`${stack.webOrigin}/primeiro-acesso`);
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('Pedir acesso');
+    const scripts = [...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((match) => match[1]!);
+    const bundles = await Promise.all(scripts.map(async (src) => (await fetch(new URL(src, stack.webOrigin))).text()));
+    expect(bundles.join('')).toContain(
+      'Se o CPF e o e-mail forem de um aluno com cadastro, enviamos um link para o e-mail da ficha. Ele vale por 24 horas. Se você já tem senha, use Esqueci minha senha.',
+    );
+    const asked = await fetch(`${stack.webOrigin}/api/portal/first-access`, { method: 'POST', headers: json, body: JSON.stringify({ cpf, email }) });
+    expect(asked.status).toBe(202);
+    expect(await asked.text()).toBe('');
+
+    // sem SMTP, a api de produção escreve a frase e nunca o link
+    let logs = '';
+    const mailLine = (text: string) => text.includes('e-mail não enviado: SMTP não configurado');
+    for (let attempt = 0; attempt < 20 && !mailLine(logs); attempt += 1) {
+      logs = stack.compose('logs api').output;
+      if (!mailLine(logs)) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    expect(mailLine(logs)).toBe(true);
+    expect(logs.split(/\r?\n/).filter((line) => line.includes('token='))).toEqual([]);
+
+    // só o hash do token fica no banco: o teste grava um token conhecido para o aluno
+    const userId = psql(`select id from users where email = '${email}' and role = 'student'`);
+    expect(userId).toMatch(/^[0-9a-f-]{36}$/);
+    const token = 'token-conhecido-do-aluno-com-43-caracteres-y';
+    const hash = createHash('sha256').update(token).digest('hex');
+    psql(`insert into password_tokens (user_id, purpose, token_hash, expires_at) values ('${userId}', 'first_access', '${hash}', now() + interval '24 hours')`);
+
+    const form = await fetch(`${stack.webOrigin}/definir-senha?token=${token}`);
+    expect(form.status).toBe(200);
+    expect(await form.text()).toContain('Definir senha');
+    const password = 'senha-da-aluna-da-stack';
+    const consumed = await fetch(`${stack.webOrigin}/api/password-tokens/consume`, { method: 'POST', headers: json, body: JSON.stringify({ token, password }) });
+    expect(consumed.status).toBe(204);
+
+    // o login leva a `/minha-conta`, que mostra o nome do aluno
+    const login = await fetch(`${stack.webOrigin}/api/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email, password }) });
+    expect(login.status).toBe(200);
+    const cookie = login.headers
+      .getSetCookie()
+      .map((setCookie) => setCookie.split(';')[0])
+      .join('; ');
+    const after = await fetch(`${stack.webOrigin}/login`, { headers: { Cookie: cookie }, redirect: 'manual' });
+    expect(after.status).toBeGreaterThanOrEqual(300);
+    expect(after.status).toBeLessThan(400);
+    expect(new URL(after.headers.get('location')!, stack.webOrigin).pathname).toBe('/minha-conta');
+    const account = await fetch(`${stack.webOrigin}/minha-conta`, { headers: { Cookie: cookie } });
+    expect(account.status).toBe(200);
+    expect(await account.text()).toContain(name);
+  });
+
   test('health_storage_up_then_down_when_storage_stops', async () => {
     const up = await fetch(`http://127.0.0.1:${stack.ports.PORT}/health`);
     expect(up.status).toBe(200);
