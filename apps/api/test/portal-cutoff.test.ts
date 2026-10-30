@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { withAuditInsertFailing } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import { type CapturedMail, captureMail } from './support/mail.ts';
-import { firstAccessBody, passwordLink, portalSession, postConsume, postFirstAccess, postReset } from './support/portal.ts';
+import { firstAccessBody, insertAdultStudent, passwordLink, portalSession, postConsume, postFirstAccess, postReset, tokenRows } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { fieldErrorPaths, studentRowText } from './support/students.ts';
 
@@ -27,6 +27,8 @@ const userActive = async (id: string) =>
 
 const sessionsOf = (id: string) => stack.query<{ id: string }>('select id from sessions where user_id = $1 order by id', [id]);
 
+const tokensClosed = async (id: string) => (await tokenRows(stack, id)).map((row) => [row.purpose, row.used_at !== null]);
+
 /** Um aluno com login e duas sessões abertas. */
 async function withTwoSessions() {
   const session = await portalSession(stack, mail);
@@ -40,6 +42,9 @@ test('inactivation_disables_user_and_drops_sessions_in_one_transaction', async (
   const user = await userRow(failing.user.id);
   const sessions = await sessionsOf(failing.user.id);
   expect(sessions).toHaveLength(2);
+  expect((await postReset(stack.client(), { email: failing.user.email })).status).toBe(202);
+  const tokens = await tokenRows(stack, failing.user.id);
+  expect(tokens.filter((row) => row.used_at === null)).toHaveLength(1);
 
   const refused = await withAuditInsertFailing(stack, () => reception.request('DELETE', `/api/students/${failing.student.id}`));
 
@@ -47,6 +52,7 @@ test('inactivation_disables_user_and_drops_sessions_in_one_transaction', async (
   expect(await studentRowText(stack, failing.student.id)).toBe(ficha);
   expect(await userRow(failing.user.id)).toBe(user);
   expect(await sessionsOf(failing.user.id)).toEqual(sessions);
+  expect(await tokenRows(stack, failing.user.id)).toEqual(tokens);
 
   const response = await reception.request('DELETE', `/api/students/${failing.student.id}`);
 
@@ -61,6 +67,18 @@ test('inactivation_disables_user_and_drops_sessions_in_one_transaction', async (
   const next = await failing.client.get('/api/me/profile');
   expect(next.status).toBe(401);
   expect((await problem(next)).code).toBe('unauthorized');
+});
+
+test('failed_inactivation_keeps_open_link_usable', async () => {
+  const { student, user } = await portalSession(stack, mail);
+  mail.clear();
+  expect((await postReset(stack.client(), { email: user.email })).status).toBe(202);
+  const { token } = passwordLink(mail.sent[0]!);
+
+  const refused = await withAuditInsertFailing(stack, () => reception.request('DELETE', `/api/students/${student.id}`));
+
+  expect(refused.status).toBe(500);
+  expect((await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-4' })).status).toBe(204);
 });
 
 test('suspension_keeps_user_and_sessions', async () => {
@@ -116,6 +134,10 @@ test('reactivation_does_not_revive_links_issued_before_inactivation', async () =
   expect((await postReset(stack.client(), { email: user.email })).status).toBe(202);
   const { token } = passwordLink(mail.sent[0]!);
   expect((await reception.request('DELETE', `/api/students/${student.id}`)).status).toBe(204);
+  expect(await tokensClosed(user.id)).toEqual([
+    ['first_access', true],
+    ['reset', true],
+  ]);
   expect((await reception.patch(`/api/students/${student.id}`, { status: 'active' })).status).toBe(200);
 
   const response = await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-2' });
@@ -123,6 +145,23 @@ test('reactivation_does_not_revive_links_issued_before_inactivation', async () =
   expect(response.status).toBe(422);
   expect(await fieldErrorPaths(response)).toEqual(['token']);
   expect(await userActive(user.id)).toBe(false);
+});
+
+test('reactivation_does_not_revive_first_access_link_issued_before_inactivation', async () => {
+  const student = await insertAdultStudent(stack);
+  mail.clear();
+  expect((await postFirstAccess(stack.client(), firstAccessBody(student))).status).toBe(202);
+  const { token } = passwordLink(mail.sent[0]!);
+  const [user] = await stack.query<{ id: string }>('select id from users where student_id = $1', [student.id]);
+  expect((await reception.request('DELETE', `/api/students/${student.id}`)).status).toBe(204);
+  expect(await tokensClosed(user!.id)).toEqual([['first_access', true]]);
+  expect((await reception.patch(`/api/students/${student.id}`, { status: 'active' })).status).toBe(200);
+
+  const response = await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-3' });
+
+  expect(response.status).toBe(422);
+  expect(await fieldErrorPaths(response)).toEqual(['token']);
+  expect(await userActive(user!.id)).toBe(false);
 });
 
 test('reactivation_keeps_user_disabled_until_new_first_access', async () => {

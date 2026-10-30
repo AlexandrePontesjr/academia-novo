@@ -5,7 +5,7 @@ Plan: `.specs/features/portal-aluno/plan.md`
 
 ## Intent
 
-92 checks in 10 slices (S0, as 8 do plano e S9 de montagem, regressão e stack) · 7 one-way doors · 1 open, of which 0 block the Build
+93 checks in 10 slices (S0, as 8 do plano e S9 de montagem, regressão e stack) · 7 one-way doors · 1 open, of which 0 block the Build
 
 O plano foi aprovado como escrito em 2026-10-28, com as Assumptions marcadas `n` valendo no padrão escrito
 (primeiro acesso 24 h e redefinição 1 h; 2FA do aluno opcional; foto pendente com 30 dias; aluno sem e-mail
@@ -157,8 +157,9 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-password.test.ts 
 **C32** - Dois consumos simultâneos do mesmo token com senhas diferentes: exatamente um `204` e um `422` em `token`; a senha que entra no login é a do `204`, e `audit_logs` ganha exatamente uma linha `student.portal_password_set` (AC 21)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-password.test.ts -t "two_concurrent_consumes_one_204_one_422"`
 
-**C33** - Com o token emitido e a ficha depois inativada por `DELETE /api/students/:id`, o consumo responde `422` em `token` e nenhuma senha muda; com a ficha depois anonimizada, o consumo responde `422` em `token` (AC 22)
+**C33** - Com o token emitido e a ficha depois inativada por `DELETE /api/students/:id`, o consumo responde `422` em `token` e nenhuma senha muda; com a ficha depois anonimizada, o consumo responde `422` em `token` (AC 22). Como nenhuma rota deixa token aberto nesses estados, as cláusulas do consumo são provadas à parte: com o token aberto (`used_at` nulo) numa ficha posta `inactive` por SQL e numa ficha anonimizada por SQL, o consumo responde `422` em `token`, e conta, usuário e tokens ficam idênticos
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-password.test.ts -t "token_of_inactivated_or_anonymized_student_422"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-password.test.ts -t "open_token_on_ficha_inactive_or_anonymized_by_sql_422"`
 
 **C34** - Depois da C29, `POST /api/auth/login` com `ana@example.com` e a senha definida responde `200`, e `GET /api/auth/session` com o cookie devolvido responde `role` `student` e `twoFactorEnrollmentRequired` `false` (AC 23)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-password.test.ts -t "login_after_set_password_role_student_no_enrollment"`
@@ -276,8 +277,9 @@ Proof: `pnpm --filter "./apps/web" exec playwright test e2e/portal.spec.ts -g "p
 
 ### S8 - Corte de acesso · ~5 files · ~34 KB · ~9k
 
-**C69** - Com um aluno com usuário ativo e duas sessões, `DELETE /api/students/:id` responde `204` e, na mesma leitura, a ficha é `inactive`, `users.active` é `false` e `sessions` do usuário está vazia; a chamada seguinte a `GET /api/me/profile` com o cookie antigo responde `401`; com `withAuditInsertFailing` a resposta é `500` e ficha, usuário e sessões ficam como estavam (AC 53)
+**C69** - Com um aluno com usuário ativo e duas sessões, `DELETE /api/students/:id` responde `204` e, na mesma leitura, a ficha é `inactive`, `users.active` é `false` e `sessions` do usuário está vazia; a chamada seguinte a `GET /api/me/profile` com o cookie antigo responde `401`; com `withAuditInsertFailing` e um link de `reset` aberto, a resposta é `500`, ficha, usuário, sessões e `password_tokens` ficam como estavam, e o link aberto segue valendo: o consumo responde `204` (AC 53, `Flow` "Corte de acesso")
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-cutoff.test.ts -t "inactivation_disables_user_and_drops_sessions_in_one_transaction"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-cutoff.test.ts -t "failed_inactivation_keeps_open_link_usable"`
 
 **C70** - `PATCH /api/students/:id` com `status: 'suspended'` num aluno com usuário ativo e uma sessão responde `200`; o usuário e a sessão ficam idênticos, `GET /api/me/profile` com a sessão responde `200` com `status` `suspended`, e o login responde `200` (AC 54)
 Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-cutoff.test.ts -t "suspension_keeps_user_and_sessions"`
@@ -299,6 +301,10 @@ Proof: `pnpm --filter "./apps/api" exec vitest run test/privacy-anonymize.test.t
 
 **C76** - A anonimização de funcionário com usuário vinculado continua respondendo `409` com `user_linked`: os testes de `staff-privacy.test.ts` passam sem edição de asserção (Impact "comportamento existente")
 Proof: `pnpm --filter "./apps/api" exec vitest run test/staff-privacy.test.ts -t "user_linked"`
+
+**C93** - Com um link aberto de um aluno com usuário, de `reset` (usuário ativo) e de `first_access` (usuário pendente), `DELETE /api/students/:id` deixa `used_at` preenchido no token desse link; depois da reativação por `PATCH` com `status: 'active'`, `POST /api/password-tokens/consume` com esse token responde `422` em `token`, e `users.active` é `false` (AC 56, `Flow` "Corte de acesso")
+Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-cutoff.test.ts -t "reactivation_does_not_revive_links_issued_before_inactivation"`
+Proof: `pnpm --filter "./apps/api" exec vitest run test/portal-cutoff.test.ts -t "reactivation_does_not_revive_first_access_link_issued_before_inactivation"`
 
 ### S9 - Montagem, regressão e stack · ~14 files · ~60 KB · ~15k
 
@@ -364,7 +370,7 @@ conjuntos enumerados nos critérios e nas Assumptions, e as montagens.
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
 | `POST /api/portal/first-access` statuses (3) | 202 C16, C20 · 422 C22 · 429 C23 | - |
-| `POST /api/password-tokens/consume` statuses (2) | 204 C29, C35 · 422 C30, C31, C33 | - |
+| `POST /api/password-tokens/consume` statuses (2) | 204 C29, C35 · 422 C30, C31, C33, C93 | - |
 | `POST /api/password-reset` statuses (3) | 202 C38, C39 · 422 C41 · 429 C40 | - |
 | `GET /api/me/profile` statuses (3) | 200 C43, C44 · 401 C46, C69 · 403 C46 | - |
 | `PATCH /api/me/profile` statuses (4) | 200 C51 · 401 C46 · 403 C46 · 422 C52, C53 | - |
@@ -390,7 +396,7 @@ conjuntos enumerados nos critérios e nas Assumptions, e as montagens.
 | recusas do primeiro acesso pela fronteira (9) | C20, table-driven over all 9 | - |
 | resposta uniforme do primeiro acesso (10) | C21, table-driven over all 10 | - |
 | campos recusados no primeiro acesso (2 campos) | `cpf` C22 · `email` C22 | - |
-| tokens recusados (8) | ausente C30 · vazio C30 · `abc` C30 · desconhecido C30 · usado C30, C19 · vencido C30 · ficha inativada C33 · ficha anonimizada C33 | - |
+| tokens recusados (10) | ausente C30 · vazio C30 · `abc` C30 · desconhecido C30 · usado C30, C19 · vencido C30 · ficha inativada C33 · ficha anonimizada C33 · `reset` emitido antes da inativação, com a ficha reativada C93 · `first_access` emitido antes da inativação, com a ficha reativada C93 | - |
 | bordas da senha (4) | 11 C31 · 12 C31 · `PASSWORD_MAX_LENGTH` C31 · `PASSWORD_MAX_LENGTH + 1` C31 | - |
 | propósitos consumidos (2) | `first_access` C29 · `reset` C35 | - |
 | e-mails recusados na redefinição (4) | nenhum usuário C39 · equipe C39 · aluno inativo C39 · aluno sem senha C39 | - |
@@ -405,7 +411,7 @@ conjuntos enumerados nos critérios e nas Assumptions, e as montagens.
 | transições da foto pendente (4) | nasce pendente C57 · aprovada C61 · recusada C62 · vencida sem revisão C64 | - |
 | arquivos recusados pelo pipeline (9) | C59, table-driven over all 9 | - |
 | leituras que seguem servindo a corrente (3) | lista C60 · ficha C60 · check-in C60 | - |
-| transições da ficha que tocam o usuário (4) | `inactive` por `DELETE` C69 · `inactive` por `PATCH` recusado C71 · `suspended` C70 · volta a `active` C73 | - |
+| transições da ficha que tocam o usuário (4) | `inactive` por `DELETE` C69 · `inactive` por `PATCH` recusado C71 · `suspended` C70 · volta a `active` C73, C93 | - |
 | tabelas limpas na anonimização (5) | `users` C74 · `accounts` C74 · `sessions` C74 · `two_factors` C74 · `password_tokens` C74 | - |
 | ações novas da trilha (5) | `student.portal_access_requested` C16 · `student.portal_password_set` C29 · `student.portal_reset_requested` C38 · `student.photo_approved` C61 · `student.photo_rejected` C62 | - |
 | ações reaproveitadas com o aluno como autor (2) | `student.updated` C51 · `student.photo_uploaded` C57 | - |
@@ -417,7 +423,7 @@ conjuntos enumerados nos critérios e nas Assumptions, e as montagens.
 | startup config: `PhotoPurge` sobre a pendente (2 assemblies) | montagem dos testes C62, C64 · subida da API existing (`startup_purges_expired_version_without_any_request`) C64 | - |
 
 - Claims naming a status code, route or response shape: C9 a C12, C16 a C26, C29 a C35, C38 a C41, C43 a
-  C46, C51 a C55, C57 a C66, C69 a C83 - each has a proof that crosses the HTTP boundary; C88 a C90 are the
+  C46, C51 a C55, C57 a C66, C69 a C83, C93 - each has a proof that crosses the HTTP boundary; C88 a C90 are the
   same rules at their own layer and do not substitute for the boundary proofs
 - Nenhuma prova de tela contra a `FakeApi` afirma linha de auditoria nem gravação; o caminho de ponta a ponta
   das telas é o da C92
@@ -434,13 +440,13 @@ e na fronteira; efeito depois do commit com transporte de captura; tela contra a
 | Elegibilidade com muitas condições cumulativas (primeiro acesso) | uma tabela no serviço com banco real **e** a fronteira | no serviço, uma linha asserida por situação (13); na fronteira, cada recusa (9) e a resposta uniforme (10). A fronteira passa por um caminho da tabela e não a substitui |
 | Estado derivado de duas tabelas (`portal`) | uma função pura sem banco **e** a ficha pela fronteira | as quatro linhas e as duas bordas na função; os quatro valores na fronteira |
 
-Evidence (o código ainda não existe; a contagem vem do plano):
+Evidence (o código ainda não existe; a contagem vem do plano, salvo os dois links da C93 somados aos tokens recusados):
 
 - primeiro acesso: 13 situações de elegibilidade, 6 recusas de campo, 2 chaves de limite, 1 corrida (C16 a
   C25, C89) -> decide
-- consumo: 8 tokens recusados, 4 bordas de senha, 2 propósitos, 1 corrida (C29 a C35) -> decide
+- consumo: 10 tokens recusados, 4 bordas de senha, 2 propósitos, 1 corrida (C29 a C35, C93) -> decide
 - foto pendente: 4 transições, 9 arquivos recusados, 5 perfis, 1 corrida (C57 a C66) -> decide
-- corte de acesso: 4 transições da ficha, 5 tabelas na anonimização (C69 a C75) -> decide
+- corte de acesso: 4 transições da ficha, 5 tabelas na anonimização (C69 a C75, C93) -> decide
 - controllers de `/api/me/*`: resolvem a ficha pela sessão e chamam o serviço existente -> instrumentação,
   além do isolamento que a C44 prova
 - closest analogue in the repo: `apps/api/test/leads-create.test.ts` (`resend_decision_table_eight_rows`,
@@ -460,9 +466,9 @@ não vão para um guia do repositório.
 - idempotency: C19 (pedir de novo invalida o link anterior), C25, C32 (consumir duas vezes vale uma), C38, C51 (mesmo valor não grava trilha), C58
 - authorization: C9, C10, C12, C13, C14, C44, C46, C63, C78, C79, C80; existing - guarda global (AD-022) e checagem de origem (AD-020)
 - concurrency: C25, C32, C58, C66
-- data lifecycle: C3, C62, C64, C74, C75 - tokens em cascata do usuário, pendente vencida ou recusada pelo `PhotoPurge`, usuário limpo na anonimização
+- data lifecycle: C3, C62, C64, C74, C75, C93 - tokens em cascata do usuário, tokens abertos fechados na inativação, pendente vencida ou recusada pelo `PhotoPurge`, usuário limpo na anonimização
 - dependency failure: C18 (SMTP fora ou lento), C49 (API fora na tela), C75 (armazenamento fora na anonimização)
-- state transitions: C26, C69, C70, C71, C73 (ficha e usuário); C57, C61, C62, C64 (foto pendente)
+- state transitions: C26, C69, C70, C71, C73, C93 (ficha e usuário); C57, C61, C62, C64 (foto pendente)
 - observability: C6, C83 - a trilha sem CPF, e-mail nem token; C18 - o log do e-mail sem destinatário; C92 - o link só fora de produção
 
 ## Handoff
@@ -479,3 +485,4 @@ não vão para um guia do repositório.
 - Settled mid-build (batch B): **a C45 e a C60 foram reescritas com a aprovação do usuário em 2026-10-30**: a C45 lia `GET /api/students/:id/payments` por `reception`, que recebe `403` (a rota é de `admin` e `hr_finance`, PRD §2), e passou a ler por `hr_finance`; a C60 trocava a corrente por `POST`, que responde `409 photo_exists`, e passou a `PUT`. Fora isso, nada foi decidido pelo usuário. A conferência pedida antes da S7: `store` calcula a versão por `max(version)` sobre todas as linhas do dono, então a pendente entra na contagem sem mudança. Decisões do Build, sem check e reversíveis: (1) `pendingPhotoSchema` ganhou `url` opcional, a URL assinada `medium` nas leituras, porque a ficha só recebia `id`, `version` e `createdAt` e a C67 pede a imagem; assim a Surface segue com dez rotas; o `POST /api/me/photo` devolve o objeto sem `url`, direto no corpo; (2) `GET /api/me/photo` devolve `currentUrl` e `pendingUrl`, `null` na que falta; (3) `approve` devolve `id`, `version` e `createdAt` (`photoCreatedSchema`); (4) a C81 pediu `noLoneSurrogate` em `addressSchema` e `newPasswordSchema`, que saiu de `plans.ts` para `auth.ts` e vale também para a equipe; (5) o e-mail só acompanha no `PATCH` com valor: limpar `students.email` (`null`) deixa `users.email` como está, porque a coluna é `not null`, caso que a AC 41 não cobre; num aluno com usuário o e-mail vai em minúsculas às duas tabelas (C55), sem usuário segue como veio; a corrida no índice único sai por `isUniqueViolationOf(error, 'users_email_unique')`; (6) em `/minha-conta`, a foto é um componente próprio (`MyPhoto`), porque o `PhotoBlock` troca com `PUT` e mostra "Trocar foto"; o formulário não valida no navegador e deixa o `422` da API aparecer junto do campo; (7) o `PATCH` nunca chega a `inactive`, então o corte vive só em `inactivate`, e `Flow` e `Impact` do plano foram acertados no commit do corte
 - Abandoned / deviations (batch B): (1) `pnpm verify` sai `1` pelo `EPERM` do turbo (AD-118); (2) **a C88, a C89 e a C90 não tinham teste**: o batch A as deixou para a S9, o filtro não achava nada e o `vitest` saía `0`; escritas em `1feeb7a` depois que a contagem das Proofs mostrou zero testes; (3) o parêntese "(`413` ou `422`)" da C59 é menor que o conjunto: três dos nove arquivos respondem `415`, como no `POST` da equipe; a prova compara status e código com a equipe, que é o que a C59 afirma, e confere os três status; a `Surface` de `POST /api/me/photo` não lista `415`; (4) **provas de outras features mudaram por efeito desta, sem afrouxar asserção**: `openapi.test.ts` conta 4 caminhos com `/payments` (o quarto é `/api/me/payments`), 27 corpos e o `multipart` novo; `enrollment.test.ts` lista as sete rotas novas; em `tests/repo/motion.test.ts`, `SEGMENTS` tem 13 e o título do `test.each` virou `segment_has_app_loading: %s`, para o seletor da C86 achar um teste só (o `eleven_segments_have_app_loading` da `motion` continua); (5) o baseline da `motion` não tem `/login` (nota do batch A), então a parte da C86 sobre `/login` não tem o que mudar, e a prova `copy_names_and_focus_order_match_the_baseline` passa sem regravar; (6) a ficha passou a envolver o `PhotoBlock` num `flex`, sem mudança de texto, nomes nem ordem de foco; (7) nada foi abandonado: nenhuma asserção foi afrouxada, e os checks só mudaram na correção aprovada da C45 e da C60
 - Rodada 1 do Verifier (FAIL em `5881ed0`, `verification.md`; 89 de 92, um mutante vivo): **a C86 e a C59 foram reescritas com a aprovação do usuário em 2026-10-30**: a C86 falava de um `/login` que os baselines não têm e de telas da equipe sem mudança, e passou a dizer que `390.json` e `1440.json` mudam só no trecho de `/audit`, pelas cinco opções do filtro; o parêntese da C59 passou a `413`, `415` ou `422`. Sem pedir aprovação, por só acrescentarem: a C65 e a `Coverage` ganharam o `422` de `variant`, a `Coverage` ganhou o `415`, e a `Surface` ganhou uma nota com os dois status abaixo da tabela. Fechado no código e nas provas: `pendingPhoto.url` asserido na ficha e no perfil (o mutante F1), as três públicas do portal na prova da C79, "ao lado da corrente" na C67, e `inactivate` passou a marcar como usados os tokens abertos do usuário, porque um `reset` aberto religaria o login depois da reativação, contra a AC 56 (`reactivation_does_not_revive_links_issued_before_inactivation`). A `pendingPhoto.url` vai aos quatro perfis, como o `photoUrl` (AD-033); a tela só a mostra a `admin` e `reception`. `DELETE /api/students/:id/photo` continua apagando também a pendente, porque "remover a foto" apaga toda linha do dono e nenhum critério pede o contrário
+- Rodadas 3 a 5 do Verifier: **a C93 entrou a pedido do usuário em 2026-10-30**, fora da ordem dos números, no fim da S8, com a prova de `reactivation_does_not_revive_links_issued_before_inactivation`. A rodada 3 deu FAIL: dois mutantes sobreviveram, F12 (a cláusula `studentStatus === 'inactive'` tirada do consumo) e F6b, que fecha só `reset`, e com este um link de `first_access` aberto religaria o usuário depois da reativação, contra a AC 56; `students.service.ts` já fechava os dois propósitos, e nenhum código de produção mudou. **Com a rodada 4 autorizada pelo usuário em 2026-10-30, além do limite de três**, a C93 foi reescrita para nomear os dois propósitos e dizer o que é fechar (`used_at` preenchido), ganhou `reactivation_does_not_revive_first_access_link_issued_before_inactivation`, a prova antiga ganhou a asserção de `used_at`, a linha `tokens recusados` passou a 10 e as listas que não conheciam a C93 foram acertadas. A rodada 4 deu FAIL: o mutante F13, que fecha os tokens fora da transação, sobreviveu, e um `DELETE` com `500` queimaria o link; F12 e F12b seguiam sem morrer. **Com a rodada 5 autorizada pelo usuário em 2026-10-30**, a C69 e a C33 foram reescritas e ganharam provas: `password_tokens` no ramo de falha, `failed_inactivation_keeps_open_link_usable` e `open_token_on_ficha_inactive_or_anonymized_by_sql_422`. O `Handoff` registra um limite: `students_anonymized_clean` obriga `status` `inactive` em toda ficha anonimizada, então tirar só `found.anonymized` do consumo (F12b) não muda comportamento em estado nenhum que o banco aceite; a prova da ficha anonimizada mata a retirada das duas cláusulas juntas, não a dessa sozinha. Tirar a cláusula redundante é mudança de produção, fora desta rodada. Nenhum código de produção mudou

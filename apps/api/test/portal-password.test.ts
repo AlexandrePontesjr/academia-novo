@@ -172,6 +172,30 @@ test('token_of_inactivated_or_anonymized_student_422', async () => {
   expect(await stack.query('select password from accounts where user_id = $1', [anonymized.userId])).toEqual(beforeAnonymized);
 });
 
+test('open_token_on_ficha_inactive_or_anonymized_by_sql_422', async () => {
+  const inactive = await firstAccess();
+  await stack.query(`update students set status = 'inactive', inactivated_at = now() where id = $1`, [inactive.student.id]);
+  const anonymized = await firstAccess();
+  await stack.query(
+    `update students set name = 'Titular anonimizado', status = 'inactive', inactivated_at = now(), anonymized_at = now(),
+       cpf = null, birth_date = null, sex = null, email = null, phone = null, address = null,
+       emergency_contact_name = null, emergency_contact_phone = null, health_notes_enc = null
+     where id = $1`,
+    [anonymized.student.id],
+  );
+
+  for (const { token, userId } of [inactive, anonymized]) {
+    expect((await tokenRows(stack, userId)).map((row) => row.used_at)).toEqual([null]);
+    const before = await credentials(userId);
+
+    const refused = await postConsume(stack.client(), { token, password: PASSWORD });
+
+    expect(refused.status).toBe(422);
+    expect(await pathsOf(refused)).toEqual(['token']);
+    expect(await credentials(userId)).toEqual(before);
+  }
+});
+
 test('login_after_set_password_role_student_no_enrollment', async () => {
   const { student, token } = await firstAccess();
   expect((await postConsume(stack.client(), { token, password: PASSWORD })).status).toBe(204);
