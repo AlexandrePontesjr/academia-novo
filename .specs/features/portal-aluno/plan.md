@@ -20,7 +20,7 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 **Definir a senha (primeiro acesso ou redefinição)**
 
 1. navegador abre `/definir-senha?token=...` (door 6) - página com o formulário de senha, sem efeito ao abrir
-2. `POST /api/password-tokens/consume` `@Public()` -> módulo de portal - acha o token pelo hash (door 2), confere validade e uso, grava o hash da senha em `accounts` (`provider_id = 'credential'`, criando a linha no primeiro acesso), liga o usuário (`active = true`), marca o uso, apaga as sessões do usuário e grava `student.portal_password_set` (door 7), tudo na transação
+2. `POST /api/password-tokens/consume` `@Public()` -> módulo de portal - acha o dono do token pelo hash sem travar (door 2), trava o usuário e depois o token, confere validade, uso e ficha, grava o hash da senha em `accounts` (`provider_id = 'credential'`, criando a linha no primeiro acesso), liga o usuário (`active = true`), marca o uso, apaga as sessões do usuário e os desafios pendentes de 2FA dele em `verifications` e grava `student.portal_password_set` (door 7), tudo na transação. `POST /api/auth/login`, `POST /api/auth/two-factor/verify`, `disable` e `confirm`, que criam sessão ou desafio fora de transação pelo Better Auth, leem o hash da senha antes e o comparam depois com o usuário travado: se mudou, sessões e desafios caem e a resposta é `401`
 3. out: `204`, ou `422` com `path` igual a `token` ou `password`; o navegador segue para `/login`
 
 **Esqueci a senha**
@@ -61,6 +61,7 @@ Reutiliza a guarda por perfil (`apps/api/src/access.ts`, com `@Public()`), o `Va
 | comportamento existente | inativar a ficha (`DELETE /api/students/:id`, a única via até `inactive`) passa a desligar o login vinculado; reativar não o religa; suspender não mexe nele |
 | comportamento existente | `PhotosService.store` e as listagens de versão passam a ignorar a linha pendente; `currentId`/`urlFor` (check-in, lista, ficha) não mudam, porque a pendente nunca é `is_current` |
 | comportamento existente | a anonimização de aluno passa a mexer em `users`, `accounts`, `sessions`, `two_factors` e `password_tokens` (door 5); a de funcionário não muda (segue recusando `user_linked`) |
+| comportamento existente | `PUT /api/auth/password` passa a conferir a senha atual com o usuário travado, na transação, e `PUT /api/users/:id/password` passa a travar os administradores ativos e o alvo e a responder `422` em `password` quando a senha mudou enquanto o pedido esperava: nenhum dos dois sobrescreve a senha do link |
 | web | `proxy.ts` ganha os ramos públicos `/primeiro-acesso`, `/definir-senha` e `/esqueci-senha` e o desvio por perfil (door 6); `/login` com sessão de `student` vai a `/minha-conta`, não a `/dashboard`, e ganha os links "Primeiro acesso" e "Esqueci minha senha" |
 | web | `/minha-conta` é segmento novo com `loading.tsx`: o guard de `tests/repo/motion.test.ts` que conta os segmentos com `app-loading` passa a contar mais um; a área não usa a `Shell` da equipe, então o baseline de ARIA das telas da equipe na C39 da `motion` não muda, mas `/login` ganha dois links e a C39 confere essa tela de novo |
 | stored data | nada a migrar: nenhum usuário existente vira `student`; as colunas novas nascem nulas ou com padrão compatível com as linhas de hoje |

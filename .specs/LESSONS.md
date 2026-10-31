@@ -312,6 +312,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: F12b apps/api/src/portal/portal.service.ts:202 (api) (api)
 - last seen: 2026-10-30T23:25:54Z
 
+### L-051 - When a transaction changes a credential, serialize every other writer of that credential on the same lock and recheck the value it verified
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `auth` · harmful: 0
+- features: portal-aluno
+- evidence: verification.md finding 1, users.service.ts:168 (auth)
+- last seen: 2026-10-31T15:07:47Z
+
+### L-052 - Count a shared lock's coverage set by its callers, not by the proofs that happen to exercise it
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `concurrency` · harmful: 0
+- features: portal-aluno
+- evidence: verification.md finding 2, checks.md:432 (concurrency)
+- last seen: 2026-10-31T15:07:48Z
+
+### L-053 - Assert the audit row and the throttle counter on every refusal branch, including those reached only by a race
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `auth` · harmful: 0
+- features: portal-aluno
+- evidence: T1, T2, auth.controller.ts:163 (auth)
+- last seen: 2026-10-31T15:07:48Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

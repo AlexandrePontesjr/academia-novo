@@ -2,60 +2,44 @@
 
 **Verdict**: PASS
 **Profile**: standard
-**Diff range**: 1e19a01..working tree
-**Round**: 5 - scoped
+**Diff range**: a9ebfbf..working tree
+**Round**: 11 - scoped
 **Verifier**: independent sub-agent (author != verifier)
 
-PASS, with one mutation left alive on purpose and named here so that nobody reads the verdict as "everything died":
-**F12b was not killed.** It removes `found.anonymized` from `apps/api/src/portal/portal.service.ts:202`, and all 38
-tests of the narrow set pass under it. I judge it **not a behaviour-level fault**, so it does not fail this round:
-in every state the database admits it answers exactly what the unmutated code answers, and I could not produce a
-state where it differs by any path I tried, races included. Evidence below, under `Faults injected`. That judgment
-is mine, and it is the one thing in this PASS that rests on a conclusion instead of a red test. It is also why the
-gate does not see F12b at all: see the note under `Faults injected`.
+PASS. The one surviving fault of round 10 is dead and nothing took its place. All 140 Proof lines pass (141 tests), all 94 checks hold, no coverage member is unproven, every `Test policy` row is met, and all 20 faults injected this round die: the 18 requested and two of mine on the same window. The whole API suite on the real tree gives 883 passed, 0 failed.
 
-Everything round 4 left open is closed. All 93 checks hold, with the rewritten C69 and C33 judged sentence by
-sentence. F13, the failure of round 4, now dies twice, at `apps/api/test/portal-cutoff.test.ts:55` (the comparison
-of `password_tokens` after the `500`) and at `:81` (the open link still consumes). F12 dies at
-`apps/api/test/portal-password.test.ts:193`, and the joint F12+F12b dies at the same line, on either order of the
-loop. F6, F6b and F6c still die, and a fault of mine, F14, makes the new credentials comparison at `:195` fail, which
-no other fault reaches. The third Test policy row is met. One precision gap remains in the wording of C33, and one
-sentence of the `Handoff` needs a correction; both are reported and neither changes a row.
+**Round 11 was authorized by the user on 2026-10-31,** past the bound of three rounds in `verify.md`, with no production change. That last part is measured, not taken from the Handoff: removing from `portal-cutoff.test.ts` the mock block, the two lines and the new test gives a `git diff a9ebfbf -- apps` with exactly round 10's MD5, `ABFD414E9EE2FBC8B2025E117A95AFEF`. So since round 10 `apps` changed only in that one test file and only by those additions; no line was removed and no assertion weakened. `checks.md` gained the C94 sentence, the Proof, the count 7, the count 32 and the Handoff line, read below. Nothing is committed: this verdict is about the working tree on `a9ebfbf`.
 
-The change is uncommitted at the time of this run: `HEAD` is `1e19a01` and the diff lives in the working tree, in
-`.specs/features/portal-aluno/checks.md`, `apps/api/test/portal-cutoff.test.ts` and
-`apps/api/test/portal-password.test.ts`. `verification.md` also shows as modified: that was the round 4 report and is
-not part of the change. Confirmed: `git diff --stat cf26676 -- apps/api/src packages apps/web/src` prints nothing, so
-production code is that of `cf26676`, and `git diff --stat cf26676..HEAD -- apps packages tests` prints nothing either,
-so the two changed test files are the working-tree ones and no support file moved (`tokenRows` already existed). The
-author's description holds: C69 and C33 were rewritten and gained the named Proofs, C69's existing test gained
-`password_tokens` in the failing branch, the flagged lines of `checks.md` were adjusted, and `## Handoff` gained text
-(`checks.md:488`). The parser found 93 checks and 105 Proof lines; `validate_checks.py portal-aluno` exits 0 with no
-warning.
+**Round 10 failures, by code.**
 
-Scope: that diff, plus every verdict not PASS in round 4 (the third Test policy row, F13, F12, F12b). Proofs are
-`verified at 1e19a01 + working tree` for all 93. Rows citing `portal-cutoff.test.ts` or `portal-password.test.ts`
-(C29 to C35, C69 to C73, C93) are judged at that state, with every citation rechecked. Evidence of every other row is
-carried and says from where: `carried from cf26676` or, where it already said so, `carried from 5881ed0`.
+| Round 10 failure | State |
+| --- | --- |
+| Surviving fault X1, `before` read after `hashPassword`, `apps/api/src/users/users.service.ts:149`-`:150` | closed: `apps/api/test/portal-cutoff.test.ts:864`, `expected 204 to be 422`; the other four `reset_password_` proofs pass under it, so this is the only proof that reaches the window |
+| `Unproven` cell of `escritas na senha contra o consumo` | closed: member at `.specs/features/portal-aluno/checks.md:443`, proof `apps/api/test/portal-cutoff.test.ts:844` |
+| Unmet `Test policy` row, line "hash changed while the request hashed" | closed: same proof; the sentence "lido no início do pedido", `.specs/features/portal-aluno/checks.md:310`, now has an assertion |
+
+**The new test's mechanism, judged.** It holds.
+
+| Question | Answer | Evidence |
+| --- | --- | --- |
+| Does the `vi.mock` intercept the production path? | yes. The API runs in the test process (`apps/api/test/support/app.ts:7` imports `AppModule` from `src`), and `users.service.ts:4` imports the module the mock replaces. Measured: with only the `vi.mock` block taken out, the same test never reaches `await reached` and times out at 20 s; with it, it passes. A proof that did not intercept could only hang, not pass | scratch, `mock_removed`; `portal-cutoff.test.ts:14`, `:859` |
+| Does it stop the right request? | yes. `hashes.before` acts only on the `replacement` password, `:852`, so the hash of `consume`, `portal.service.ts:192`, passes through; the wrapper keeps `verifyPassword` by `...actual`, `:17` | reading, and `consume` answers `204` at `:860` |
+| Does it change what another test in the file proves? | no. With `hashes.before` undefined the wrapper adds one `await` and calls the real function. Also wrapped: `auth.ts:61`, `auth.controller.ts:311`, `users.service.ts:80`, `:178`, `apps/api/test/support/portal.ts:2`; none is stopped, since only the new test sets the hook and `afterEach` clears it, `:605`. Measured: the file with no mock at all, the tree of round 10, gives 41 of 41, the same tests that pass with the mock. The mock is per file, so no other test file sees it | scratch, `no_mock_r10_tree` |
+| Is the wait deterministic? | yes. No sleep, no timer and no poll: `reached` resolves when the `PUT` enters the hash, `consume` is awaited to its `204` with the `PUT` stopped, then `release()`. The `PUT` holds no lock and no transaction there, so `consume` cannot queue behind it. Eight consecutive process runs passed 8 of 8; if the production order changed so the hash were never reached, the test would fail by timeout, not pass | `:853`, `:859`-`:861`, `users.service.ts:149`-`:151` |
+
+Its limit, stated: it stops at the start of the hash, so it proves "read before the hash", which is what `checks.md:310` claims; it says nothing about a concurrent read, which no code does.
+
+**Accepted by the user, recorded and not failing this round (`.specs/features/portal-aluno/checks.md:534`):** the first-access race with the token held and `consume` ahead, and the classifications of F12b and M2c. This report cannot confirm the acceptance independently; it is as `checks.md` records it. The items the Handoff lists as open do not contradict the code: `verify` after a `PUT` (`checks.md:537`, `:538`, confirmed in round 10) and the `inactivate` deadlock shape (`checks.md:538`; `students.service.ts:274` writes the target and `:280` records the audit after it, unchanged since `a9ebfbf` by `git diff`).
+
+Scope: every verdict not PASS in round 10, plus the diff. Proofs are verified at a9ebfbf + working tree for all 94. Rows that say `carried from` keep their original source and were not re-derived here. `a9ebfbf + working tree` below means this round's tree unless a round is named.
 
 ## Binding sources
 
-Not run: the profile is `standard`, and the plan marks no source as binding; the diff touched no interface. `carried from 5881ed0`.
+Not run: the profile is `standard`, the plan marks no source as binding, and nothing since round 10 touched an interface. `carried from 5881ed0`.
 
 ## Checks
 
-Proofs `verified at 1e19a01 + working tree`. All 105 Proof lines, one invocation per target and one target at a time
-with nothing else of mine running, JSON reporter: contracts 3, db 5, repo 1, api 76, web 20, stack 1, so 106 tests
-passed and 0 failed. The API count is 75 selectors plus one, because C76's selector matches two tests
-(`staff_active_409_not_inactive_and_linked_user_409_staff_user_linked`, `staff_not_inactive_comes_before_user_linked`).
-The JSON of each run was joined against every selector in its own file: 0 selectors without a passing test, and no
-proof resolved to skipped only. Beyond C76, two selectors are substrings: C6's second resolves to
-`ten_actions_written_equal_contract_vocabulary`, C86's first to `eleven_segments_have_app_loading`. The six selectors
-of C33, C69 and C93 each resolved to one test of exactly that name. C92 ran: Docker answered (server 29.9.2) and the
-stack proof passed in 121 s, so it is not carried. The whole files of C26, C76 and C91 (`students-read`,
-`staff-privacy`, `photos-upload`, `photos-replace`, `photos-urls`) ran again, with `portal-cutoff` and
-`portal-password`: 72 of 72. `pnpm verify` was not used (AD-118); the runners were called through `node` from each
-package.
+Proofs verified at a9ebfbf + working tree, this round. One invocation per target, with a JSON reporter, on the real tree, run with the package's own binary so the name alternation survives the Windows shell: contracts 3, database 5, repo 1, api 111, web 20, stack 1, so 141 tests passed and 0 failed, every run exit 0, from 140 Proof lines. The JSON of each run was joined against every selector: 139 Proof lines resolved to exactly one passing test, and C76 matches two, both passing, as recorded. C92 ran with Docker 29.9.2. `pnpm verify` was not used (AD-118). Citations of `portal-cutoff.test.ts` were refreshed on every row, since the mock moved the whole file; the citations of the other files did not move, because `git diff` of everything else is byte-identical to round 10 (see the top of this report). A row that says `carried from` still carries its claim from there; its proof ran this round.
 
 | Check | Claim | Proof run | Evidence | Result |
 | --- | --- | --- | --- | --- |
@@ -87,13 +71,13 @@ package.
 | C26 | four `portal` values; key lists gain two keys (user-approved rewrite) | api batch, exit 0; whole `students-read.test.ts` passed; evidence carried from 5881ed0 | `apps/api/test/students-read.test.ts:129` - `expect(body.portal, portal).toBe(portal)`; `:130`; `:82` instructor list | PASS |
 | C27 | four labels, no mail control | web batch, exit 0; evidence carried from cf26676 | `apps/web/e2e/students.spec.ts:894` - `getByText(label)` visible; `:903` no portal control; `:907` no portal request | PASS |
 | C28 | `/primeiro-acesso` states | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:28`; `:31`; `:37`; `:43` | PASS |
-| C29 | consume `204` and its effects | api batch, exit 0; citations rechecked at 1e19a01 + working tree, lines unchanged | `apps/api/test/portal-password.test.ts:78`-`:80`; `:82`-`:84`; `:85` | PASS |
-| C30 | six invalid tokens, one valid at the edge | api batch, exit 0; citations rechecked at 1e19a01 + working tree, lines unchanged | `apps/api/test/portal-password.test.ts:110`-`:112`; `:117` | PASS |
-| C31 | password bounds | api batch, exit 0; citations rechecked at 1e19a01 + working tree, lines unchanged | `apps/api/test/portal-password.test.ts:126`-`:128`; `:130`; `:132` | PASS |
-| C32 | concurrent consume | api batch, exit 0; citations rechecked at 1e19a01 + working tree, lines unchanged | `apps/api/test/portal-password.test.ts:143` - `toEqual([204, 422])`; `:148`-`:150` | PASS |
-| C33 | token closed by the route, or open on a ficha set by SQL (rewritten) | api batch, exit 0; two Proofs, each one test; verified at 1e19a01 + working tree | `apps/api/test/portal-password.test.ts:160`-`:163`; `:170`-`:172`; `:188` - `expect((await tokenRows(stack, userId)).map((row) => row.used_at)).toEqual([null])`, `:193` - `expect(refused.status).toBe(422)`, `:194`, `:195` - `expect(await credentials(userId)).toEqual(before)`. See the judgment below; F12b is not killed | PASS |
-| C34 | login after set, `role: student` | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-password.test.ts:205`; `:209`-`:210` | PASS |
-| C35 | reset token replaces password | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-password.test.ts:222`-`:225` | PASS |
+| C29 | consume `204` and its effects | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:78`-`:80`; `:82`-`:84`; `:85` | PASS |
+| C30 | six invalid tokens, one valid at the edge | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:110`-`:112`; `:117` | PASS |
+| C31 | password bounds | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:126`-`:128`; `:130`; `:132` | PASS |
+| C32 | concurrent consume | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:143` - `toEqual([204, 422])`; `:148`-`:150` | PASS |
+| C33 | token closed by the route, open on a ficha set by SQL, and `suspended` not refused (rewritten) | api batch, exit 0; three Proofs, each one test; verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:160`-`:163`; `:170`-`:172`; `:188` - `expect((await tokenRows(stack, userId)).map((row) => row.used_at)).toEqual([null])`, `:193` - `expect(refused.status).toBe(422)`, `:194`, `:195` - `expect(await credentials(userId)).toEqual(before)`; `:202` - `expect((await postConsume(stack.client(), { token, password: PASSWORD })).status).toBe(204)`, `:205`, `:210`, `:212`; F12b stays accepted | PASS |
+| C34 | login after set, `role: student` | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:221`; `:225`-`:226` | PASS |
+| C35 | reset token replaces password | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-password.test.ts:238`-`:241` | PASS |
 | C36 | `/definir-senha` posts only on submit | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:57`; `:64`; `:71`; `:78` | PASS |
 | C37 | success and invalid link messages | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:93`; `:104`; `:106`-`:107`; `:113` | PASS |
 | C38 | reset `202`, one hour, invalidates previous | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-reset.test.ts:43`-`:62`; `:50` `01:00:00`; `:68`-`:70` | PASS |
@@ -127,15 +111,16 @@ package.
 | C66 | concurrent approve and reject | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:319`; `:321`; `:323` | PASS |
 | C67 | pending next to the current, approve, reject | web batch, exit 0; evidence carried from cf26676 | `apps/web/e2e/students.spec.ts:836` pending `src`; `:841` - `expect(beside!.x).toBeGreaterThanOrEqual(current!.x + current!.width)`; `:842`-`:843` same height band; `:851`; `:858`; `:866`-`:867`; `:874`-`:875` no buttons for two roles. F9 stacks them and fails at `:841` | PASS |
 | C68 | pending hides upload | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:178`-`:185`; `:192`-`:197` | PASS |
-| C69 | inactivation cuts in one transaction, tokens included, and a refused one leaves the link usable (rewritten) | api batch, exit 0; two Proofs, each one test; verified at 1e19a01 + working tree | `apps/api/test/portal-cutoff.test.ts:51`-`:54`; `:55` - `expect(await tokenRows(stack, failing.user.id)).toEqual(tokens)`; `:59`; `:65`; `:68`; `:80`; `:81` - `expect((await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-4' })).status).toBe(204)`. See the judgment below | PASS |
-| C70 | suspension keeps user | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-cutoff.test.ts:91`-`:96`; `:97` | PASS |
-| C71 | refused `PATCH` inactive | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-cutoff.test.ts:107`-`:110` | PASS |
-| C72 | disabled login like inactive staff | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-cutoff.test.ts:121`; `:126`-`:128` | PASS |
-| C73 | reactivation keeps disabled | api batch, exit 0; citations verified at 1e19a01 + working tree | `apps/api/test/portal-cutoff.test.ts:174` - `expect(await userActive(user.id)).toBe(false)`; `:176`; `:181`-`:182`; `:187`-`:188` | PASS |
+| C69 | inactivation cuts in one transaction, tokens included, and a refused one leaves the link usable (rewritten) | api batch, exit 0; two Proofs, each one test; verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:66`-`:69`; `:70` - `expect(await tokenRows(stack, failing.user.id)).toEqual(tokens)`; `:74`; `:80`; `:83`; `:95`; `:96` - `expect((await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-4' })).status).toBe(204)` | PASS |
+| C70 | suspension keeps user | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:106`-`:111`; `:112` | PASS |
+| C71 | refused `PATCH` inactive | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:122`-`:125` | PASS |
+| C72 | disabled login like inactive staff | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:136`; `:141`-`:143` | PASS |
+| C73 | reactivation keeps disabled | api batch, exit 0; citations verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:914` - `expect(await userActive(user.id)).toBe(false)`; `:916`; `:920`-`:921`; `:927` | PASS |
 | C74 | anonymization clears user | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/privacy-anonymize.test.ts:278`-`:281` | PASS |
 | C75 | anonymization failure keeps user | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/privacy-anonymize.test.ts:302`-`:303`; `:308`-`:309` | PASS |
 | C76 | staff anonymization still `409` | api batch, exit 0; selector matched two tests, both passed; whole file passed; evidence carried from 5881ed0 | `apps/api/test/staff-privacy.test.ts:201`-`:202` code is `staff_user_linked`; `:359`-`:360` | PASS |
-| C93 | open link of each purpose: `DELETE` fills `used_at`; after reactivation consume `422` in `token`, `users.active` false | api batch, exit 0; verified at 1e19a01 + working tree; each selector matched one test | `apps/api/test/portal-cutoff.test.ts:137`-`:140` - `expect(await tokensClosed(user.id)).toEqual([['first_access', true], ['reset', true]])`, `:145`-`:147`; `:157` - `expect(await tokensClosed(user!.id)).toEqual([['first_access', true]])`, `:162`-`:164`. See the judgment below | PASS |
+| C93 | open link of each purpose: `DELETE` fills `used_at`; after reactivation consume `422` in `token`, `users.active` false | api batch, exit 0; verified at a9ebfbf + working tree; each selector matched one test | `apps/api/test/portal-cutoff.test.ts:152`-`:155` - `expect(await tokensClosed(user.id)).toEqual([['first_access', true], ['reset', true]])`, `:160`-`:162`; `:172` - `expect(await tokensClosed(user!.id)).toEqual([['first_access', true]])`, `:177`-`:179` | PASS |
+| C94 | `consume` queued against every write contending for the user, both orders where the claim says so, the 2FA routes, the challenge in `verifications`, login and `verify` in flight, the own `PUT` in three interleavings and the administrator's `PUT` in four: no deadlock on the queued cases, no session or challenge left, the link password stands | api batch, exit 0; thirty-four Proofs, one test each; verified at a9ebfbf + working tree | `apps/api/test/portal-cutoff.test.ts:223`-`:228`, `:244`-`:249`, `:265`-`:270`, `:287`-`:293`, `:310`-`:315`, `:362`-`:365`, `:373`-`:376`, `:384`-`:387`, `:395`-`:398`, `:410`-`:415`, `:424`-`:429`, `:441`-`:445`, `:455`-`:459`, `:488`-`:494`, `:502`-`:507`, `:515`-`:518`, `:526`-`:529`, `:558`-`:563`, `:645`-`:648`, `:661`-`:664`, `:677`-`:682`, `:699`-`:702`, `:720`-`:724`, `:741`-`:744`, `:761`-`:765`, `:804`-`:807`, `:815`-`:819`, `:827`-`:830`, `:838`-`:841`, `:874`-`:878`, `:886`-`:889`, `:902`-`:904`; `:860`, `:864`-`:866`; `:334` - `expect((await login(user.email, user.password)).status).toBe(401)`; `:782` - `expect((await login(user.email, replacement)).status).toBe(401)`; sentences below | PASS |
 | C77 | OpenAPI ten routes, contract bodies | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/openapi.test.ts:491`; `:172` | PASS |
 | C78 | declared access | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/access.test.ts:154`; `:157`; `:160`; `:171`; `:191` | PASS |
 | C79 | admin without 2FA blocked on `approve`/`reject` "e não nas três públicas"; student never | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/enrollment.test.ts:59`-`:60` blocked; `:76` - `expect(portalPublic).toHaveLength(3)`; `:81` `422`; `:82` - `expect(text, route).not.toContain('two_factor_enrollment_required')`; `:172`-`:173` student. F7 fails at `:81` | PASS |
@@ -153,85 +138,62 @@ package.
 | C91 | photo proofs unchanged (user-approved rewrite) | api batch, exit 0; whole files passed; evidence carried from 5881ed0 | `apps/api/test/photos-replace.test.ts:100`-`:102`; `apps/api/test/photos-urls.test.ts:360`-`:361` | PASS |
 | C92 | real stack | stack run, exit 0; evidence carried from 5881ed0 | `tests/stack/compose.test.ts:1694`; `:1704`-`:1705`; `:1719`; `:1731`; `:1734` | PASS |
 
-### C69, sentence by sentence
+### Sentences of C94
 
-Judged against `.specs/features/portal-aluno/checks.md:280`. Both tests are in `apps/api/test/portal-cutoff.test.ts`:
-T is `inactivation_disables_user_and_drops_sessions_in_one_transaction` (`:39`), L is
-`failed_inactivation_keeps_open_link_usable` (`:72`).
+Verified at a9ebfbf + working tree. All assertions are literals at the line cited, so none needs its fixture walked. "Both in `Lock`" is `portal-cutoff.test.ts:197`, `:199`. The C33 sentences are `carried from a9ebfbf + round 7`, with M11 rerun. Fault lines in the table are this round where the fault was rerun, otherwise the round named under Faults injected.
 
-| Claim | Evidence | Judgment |
+| Sentence | Evidence | Judgment |
 | --- | --- | --- |
-| "Com um aluno com usuário ativo e duas sessões" | T `:40` `withTwoSessions`, `:44` `expect(sessions).toHaveLength(2)` | holds; the second session comes from a real login, which only an active user gets |
-| "`DELETE /api/students/:id` responde `204`" | T `:59` `expect(response.status).toBe(204)` | holds |
-| "na mesma leitura, a ficha é `inactive`, `users.active` é `false` e `sessions` do usuário está vazia" | T `:60`-`:64` one `select`, `:65` `expect(row).toEqual({ status: 'inactive', active: false, sessions: '0' })` | holds, one statement |
-| "a chamada seguinte a `GET /api/me/profile` com o cookie antigo responde `401`" | T `:67`-`:69`, `expect(next.status).toBe(401)`, code `unauthorized` | holds |
-| "com `withAuditInsertFailing` e um link de `reset` aberto" | T `:45` real `POST /api/password-reset` `202`, `:47` `expect(tokens.filter((row) => row.used_at === null)).toHaveLength(1)`, `:49`; L `:75`-`:78` | holds. `:47` does not name the purpose, but `:45` is the only open token issued: the `first_access` was consumed by `portalSession` |
-| "a resposta é `500`" | T `:51`, L `:80`, `expect(refused.status).toBe(500)` | holds on both |
-| "ficha, usuário, sessões e `password_tokens` ficam como estavam" | T `:52` to `:54`, `:55` `expect(await tokenRows(stack, failing.user.id)).toEqual(tokens)` | holds, exact: ficha and user as `to_jsonb` text, and `tokenRows` carries `id`, `purpose`, `token_hash`, `used_at`, `validity`. F13 dies at `:55` |
-| "e o link aberto segue valendo: o consumo responde `204`" | L `:81` `expect((await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-4' })).status).toBe(204)` | holds. F13 dies at `:81`, `expected 422 to be 204`, the observable round 4 described |
-
-**Does it close `plan.md:45`?** Yes. "Na mesma transação" names four effects: ficha, user, sessions, tokens. `:52` to `:55`
-read all four after a refused `DELETE`, and F13, the fault that moves one of them out, fails. The citation "AC 53, `Flow`
-"Corte de acesso"" resolves: `plan.md:225` and `plan.md:43`-`:45`. **Level:** both proofs cross HTTP. T still goes on to
-the successful `DELETE` in the same fixture, which is fine: the `500` branch is compared before it.
-
-### C33, sentence by sentence
-
-Judged against `.specs/features/portal-aluno/checks.md:160`. Both tests are in `apps/api/test/portal-password.test.ts`:
-A is `token_of_inactivated_or_anonymized_student_422` (`:153`), B is `open_token_on_ficha_inactive_or_anonymized_by_sql_422`
-(`:175`).
-
-| Claim | Evidence | Judgment |
-| --- | --- | --- |
-| "Com o token emitido e a ficha depois inativada por `DELETE /api/students/:id`, o consumo responde `422` em `token`" | A `:157` `204`, `:160` `expect(refused.status).toBe(422)`, `:161` `expect(await pathsOf(refused)).toEqual(['token'])` | holds |
-| "e nenhuma senha muda" | A `:162` no `accounts` row, `:163` `expect(await credentials(inactivated.userId)).toEqual(beforeInactivated)` | holds |
-| "com a ficha depois anonimizada, o consumo responde `422` em `token`" | A `:166`, `:167` real anonymization `204`, `:170`, `:171`, `:172` | holds |
-| "Como nenhuma rota deixa token aberto nesses estados" | a premise, not an assertion. Reasoned and probed in round 4, `carried from 1e19a01 + round 4 working tree`: production code did not change, so the analysis stands, with the weakness it stated (no race interleaving was observed; the lock reasoning carries it) | accepted as stated, unproven by a test, and no test could prove a universal over routes |
-| "as cláusulas do consumo são provadas à parte" | B as a whole | **precision gap.** True of `inactive`: F12 dies at `:193`. Not true of `anonymized` as a clause: F12b leaves B green, because `:202` reaches `inactive` first on that row. What B proves there is the behaviour, not the clause. See below |
-| "com o token aberto (`used_at` nulo)" | B `:188` `expect((await tokenRows(stack, userId)).map((row) => row.used_at)).toEqual([null])` | holds, read per case before the consume |
-| "numa ficha posta `inactive` por SQL" | B `:177` `update students set status = 'inactive', inactivated_at = now()` | holds |
-| "e numa ficha anonimizada por SQL" | B `:179`-`:185`, all the fields `students_anonymized_clean` requires | holds; the update succeeded, so the row is one the constraint accepts |
-| "o consumo responde `422` em `token`" | B `:193` `expect(refused.status).toBe(422)`, `:194` `expect(await pathsOf(refused)).toEqual(['token'])` | holds, both cases, in the loop at `:187` |
-| "e conta, usuário e tokens ficam idênticos" | B `:189`, `:195` `expect(await credentials(userId)).toEqual(before)`; `credentials` (`:56`) reads `accounts`, `users`, `password_tokens` as `to_jsonb` text | holds, exact. F14 dies at `:195` |
-
-**Limit of the loop.** The loop at `:187` stops at its first failure, so under a fault that hits both cases only `inactive`
-is seen to fail. I ran it reversed in the scratch (`[anonymized, inactive]`): the joint F12+F12b dies at `:193` on the
-anonymized case, `expected 204 to be 422`, and F12 alone dies on the inactive one. So each case can fail and is carrying
-weight; the shipped order just never shows the second one failing.
-
-**Level:** the state is set by SQL, as the claim says, and the consume crosses HTTP. The citation "AC 22"
-resolves at `plan.md:157`; it sits before the second sentence, which carries no citation of its own.
-
-### C93, sentence by sentence
-
-Citations refreshed at 1e19a01 + working tree; lines moved by 16 and the judgment is unchanged from round 4. Judged against
-`.specs/features/portal-aluno/checks.md:305`. Both tests are in `apps/api/test/portal-cutoff.test.ts`: R is
-`reactivation_does_not_revive_links_issued_before_inactivation` (`:131`), P is
-`reactivation_does_not_revive_first_access_link_issued_before_inactivation` (`:150`).
-
-| Claim | Evidence | Judgment |
-| --- | --- | --- |
-| "Com um link aberto de um aluno com usuário, de `reset` (usuário ativo)" | R `:132`-`:135`: `portalSession`, a real `POST /api/password-reset` answering `202`, token read from the mail | holds |
-| "e de `first_access` (usuário pendente)" | P `:151`-`:155`: `insertAdultStudent`, a real first access answering `202`, token read from the mail. That the user is pending is C16's assertion | holds |
-| "`DELETE /api/students/:id` deixa `used_at` preenchido no token desse link" | R `:136` `204`, `:137`-`:140` `expect(await tokensClosed(user.id)).toEqual([['first_access', true], ['reset', true]])`; P `:156` `204`, `:157` `expect(await tokensClosed(user!.id)).toEqual([['first_access', true]])` | holds. `tokensClosed` (`:30`) reads every token of the user, ordered. In R the `first_access` pair was consumed by `portalSession`; `reset` is the live member |
-| "depois da reativação por `PATCH` com `status: 'active'`" | R `:141`, P `:158`, `200` | holds, across HTTP |
-| "`POST /api/password-tokens/consume` com esse token responde `422` em `token`" | R `:145`, `:146`; P `:162`, `:163` | holds, exact on both |
-| "e `users.active` é `false`" | R `:147` `expect(await userActive(user.id)).toBe(false)`; P `:164` | holds |
+| `DELETE` ahead: `204`, `422` in `token`, inactive, accounts equal, `deadlocks` | `portal-cutoff.test.ts:223`-`:228` | holds; `:224` failed under M1 |
+| reset ahead: `202`, `422`, active, accounts equal, `deadlocks` | `:244`-`:249` | holds; `:245` failed under M1 |
+| first access behind `consume`: `202`, `422`, inactive, no account, `deadlocks` | `:265`-`:270` | holds; `:265` failed under M3, `:266` under M1 |
+| held token: `204`, `204`, inactive, no open token, `deadlocks` | `:287`-`:293` | holds; `:288` failed under M10, `:287` under M1 |
+| anonymization: `204`, `422`, no account, no token, `deadlocks` | `:310`-`:315` | holds; `:311` failed under M1, M8 |
+| `PATCH`, both orders: `200`, `204`, phone and password changed, `deadlocks` | `:362`, `:363`, `:351`, `:333`, `:334`, `:365`; `:373`, `:374`, `:376` | holds |
+| `PATCH /api/me/profile`, both orders: same | `:384`, `:385`, `:387`; `:395`, `:396`, `:398`; `:351`, `:334` | holds |
+| `DELETE /api/users/:id/two-factor`, both orders: `204`, `204`, flag false, no session, `deadlocks` | `:410`-`:413`, `:415`; `:424`-`:427`, `:429` | holds |
+| `PATCH /api/users/:id`, both orders: `404`, `204`, name kept, password changed, `deadlocks` | `:441`-`:445`; `:455`-`:459` | holds |
+| `consume` ahead of `disable`: `204`, `401`, flag false, no session, profile `401`, `deadlocks` | `:488`, `:489`, `:491`, `:477`, `:478`, `:494` | holds; `:489` failed under D1 and hash read late |
+| `consume` ahead of `confirm`: `204`, `401`, flag true, no session, profile `401`, `deadlocks` | `:502`, `:503`, `:505`, `:477`, `:478`, `:507` | holds; `:503` failed under D2 and hash read late |
+| `disable` ahead of `consume`: consume `204`, route `204` or `401`, no session, profile `401`, `deadlocks` | `:515`, `:516`, `:477`, `:478`, `:518` | holds; the alternative is in the claim |
+| `confirm` ahead of `consume`: same | `:526`, `:527`, `:477`, `:478`, `:529` | holds; no fault failed these two, because they do not depend on the correction: `consume` deletes after the route |
+| the `401` of `consume` ahead of `disable` and `confirm` has no `Set-Cookie` | `:490`, `:504` | holds; both failed under F |
+| `verify` after `consume`, by TOTP and backup code: `401` `invalid_code`, no `Set-Cookie`, no session, both challenge rows gone, profile `401` | `:558`, `:559`, `:560`, `:561`, `:562`, `:563`; both rows present before, `:553` | holds; `:558` failed with the drop taken out of `consume`, `:562` with the `2fa-attempts-` line not deleted |
+| gate on `sessions`, login in flight, `consume` `204`: `401` `invalid_credentials`, no `Set-Cookie`, no session | `:641`, `:645`-`:648` | holds |
+| same stop, 2FA on: `401`, no `Set-Cookie`, no challenge row | `:661`-`:664` | holds. Precision gap, below |
+| same stop, `verify` in flight: `401` `invalid_code`, no `Set-Cookie`, no session | `:677`-`:680` | holds |
+| that `401` of `verify` leaves exactly one `auth.login_failed` and the counter at one attempt | `:681`, `:682` | holds; `:681` failed under T1, `:682` under T2 |
+| `consume` stopped on `audit_logs`, login released: answers after the commit, `401`, no `Set-Cookie`, no session | `:699`-`:702` | holds; `:700` failed under L. "Only after the commit" is implied: without the wait the answer is `200` |
+| two `disable` on one session, first stopped, second `204`, `consume` stopped: first `401`, no `Set-Cookie`, no session | `:712`, `:720`-`:724` | holds; `:721` failed under L, `:722` under F |
+| same stop, login with 2FA: `401`, no `Set-Cookie`, no challenge row | `:741`-`:744` | holds; `:742` failed under L |
+| same stop, `verify`: `401` `invalid_code`, no `Set-Cookie`, no session | `:761`-`:765` | holds; `:762` failed under L |
+| `PUT /api/auth/password` in flight behind `consume`: `204`, `422` in `currentPassword`, link password `200`, `PUT` password `401`, no session | `:804`-`:807`, `:780`-`:782` | holds; `:805` failed under A, A2, B |
+| same route queued, `consume` ahead: same, `deadlocks` | `:815`-`:819` | holds; `:816` failed under A, A2, B |
+| same route queued, `PUT` ahead: `204`, `204`, link password stands, `deadlocks` | `:827`-`:830` | holds; no fault fails it, because `consume` after the `PUT` wins with or without the correction, as the Handoff says |
+| `PUT /api/users/:id/password` in flight: `204`, `422` in `password`, link password stands | `:838`-`:841` | holds; `:839` failed under C, D, X2, X4 |
+| `PUT /api/users/:id/password` stopped by the test around `hashPassword`, `consume` `204` in that interval: `422` in `password`, link password stands, `PUT` password `401`, no session (new) | `:851`-`:856`, `:860`, `:864`, `:865`, `:866`, `:780`-`:782` | holds; `:864` failed under X1, X3, D, X2, `expected 204 to be 422`. This is the sentence "o hash lido no início do pedido" now has an assertion for |
+| same route queued, `consume` ahead: same, `deadlocks` | `:874`-`:878` | holds; `:875` failed under D, X2, X4; C fails earlier, at the queue itself |
+| same route queued, `PUT` ahead: `204`, `204`, link password stands, `deadlocks` | `:886`-`:889` | holds |
+| staff row held, `PUT /api/users/:id/password` then `PATCH /api/users/:id`: `204`, `200`, `deadlocks` | `:902`-`:904` | holds; `:903` failed under E and X8, `expected 500 to be 200`, so the order of the locks is proven, not only their presence |
 
 ## Coverage
 
-`tokens recusados` and `POST /api/password-tokens/consume` statuses are `verified at 1e19a01 + working tree`, the rows the
-diff touched or whose proofs moved, recomputed from `apps/api/src/portal/portal.service.ts` and
-`apps/api/src/students/students.service.ts`. Two rows are new in this report, for sets `checks.md` has no row for. Production
-code did not change, so the rest stay carried: `carried from cf26676` or `carried from 5881ed0` as marked, and the rows of
-`checks.md` not listed one by one (`Relations`, roles, purposes, password bounds, labels, keys, transitions, tables, audit
-actions, web paths, screens, messages) `carried from 5881ed0`.
+Recomputed from `apps/api/src` and `better-auth` 1.7.7, for the rows marked verified. Rows marked verified at a9ebfbf + working tree this round are the two the new proof touches, plus every row whose citations were refreshed; since `apps/api/src` is byte-identical to round 10, the other members are the same as round 10 found. `apps/api/src/students/students.service.ts` was read with `grep -a` and a byte read, unedited. Facts, carried from a9ebfbf + round 10 unless the bullet says otherwise:
+
+- **Session creators in `better-auth`:** `api/routes/sign-in.mjs:353`, `plugins/two-factor/verify-two-factor.mjs:31`, `totp/index.mjs:210`, `plugins/two-factor/index.mjs:229`; lines `:119`, `:142` and `otp/index.mjs:227` need OTP or `skipVerificationOnEnable`, and `twoFactor()` at `apps/api/src/auth.ts:65` has neither. All `auth.api.*` calls: 8, in `auth.controller.ts` and `access.ts:113`; `getSession` creates nothing.
+- **The challenge:** `plugins/two-factor/index.mjs:292`-`:303` writes `2fa-<20 chars>` with the user id in `value` and `2fa-attempts-2fa-<id>` with `"0"`, both for 600 s, in plain text, since `apps/api/src/auth.ts` sets no `verification.storeIdentifier`. The login hook first creates and deletes a session, `:288`, then writes the challenge.
+- **Writes on `verifications`:** those two; `consumeVerificationValue` of the challenge and of the attempts row, and the rearm of the attempts row, `verify-two-factor.mjs:26`, `:72`, `:89`; `trust-device-*`, `:51`, which needs `body.trustDevice`, and the controller passes only `code` or `backupCode`; ours, `users.service.ts:37`, called at `portal.service.ts:228` and `users.service.ts:224`.
+- **Writes on `accounts`:** `portal.service.ts:218`, `:223`; `users.service.ts:89` (a new user, no contention), `:239`, called at `:161` and `:183` (both `PUT`); `privacy.service.ts:233`. All of them now hold the `users` row, by `portal.service.ts:199`, `users.service.ts:158`, `:180`, `privacy.service.ts:227`.
+- **Writes and locks on `users`:** `students.service.ts:186`, `:246`, `:274`; `portal.service.ts:133`, `:165`, `:199`, `:225`; `privacy.service.ts:227`, `:230`; `users.service.ts:83`, `:115`-`:116`, `:129`, `:152`-`:158`, `:180`, `:195`, `:221`; Better Auth's flag in `confirm` and `disable`. Audit's foreign key takes `FOR KEY SHARE` on the actor, which conflicts with `FOR UPDATE` and not with `no key update`.
+- **Callers of the check:** `auth.controller.ts:105`, `:162`, `:294`, the last reached from `:264` and `:288`: 4 routes.
+- **Counts of `checks.md`, by my count:** verified at a9ebfbf + working tree. 12 at `checks.md:439` holds: 11 routes and 1 lock, the two `PUT` apart, as its label says. 4 at `:442` holds: L fails exactly those four tests; `confirm` stays out, as in round 9, because a second request does not depend on the lock. 7 at `:443` holds: the own `PUT` by 3 interleavings, the administrator's `PUT` by 4. The own `PUT` has no fourth member because it reads no hash ahead: `users.service.ts:181`-`:182` read and verify under the lock, so a commit during its hash, `users.service.ts:178`, is the in-flight case. 32 races at `checks.md:491` holds: C32 plus 31 of the 34 Proofs of C94, leaving out the two sequential `verify` and `reset_password_ahead_of_user_patch`, which is not against `consume`.
+- **`refused tokens (16)`:** as in round 8, no route added.
 
 | Set (size) | Recomputed from | Member -> proof | Unproven |
 | --- | --- | --- | --- |
-| `POST /api/portal/first-access` statuses (3), carried from 5881ed0 | `portal.controller.ts`, `portal.service.ts` | 202 C16 · 422 C22 · 429 C23 | - |
-| `POST /api/password-tokens/consume` statuses (2), verified at 1e19a01 + working tree | `portal.service.ts` | 204 C29, C35, C69 · 422 C30, C31, C33, C93 | - |
-| `POST /api/password-reset` statuses (3), carried from 5881ed0 | `portal.service.ts` | 202 C38 · 422 C41 · 429 C40 | - |
+| `POST /api/portal/first-access` statuses (3), verified at a9ebfbf + working tree | `portal.controller.ts`, `portal.service.ts` | 202 C16, C94 `portal-cutoff.test.ts:265` · 422 C22 · 429 C23 | - |
+| `POST /api/password-tokens/consume` statuses (2), verified at a9ebfbf + working tree | `portal.service.ts:198`, `:215` | 204 C29, C33 `portal-password.test.ts:202`, C35, C69, C94 `portal-cutoff.test.ts:287`, `:363` · 422 C30, C31, C33, C93, C94 | - |
+| `POST /api/password-reset` statuses (3), verified at a9ebfbf + working tree | `portal.service.ts` | 202 C38, C94 · 422 C41 · 429 C40 | - |
 | `GET /api/me/profile` statuses (3), carried from 5881ed0 | `me.controller.ts` | 200 C43 · 401 C46 · 403 C46 | - |
 | `PATCH /api/me/profile` statuses (4), carried from 5881ed0 | `me.controller.ts` | 200 C51 · 401, 403 C46 · 422 C52, C53 | - |
 | `GET /api/me/payments` statuses (3), carried from 5881ed0 | `me.controller.ts` | 200 C45 · 401, 403 C46 | - |
@@ -246,9 +208,17 @@ actions, web paths, screens, messages) `carried from 5881ed0`.
 | admin without 2FA on new routes (10), carried from cf26676 | `listRoutes`, `PUBLIC` in `enrollment.test.ts` | `approve`, `reject` and the five `/api/me/*` C79 · the three public routes C79 at `:75`-`:83`, F7 confirms | - |
 | new routes in OpenAPI (10), carried from 5881ed0 | `listRoutes` | C77 | - |
 | public routes (13), carried from 5881ed0 | `access.test.ts` | C78 | - |
-| refused tokens (10), verified at 1e19a01 + working tree | `portal.service.ts:202`, `students.service.ts:278`, schema at `packages/contracts/src/portal.ts:23` | absent, empty C30 · `abc`, unknown C30 (`!found`) · used C30, C19 · expired C30 · ficha inactivated C33, closed token `apps/api/test/portal-password.test.ts:160`, open token by SQL `:193`, F12 confirms · ficha anonymized C33, token deleted `:170`, open token by SQL `:193`, F12+F12b confirms · `reset` issued before inactivation, ficha reactivated C93, `apps/api/test/portal-cutoff.test.ts:145`, F6c confirms · `first_access` issued before inactivation, ficha reactivated C93, `:162`, F6b confirms | - |
-| effects of `inactivate` in one transaction (4), new here, verified at 1e19a01 + working tree | `plan.md:45`, `students.service.ts:273`-`:278` | ficha, user, sessions C69, `apps/api/test/portal-cutoff.test.ts:52`-`:54` · tokens C69, `:55`, `:81`, F13 confirms | - |
-| ficha states refused at consume (2 admitted), new here, verified at 1e19a01 + working tree | `students_status_valid`, `students_anonymized_clean`, `pg_constraint` in the migrated database | `inactive` C33 `apps/api/test/portal-password.test.ts:193`, F12 confirms · `inactive` and anonymized C33 `:193`, F12+F12b confirms. The other two pairs with `anonymized_at` set are refused by the database | - |
+| refused tokens (16), verified at a9ebfbf + working tree | `portal.service.ts:198` `!owner`, `:215`, `students.service.ts:278`, `privacy.service.ts:236`, schema at `packages/contracts/src/portal.ts:23` | absent, empty, `abc`, unknown, used, expired C30 `apps/api/test/portal-password.test.ts:110` · ficha inactivated, token closed C33 `:160` · ficha inactivated, open by SQL C33 `:193` · anonymized, token deleted C33 `:170` · anonymized, open by SQL C33 `:193` · `reset` and `first_access` issued before inactivation, ficha reactivated C93 `apps/api/test/portal-cutoff.test.ts:160`, `:177` · closed by `DELETE` queued C94 `:224` · closed by reset queued C94 `:245` · closed by first access queued C94 `:266` · deleted by anonymization queued C94 `:311`, M8 confirms | - |
+| writes and locks contending for the user row with `consume` (`checks.md:439` says 12; recomputed 12, 11 routes and 1 lock, the two `PUT` apart), verified at a9ebfbf + working tree | every lock and write on `users` in `apps/api/src`, above | `DELETE /api/students/:id` C94 `portal-cutoff.test.ts:228` · reset C94 `:249` · first access, by `FOR KEY SHARE`, C94 `:270` · anonymization C94 `:315` · `PATCH /api/students/:id` C94 `:365`, `:376` · `PATCH /api/me/profile` C94 `:387`, `:398` · `DELETE /api/users/:id/two-factor` C94 `:415`, `:429` · `confirm` C94 `:507`, `:529` · `disable` C94 `:494`, `:518` · lock of `PATCH /api/users/:id` on a student C94 `:445`, `:459` · login, by the check, C94 `:700`, L confirms · `verify`, by the check, C94 `:762`, L confirms | - |
+| routes that swap the session against `consume`, by order (4), verified at a9ebfbf + working tree | `auth.controller.ts:254`, `:281`; `better-auth` `totp/index.mjs:210`, `plugins/two-factor/index.mjs:229` | `disable` behind C94 `portal-cutoff.test.ts:489`, D1 confirms · `disable` ahead C94 `:515` · `confirm` behind C94 `:503`, D2 confirms · `confirm` ahead C94 `:526` | - |
+| routes that create a session or challenge outside a transaction, against `consume` (`checks.md:441` says 5; recomputed 7 with `disable` and `confirm`, which have the row above), verified at a9ebfbf + working tree | session creators and `verifications` writes, above | `verify` after, TOTP and backup code C94 `portal-cutoff.test.ts:558` · `verify` in flight C94 `:677` · login in flight, no 2FA C94 `:645` · login in flight, 2FA C94 `:661` · `disable`, `confirm` C94 `:489`, `:503` | - |
+| lock of the check: `consume` past its delete and not committed (`checks.md:442` says 4; recomputed 4 outcomes), verified at a9ebfbf + working tree | callers of `dropSessionsIfPasswordChanged`, one lock line `users.service.ts:221`; fault L | login, session C94 `portal-cutoff.test.ts:700` · login with 2FA C94 `:742` · `verify` C94 `:762` · `disable`, second request C94 `:721`; all four fail under L, `expected 200 to be 401` or `204`. `confirm`: a second request does not depend on the lock, carried from round 9 | - |
+| writes on the password against `consume` (`checks.md:443` says 7; recomputed 7), verified at a9ebfbf + working tree | `accounts` writers, above; `consume` against itself is C32 | `PUT /api/auth/password` in flight `portal-cutoff.test.ts:805`, behind `:816`, ahead `:828` · `PUT /api/users/:id/password` in flight `:839`, during the hash `:864`, behind `:875`, ahead `:887`; A, A2, B, C, D, X1, X2, X3, X4 confirm | - |
+| tokens refused by when the token went away, verified at a9ebfbf + working tree | `portal.service.ts:198`, `:215` | before the request `!owner` C30, C33 · while `consume` waits on the user, closed C94, M2 confirms · deleted while it waits, `!found` C94 `portal-cutoff.test.ts:311`, M8 confirms | - |
+| ficha states accepted at consume (2), verified at a9ebfbf + working tree | `students_status_valid` at `packages/database/src/schema.ts:178`, `portal.service.ts:215` | `active` C29 `portal-password.test.ts:78` · `suspended` C33 `:202`, `:210`, M11 and M11b confirm | - |
+| lock strength on `users` in `consume` (bounds 2), verified at a9ebfbf + working tree | `portal.service.ts:199` | not stronger than `no key update` C94 `portal-cutoff.test.ts:265`, M3 confirms · not weaker C94 `:288`, M10 confirms; `for share` dies at C32, M10b carried | - |
+| effects of `inactivate` in one transaction (4), carried from a9ebfbf + round 5 | `plan.md:45`, `students.service.ts:273`-`:278` | ficha, user, sessions C69, `apps/api/test/portal-cutoff.test.ts:67`-`:69` · tokens C69, `:70`, `:96`, F13 confirms | - |
+| ficha states refused at consume (2 admitted), carried from a9ebfbf + round 5 | `students_status_valid`, `students_anonymized_clean`, `pg_constraint` in the migrated database | `inactive` C33 `apps/api/test/portal-password.test.ts:193`, F12 confirms · `inactive` and anonymized C33 `:193`, F12+F12b confirms. The other two pairs with `anonymized_at` set are refused by the database | - |
 | first access situations (13), refusals (9), uniform response (10), carried from 5881ed0 | `firstAccessDecision` | C89, C20, C21 | - |
 | `portal` states (4) and edges (2), carried from 5881ed0 | `portalState` | C26, C90 | - |
 | limits (4 keys), window (2 edges), carried from 5881ed0 | `PORTAL_LIMITS` | C23, C40, C88 | - |
@@ -261,197 +231,137 @@ actions, web paths, screens, messages) `carried from 5881ed0`.
 | startup config: `MailService` (2 assemblies), carried from 5881ed0 | `apps/api/src/app.module.ts:169`, `:186`; `tests/stack/compose.test.ts:1704` | tests C17 · stack C92 | - |
 | startup config: `PhotoPurge` (2 assemblies), carried from 5881ed0 | `apps/api/src/app.module.ts:128`; `apps/api/test/photos-purge.test.ts:167` | C62, C64 | - |
 
-**Is ten still right?** As a count of the situations `checks.md:399` names, yes, and every one has a proof asserting the
-`422`. But the two members "ficha inativada" and "ficha anonimizada" now each hold two different situations: the token
-closed by the route (`!usable`, `!found`) and the token left open by SQL (the `inactive` clause). Split by what the code
-does, the row is 12. Nothing is unproven either way; the count just reads smaller than what C33 now proves. Reported below.
-
-**Which clause decides each refusal, recomputed.** `consume` has four refusing conditions at `portal.service.ts:202`, and the
-schema at `packages/contracts/src/portal.ts:23` adds two before them. Absent and empty stop at the schema; `abc` and unknown at
-`!found`; used and expired at `!usable`; the two members of C93 at `!usable`. A's inactivated token stops at `!usable`, because
-`inactivate` closed it; A's anonymized one at `!found`, because anonymization deleted it. B's inactive case stops at the `inactive`
-clause, and F12 proves it. B's anonymized case stops at that same clause, and no state reaches the fourth condition as the first
-true one. That is F12b.
-
-**Sweep of `checks.md`.** The inconsistencies of round 4 are closed: `:443` now states its exception for the two links of C93, and
-`:488` names F12 as a survivor of round 3. C69 at `:280` now says the closing rolls back, so `plan.md:45` has its claim. `:8` says
-93 and the file holds 93. Still inconsistent, reported and not fixed:
-
-- `:160`, "as cláusulas do consumo são provadas à parte": see C33. The word that fits is the states, not the clauses. `:488` records
-  the limit, so the artifact is not hiding it, but the check itself overclaims by one clause.
-- `:399` and `:447`, ten: see above. The same count under `Evidence`, which is now said to come from the plan except for the C93
-  links, while the row hides the SQL situations too.
-- `:488`, "a prova da ficha anonimizada mata a retirada das duas cláusulas juntas": true of the case, shown by my reversed run, and
-  not what the shipped test does. In the shipped order the joint fault dies on the `inactive` case at `:193`, and the anonymized case
-  is never reached. "A prova" kills it; "da ficha anonimizada" is the part the run does not show.
-- `:373`, 204 lists C29 and C35 and not C69, whose second Proof now consumes with `204`. It adds a proof to a proven member.
-
-`Swept` rows resolving to existing, carried from 5881ed0: the global guard is at `apps/api/src/app.module.ts:202` (`APP_GUARD`,
-`AccessGuard`), and the origin check at `apps/api/src/csrf.ts:25`. Both are there.
-
-Level, carried from cf26676, plus C33, C69 and C93 verified here, all their proofs: every claim naming a status, route or response
-shape has a proof crossing HTTP.
+No row has `Unproven` filled. Every enumeration of `Surface`, `Relations` and `Landing` was untouched since round 10.
 
 ## Test policy rows
 
-The two rows of this feature, plus the rows inherited from `pre-cadastro` and earlier. The third row is re-judged at 1e19a01 +
-working tree, the one unmet in round 4. The others are carried: the seventh from cf26676, the rest from 5881ed0.
+The third row was rejudged, the only one unmet in round 10, and verified at a9ebfbf + working tree. The first, second and sixth are `carried from a9ebfbf + round 10`; the others are `carried from 5881ed0`, except the seventh, `carried from cf26676`. No file they classify changed since round 10.
 
 | Row | Files it classifies | Required proof | Expectation met |
 | --- | --- | --- | --- |
-| Eligibility with many conditions | `portal.service.ts` `firstAccessDecision` | service table C89 · boundary C20, C21 | yes |
-| State derived from two tables | `portal.service.ts` `portalState` | pure C90 · boundary C26 | yes |
-| Route that decides, over HTTP, with role cut and trail | `portal.controller.ts`, `me.controller.ts`, `photos.controller.ts`, `students.controller.ts`, `students.service.ts` `inactivate` | C16 to C83, C93 | yes - see the note under this table |
+| Eligibility with many conditions | `portal.service.ts` `firstAccessDecision` | service table C89 · boundary C20, C21 | yes - outside the diff |
+| State derived from two tables | `portal.service.ts` `portalState` | pure C90 · boundary C26 | yes - outside the diff |
+| Route that decides, over HTTP, with role cut and trail (`auth-rbac`: one case per line of the decision table) | `portal.controller.ts`, `me.controller.ts`, `photos.controller.ts`, `students.controller.ts`, `students.service.ts` `inactivate`, `consume` behind `portal.controller.ts`, `auth.controller.ts` `login`, `verifyTwoFactor`, `confirm`, `disable`, `changePassword`, `users.controller.ts` `resetPassword`, `users.service.ts` `changeOwnPassword`, `resetPassword`, `dropSessionsIfPasswordChanged`, `dropPendingTwoFactor` | C16 to C83, C93, C94 | yes - statuses, bodies and trail: `portal-cutoff.test.ts:681`, `:682`; the `currentPassword` and `password` lines `:806`, `:876`; the line "hash changed while the request hashed" of `resetPassword`, `users.service.ts:149`-`:150`, now has its case, `portal-cutoff.test.ts:864`, X1 and X3 die there; the `200` paths by the whole API suite |
 | Database constraint | `0013_portal.sql` | C1 to C5 | yes |
-| Count in a window | `lead-throttle.ts` | module C88 · boundary C23, C40; the race runs on the shared statement at `apps/api/test/leads-throttle.test.ts:78` | yes |
-| Side effect after commit | `portal.service.ts` `deliver` | capture C17, C18, C38; `apps/api/src/mail` is not in the diff | yes |
+| Count in a window | `lead-throttle.ts` | module C88 · boundary C23, C40 | yes |
+| Side effect after commit | `portal.service.ts` `deliver` | capture C17, C18, C38; outside the diff | yes |
 | Screen against the `FakeApi` | `minha-conta`, public pages, ficha | C27, C28, C36, C37, C42, C47 to C50, C56, C67, C68 | yes |
 | Stack through `psql` | `tests/stack/compose.test.ts` | C92 | yes |
 
-**Note on the third row.** The half round 4 left open is met: the place of `students.service.ts:278` in the transaction is asserted at
-`apps/api/test/portal-cutoff.test.ts:55` and `:81`, and F13 dies at both. The consume decision behind `portal.controller.ts` has its
-`inactive` clause proven, F12 dies at `apps/api/test/portal-password.test.ts:193`; its `anonymized` clause changes no response in any
-state the database admits, which is the judgment on F12b under `Faults injected`. This text sits here and not in the cell because the
-gate greps the cell for the bare word "no" and read this sentence as an unmet row on its first run; the sentence is unchanged.
-
 ## Faults injected
 
-Verified at 1e19a01 + the working-tree `portal-cutoff.test.ts` and `portal-password.test.ts`, in a `git worktree add <temp> HEAD`
-with both files copied in, one fault at a time and the source restored by `git checkout -- apps/api/src` between them. `git status
---porcelain` of the real tree, before and after, was the same four lines (`checks.md`, `verification.md`, both test files, all ` M`),
-compared by `diff`. No `git stash`. The worktree was removed: the directory is gone and `git worktree list` shows only the real tree.
-This round ran eight mutations, past the cap of five in `verify.md`: the brief named seven, and F14 is mine, because the new assertion
-at `portal-password.test.ts:195` had never been made to fail.
+Verified at a9ebfbf + the changed files, in `git worktree add --detach %TEMP%\r11w HEAD`, with the six files of `git diff --name-only a9ebfbf` under `apps` copied in, four directory junctions for `node_modules` (root, `apps/api`, `packages/database`, `packages/contracts`), and `globalSetup` removed from `vitest.config.ts` in the scratch only. No `pnpm` command ran in the scratch; tests ran with `node node_modules\vitest\vitest.mjs` from `apps\api`. Green baseline first: `portal-cutoff` and `portal-password`, 51 of 51. Each fault was one run of the proofs covering it, the source restored by script between runs and checked byte for byte against the real tree at the end. The five-fault cap of `verify.md` does not apply: all were requested.
 
-Green baseline first. `pnpm install --frozen-lockfile --offline` worked. In the scratch only, the `globalSetup` at
-`test/support/build.ts` was a no-op, because the narrow set does not use `dist`, and `vitest` ran through `node`. Baseline:
-`portal-cutoff`, `portal-password` and `privacy-anonymize` 38 of 38, exit 0, so each kill below is the named assertion failing and not
-a process error. The whole API suite did not run under any mutant this round.
-
-F6d, F10 and F11 are `carried from 1e19a01 + round 4 working tree`, with line numbers translated to the current file; F1, F7, F8 and F9
-are `carried from cf26676`; F2 to F5 of round 1 `carried from 5881ed0`. Their code did not change, and the diff only adds assertions
-near them.
+Isolation: `git status --porcelain` of the real tree identical before and after, twelve lines, MD5 `A92978788B239C9430E1A70BCC3E4CD0`, taken before this file was written, so this report is the only change; `git diff a9ebfbf -- apps` kept the same hash, MD5 `BF96FFE56BAB570E0DC7D52BB50B91EA`; no `git stash`, `reset`, `checkout` or `commit`. Each junction was removed with `cmd /c rmdir` before `git worktree remove --force`. `git worktree list` shows only the real tree. `Test-Path apps\api\node_modules\vitest` is true before and after; no link under `apps\api\node_modules` points at the scratch.
 
 | Mutation | Location | Killed |
 | --- | --- | --- |
-| F13 (re-injected): the closing runs on `this.db`, outside the transaction | `apps/api/src/students/students.service.ts:278` | yes - `portal-cutoff.test.ts:55`, tokens differ after the `500`, and `:81`, `expected 422 to be 204`; the survivor of round 4 |
-| F12 (re-injected): `found.studentStatus === 'inactive'` removed from `consume` | `apps/api/src/portal/portal.service.ts:202` | yes - `portal-password.test.ts:193`, `expected 204 to be 422`; not killed in rounds 3 and 4 |
-| F12+F12b (new): both clauses removed | `apps/api/src/portal/portal.service.ts:202` | yes - `portal-password.test.ts:193`, on the `inactive` case in the shipped order and on the anonymized case with the loop reversed |
-| F6 (re-injected): open tokens not closed in `inactivate` | `apps/api/src/students/students.service.ts:278` | yes - `portal-cutoff.test.ts:137` and `:157` |
-| F6b (re-injected): closes `reset` only | `apps/api/src/students/students.service.ts:278` | yes - `portal-cutoff.test.ts:157`, `expected [ [ 'first_access', false ] ] to deeply equal [ [ 'first_access', true ] ]` |
-| F6c (re-injected): closes `first_access` only | `apps/api/src/students/students.service.ts:278` | yes - `portal-cutoff.test.ts:137` |
-| F14 (new, mine): a refused `consume` burns the token, commits, and still answers `422` | `apps/api/src/portal/portal.service.ts:202` | yes - `portal-password.test.ts:195`, the credentials differ; the status at `:193` passes under it |
-| F6d: closing moved from `inactivate` to the reactivation, carried | `students.service.ts:278` and `:247`, `update` | yes - `portal-cutoff.test.ts:137` and `:157`; the `422` alone would not see it |
-| F10: reactivation clears `used_at`, carried | `apps/api/src/students/students.service.ts:247`, `update` | yes - `portal-cutoff.test.ts:145` and `:162`, `expected 204 to be 422` |
-| F11: reactivation sets `users.active` true, carried | `apps/api/src/students/students.service.ts:247`, `update` | yes - `portal-cutoff.test.ts:147`, `:164`, and C73 at `:174` |
-| F1: `url` dropped from `pendingOf`, carried from cf26676 | `apps/api/src/photos/photos.service.ts:345` | yes - C60 at `portal-photo.test.ts:182`, C65 at `:292` |
-| F7: public portal routes pass through the session and enrollment check when a cookie comes, carried from cf26676 | `apps/api/src/access.ts` `canActivate` | yes - C79, `POST /api/portal/first-access: expected 403 to be 422` |
-| F8: invalid `variant` swallowed by `.catch(undefined)`, carried from cf26676 | `packages/contracts/src/photos.ts:10` | yes - C65, `expected 200 to be 422` |
-| F9: photo row `flex-wrap` changed to `flex-col`, carried from cf26676 | `apps/web/src/app/students/[id]/page.tsx:136` | yes - C67 at `students.spec.ts:841`, `Received: 309`, `Expected: >= 429` |
+| X1: `before` read after `hashPassword`, as defined in round 10 | `apps/api/src/users/users.service.ts:149`-`:150` | yes - `apps/api/test/portal-cutoff.test.ts:864`, `expected 204 to be 422`; the other four `reset_password_` proofs pass, as the Handoff says |
+| X3, mine: `before` read inside the transaction, after the admins and before the target lock | `apps/api/src/users/users.service.ts:149`, `:157` | yes - `portal-cutoff.test.ts:864`, `expected 204 to be 422`; only that proof fails, so the window has one wall and it holds on a second path |
+| X4, mine: hash compared before the target lock | `apps/api/src/users/users.service.ts:158`-`:160` | yes - `portal-cutoff.test.ts:839`, `:875`; `:864` passes, correctly: the commit is already visible there |
+| A: `changeOwnPassword` reads and verifies outside the transaction, lock kept | `apps/api/src/users/users.service.ts:179`-`:182` | yes - `portal-cutoff.test.ts:805`, `:816`, `expected 204 to be 422` |
+| A2: as in round 9, read outside and no lock | `apps/api/src/users/users.service.ts:178`-`:182` | yes - `portal-cutoff.test.ts:805`, `:816` |
+| B: lock removed from `changeOwnPassword` | `apps/api/src/users/users.service.ts:180` | yes - `portal-cutoff.test.ts:805`, `:816` |
+| C: target lock removed from `resetPassword` | `apps/api/src/users/users.service.ts:158` | yes - `portal-cutoff.test.ts:839`, `expected 204 to be 422`; the three queued proofs fail at the queue helper, `:197`, `:199`, because the route no longer queues |
+| D: hash comparison removed from `resetPassword` | `apps/api/src/users/users.service.ts:160` | yes - `portal-cutoff.test.ts:839`, `:864`, `:875` |
+| E: active-admins lock removed from `resetPassword` | `apps/api/src/users/users.service.ts:152`-`:157` | yes - `portal-cutoff.test.ts:903`, `expected 500 to be 200` |
+| X8: active admins locked after the target | `apps/api/src/users/users.service.ts:152`-`:158` | yes - `portal-cutoff.test.ts:903`, `expected 500 to be 200` |
+| X2: `password_changed` branch dropped from the controller | `apps/api/src/users/users.controller.ts:65`-`:67` | yes - `portal-cutoff.test.ts:839`, `:864`, `:875` |
+| L: `no key update` lock removed from `dropSessionsIfPasswordChanged` | `apps/api/src/users/users.service.ts:221` | yes - `portal-cutoff.test.ts:700`, `:721`, `:742`, `:762` |
+| F: `forwardCookies` ahead of the check, both routes | `apps/api/src/auth/auth.controller.ts:264`-`:265`, `:288`-`:289` | yes - `portal-cutoff.test.ts:490`, `:504`, `:722`, `expected [ Array(1) ] to deeply equal []` |
+| T1: `auth.login_failed` removed from the changed-password branch of `verify` | `apps/api/src/auth/auth.controller.ts:163`-`:164` | yes - `portal-cutoff.test.ts:681` |
+| T2: counter reset on that branch | `apps/api/src/auth/auth.controller.ts:162` | yes - `portal-cutoff.test.ts:682` |
+| M1: old order, token and user locked in one statement, as in a9ebfbf | `apps/api/src/portal/portal.service.ts:199`, `:214` | yes - `portal-cutoff.test.ts:224`, `:245`, `:311`, `expected 500 to be 422`; `:266`, `expected 204 to be 422`; `:287`, `expected 500 to be 204` |
+| M3: `users` locked `for update` | `apps/api/src/portal/portal.service.ts:199` | yes - `portal-cutoff.test.ts:265`, `expected 500 to be 202` |
+| M8: `!found` removed | `apps/api/src/portal/portal.service.ts:215` | yes - `portal-cutoff.test.ts:311`, `expected 500 to be 422` |
+| M10: `users` locked `for key share` | `apps/api/src/portal/portal.service.ts:199` | yes - `portal-cutoff.test.ts:288`, `expected 500 to be 204` |
+| M11: clause becomes `found.studentStatus !== 'active'` | `apps/api/src/portal/portal.service.ts:215` | yes - `apps/api/test/portal-password.test.ts:202`, `expected 422 to be 204` |
+| `dropPendingTwoFactor` out of `consume` and of the check, `2fa-attempts-` line, check out of `login` and `verify`, D1, D2, hash read late on four routes: carried from a9ebfbf + round 9 | `auth.controller.ts`, `users.service.ts`, `portal.service.ts` | yes - carried; those lines did not change since |
+| M2, F12, F14, F12+F12b, M2b, M7, M9, M10b, M12: carried from a9ebfbf + rounds 6 and 7 | `apps/api/src/portal/portal.service.ts` | yes - carried |
+| C1, C2, X1, X2 of round 8: carried from a9ebfbf + round 8 | `apps/api/src/users/users.service.ts`, `apps/api/src/auth/auth.controller.ts` | yes - carried |
+| F13, F6, F6b, F6c, F6d, F10, F11: carried from a9ebfbf + round 5 | `apps/api/src/students/students.service.ts` | yes - carried |
+| F1, F7, F8, F9: carried from cf26676; F2 to F5: carried from 5881ed0 | see round 1 and round 2 | yes - carried |
 
-**Run and not in the table above, because under step 3 of `verify.md` it is not a fault:**
+F12b and M2c were not rerun: their classifications are accepted (`checks.md:534`). The two scratch runs on the mock (`mock_removed`, `no_mock_r10_tree`) are test edits, not production faults, so they are in the mechanism table at the top and not here.
 
-| Mutation | Location | Outcome | Classification |
-| --- | --- | --- | --- |
-| F12b: `found.anonymized` removed from `consume` | `apps/api/src/portal/portal.service.ts:202` | **not killed**: 38 of 38 at the narrow set, 8 of 8 in `portal-password` with the loop reversed. No test run went red | not a behaviour-level fault: same response as the unmutated code in every state the database admits, evidence below |
+`carried from a9ebfbf + round 10`, from here to the Gate section: no production line changed since, and the probes were not rerun. Citations of `checks.md` were refreshed.
 
-**On that second table, stated plainly.** `verify.md` asks for a "behaviour-level fault", and a surviving one is a finding. F12b
-changes no behaviour I can reach, so I do not count it as either a kill or a survivor. The placement has a consequence: the gate reads
-columns named `Killed`, so it does not read this row, and its exit 0 says nothing about F12b. I did not separate the row to obtain that
-exit; a `no` in the first table would assert a fault that I conclude does not exist, and `verify.md` would then require a FAIL no test
-could ever clear while the clause is in the code. If you read the classification differently, this row is the one to overturn, and
-the verdict goes with it.
+**Deadlocks: what I tried.** Each row in the probes below is `pg_stat_database.deadlocks` read before and after the stats delay, on the row held `FOR UPDATE` until both requests were in `Lock`, unmodified code. By reading: `no key update` does not conflict with the audit `FOR KEY SHARE`, so `changeOwnPassword` needs nothing another holder has, and it only ever locks its own row. `resetPassword` takes the admins in `key share` by `id` before the target, the order of `update`, and only `FOR UPDATE` or a key update conflicts with that; the sole transaction taking `FOR UPDATE` on admins is `update` itself, which takes them first.
 
-**F12b, judged adversarially.** The author's claim is that `students_anonymized_clean` (`packages/database/src/schema.ts:180`) makes
-`found.anonymized` unreachable as the deciding clause. Tested as a claim to break, in a temporary test in the scratch, deleted with
-it, run four times against unmutated, F12, F12b and F12+F12b:
+| Probe (order in the queue) | Statuses | `deadlocks` raised |
+| --- | --- | --- |
+| `PATCH /api/users/:id` same admin, ahead of `PUT /api/users/:id/password` | `200`, `204` | 0 |
+| `PATCH` by another admin, ahead of the `PUT` | `200`, `204` | 0 |
+| the `PUT` ahead of `PATCH` by another admin | `204`, `200` | 0 |
+| the `PUT` on an admin target ahead of `PATCH`, and the reverse | `204`, `200`; `200`, `204` | 0, 0 |
+| two admins resetting each other | `204`, `204` | 0 |
+| `DELETE /api/users/:id/two-factor` and the `PUT`, both orders | `204`, `204` both | 0, 0 |
+| `PUT /api/auth/password` and `PATCH /api/users/:id`, both orders | `204`, `200`; `200`, `204` | 0, 0 |
+| an admin's own `PUT` ahead of `PATCH` of a third user, which locks that admin | `204`, `200` | 0 |
+| own `PUT` and administrator's `PUT`, both orders | `204`, `422` both | 0, 0 |
+| own `PUT`, administrator's `PUT` and `PATCH` together on one admin row | `204`, `422`, `200` | 0 |
+| administrator's `PUT` and `DELETE /api/students/:id`, both orders | `204`, `204` both | 0, 0 |
+| administrator's `PUT` and `PATCH /api/students/:id` of the e-mail, which takes a key update, both orders | `204`, `200`; `200`, `204` | 0, 0 |
+| anonymization ahead of the administrator's `PUT` | `204`, `422` | 0 |
+| `POST /api/password-reset` ahead of the administrator's `PUT` | `202`, `204` | 0 |
+| own `PUT` and `DELETE /api/students/:id`, both orders | `204`, `204` both | 0, 0 |
+| own `PUT` ahead of `POST /api/password-reset` | `204`, `202` | 0 |
+| own `PUT` and `PATCH /api/me/profile`, both orders | `204`, `200`; `200`, `204` | 0, 0 |
+| own `PUT` ahead of `PATCH` of the e-mail | `204`, `200` | 0 |
+| 24 ungated races, below | - | 0 |
+| `DELETE /api/students/:id` by an admin ahead of `PATCH /api/users/:id` on that student's user: not a `PUT` | `204`, `500` | **1**, now recorded as open at `checks.md:538` |
+| `DELETE /api/users/:id/two-factor` ahead of `PATCH /api/users/:id`: the shape the Handoff records as unchanged | `204`, `500` | **1**, as recorded |
 
-- **Logic.** Under the mutant `consume` differs from the original only where `anonymized` is true and `status` is not `inactive`. So the
-  whole question is whether a row with that pair can exist, and whether a read can return that pair.
-- **The constraint is real in the migrated database, not just in `schema.ts`.** PostgreSQL 18.6, `pg_constraint`: `convalidated` true,
-  `conenforced` true, `condeferrable` false, `conislocal` true. No trigger on `students`, no partition or inheritance. It comes from
-  `packages/database/migrations/0011_privacy.sql:30` with no `NOT VALID`; `NOT VALID`, `NOT ENFORCED` or `DISABLE` appear in no migration,
-  and the only `DROP CONSTRAINT` is `users_role_valid` in `0013_portal.sql:13`.
-- **A false disjunct cannot be dodged by NULL.** A CHECK passes on NULL, so a NULL in another conjunct could matter, but `status =
-  'inactive'` false makes the conjunction false whatever the others are, and `status` is `NOT NULL` (`23502` when tried).
-- **Direct attempts, as a superuser, all refused with `23514` on `students_anonymized_clean`:** `UPDATE` of an anonymized row to `active`, to
-  `suspended`, to `suspended` keeping `inactivated_at`; `INSERT` as `active` and as `suspended`; `status = 'INACTIVE'`; under `session_replication_role
-  = replica`; under `set constraints all deferred`; `COPY ... FROM PROGRAM`; a writable CTE. `count(*)` of anonymized rows not `inactive`: 0.
-- **Races on the row, two real connections.** Reactivation open, then an anonymization that does not touch `status` waits on it: on commit
-  it is refused `23514`, because the CHECK runs on the tuple after re-evaluation. Anonymization open, then an unqualified reactivation waits:
-  refused `23514`. A `repeatable read` transaction with an old snapshot sees the old consistent row (`active`, not anonymized), not a mix.
-- **The read inside `consume`.** Both values come from one tuple in one statement: one `inner join` on `students`, `users.student_id` unique,
-  `students` not in the `FOR UPDATE OF`, so a re-check after a lock wait reuses the same row version. A CHECK binds each tuple version, so that
-  pair exists in no version. Instrumented, not only reasoned: `consume` counted what it read, with a writer flipping one ficha between
-  active and anonymized in single statements while 240 consumes of an expired token ran. Per run: 530 to 590 flips, 105 to 134 reads as anonymized,
-  110 to 139 as not, **0 reads of anonymized and not `inactive`**. Both states were really seen, so the sample means something; the tuple argument
-  carries the claim, the sample only fails to contradict it.
-- **Truth table at the HTTP boundary**, consume of an open token:
+**Lock changes judged:** no lock change of round 10 raises `deadlocks`. The last two rows are the audit shape on routes that diff does not touch, both reproduced to know the edge of the claim.
 
-| Ficha | Unmutated | F12 | F12b | F12+F12b |
-| --- | --- | --- | --- | --- |
-| `active`, not anonymized | 204 | 204 | 204 | 204 |
-| `suspended`, not anonymized | 204 | 204 | 204 | 204 |
-| `inactive`, not anonymized | 422 | 204 | 422 | 204 |
-| `inactive`, anonymized | 422 | 422 | 422 | 204 |
-| `active` or `suspended`, anonymized | database refuses the state | | | |
+**Interleavings on the unmodified code**, scratch probes:
 
-F12b's column equals the unmutated one on every admitted row. That is the conclusion: the mutation is equivalent under the schema. The
-reservation I keep: this holds while the constraint exists. A DDL that drops or weakens it changes the schema, not a state of this one,
-and then the clause becomes live again; that is the only case for keeping it. It also means the clause is defence for a different
-database, and `found.anonymized` is dead code today.
+| Interleaving | Statuses | Result |
+| --- | --- | --- |
+| `PUT /api/auth/password` and `consume` started together, 12 runs, no gate | `422`, `204` in all 12 | link password `200`, `PUT` password `401`, in all 12 |
+| `consume` and `PUT /api/users/:id/password` started together, 12 runs, no gate | `204`, `422` in all 12 | link password `200`, `PUT` password `401`, in all 12 |
+| login in flight across `PUT /api/auth/password` | `204`, `401` | 0 sessions, the session the `PUT` keeps included, as round 9 |
+| login between the `delete` of `PUT /api/auth/password` and its commit | `204`, `401`, no cookie | 0 sessions: the second open item of round 9 is closed, by test and not only by reading. Round 9: `200`, 2 sessions. The kept session falls with it, the safe side |
+| same, `PUT /api/users/:id/password` | `204`, `401` | 0 sessions |
+| `verify` at the same point of `PUT /api/auth/password` | `204`, `401` | 0 sessions, profile `401` |
+| `verify` after `PUT /api/auth/password` and after `PUT /api/users/:id/password` | `204`, `200` both | profile `200`: the open item of `checks.md:537`, confirmed |
+| two `PUT /api/auth/password` together | `204`, `422` | the first password `200`, the second `401`: in round 9's code the last one won |
+| administrator's `PUT` behind the `consume` of a `first_access`, no account before | `204`, `422` | link password `200`, `PUT` password `401`; `null` against a hash compares as changed |
+| administrator's `PUT` sequentially after `consume` | `204`, `204` | the `PUT` password `200`: a later act by an administrator, not a route defeating `consume`, and the same outcome the plan's `Impact` limits to "enquanto o pedido esperava" |
+| 40 wrong `PUT /api/auth/password` on one session, with a second session reading `GET /api/auth/session`, for the cost of verifying the password under the lock, which the Handoff records | all `422`, 1.7 s | reader 2 ms to 3 ms before, peak 368 ms during, on the test Argon2. No failure; the check under the lock holds a pool connection for one verification each |
 
-**F14 is a fault of mine.** It separates the refusal from the rollback: the transaction marks the token used and commits, and `422` is
-thrown after it. The status assertion passes and only `:195` sees it, which confirms the new comparison is not decoration.
+**Other routes against `consume`.** All `auth.api.*` calls: 8, unchanged. `enable` writes no session and no password; `confirm` and `disable` have the check; the only writers of the password are in the Coverage facts. I found no route left that defeats `consume`.
+
+**The Handoff, read against the code, verified at a9ebfbf + working tree.** `checks.md:538` is accurate: no production change, measured by hash; the window has no database statement, so `gate()` cannot reach it; the mock and `hashes.before` are as it says; with X1 the new proof fails with `expected 204 to be 422` and the other four `reset_password_` proofs pass, reproduced; without it all five pass. Its open item is the `inactivate` deadlock, matches the code, and is a recorded open item, not a failure.
 
 ## Gate
 
-`py -3 C:/Users/Admin/.claude/skills/tlc-spec-lean/scripts/validate_verification.py portal-aluno --root C:/Users/Admin/projetos/academia-bairro` - exit 0, 0 errors and 0 warnings. That exit does not read F12b, by the placement explained under `Faults injected`. Proofs: 106 passed, 0 failed (contracts 3, db 5, repo 1, api 76, web 20, stack 1); whole files of C26, C76, C91, `portal-cutoff` and `portal-password`: 72 passed, 0 failed.
+`py -3 C:/Users/Admin/.claude/skills/tlc-spec-lean/scripts/validate_verification.py portal-aluno --root C:/Users/Admin/projetos/academia-bairro` - exit 0: 0 errors, 0 warnings.
 
-## Findings that fail this round
+Proofs: 141 tests passed, 0 failed, from 140 Proof lines (contracts 3, database 5, repo 1, api 111, web 20, stack 1). Beyond the Proof lines, the whole API suite on the real tree, `pnpm --filter "./apps/api" test`: 883 passed, 0 failed, 95 files, exit 0, coverage 96.61% of lines and 94.1% of branches.
 
-None. Round 4's one finding is closed: F13 dies at `apps/api/test/portal-cutoff.test.ts:55` and `:81`.
+## Decisions for the user
 
-## Decision for the user (does not fail this round by itself)
-
-- **F12b: accept the classification, and what to do with the clause.** `found.anonymized` at `apps/api/src/portal/portal.service.ts:202`
-  is not killed and decides nothing in any state this schema admits. Keeping it is harmless defence against a future change to the
-  constraint; removing it is a production change, out of this round, and would make the question disappear. Either way, the row under
-  `Faults injected` is the judgment to overturn if you want this treated as a survivor, and then this PASS is a FAIL.
+- **Rounds past the bound.** Rounds 4 to 11 all went past the three of `verify.md`, each with recorded authorization.
+- **The `inactivate` shape:** stays open by `checks.md:538`; closing it needs a production change, which this round did not have.
+- **Commit.** Nothing is committed; the green above is of the working tree on `a9ebfbf`, and a commit is the user's call.
 
 ## Open findings (do not change the verdict)
 
-New in this round:
+- **`STATE.md`:** the recorded state of the feature is behind this round, and `.specs/ROADMAP.md:28` may be too. Both out of this round's edit scope.
+- **Deadlock on the `users` audit shape, recorded at `checks.md:538`:** `DELETE /api/students/:id` by an admin against `PATCH /api/users/:id` on that student's user, `deadlocks` +1 and `500` on the `PATCH`, whose normal answer is `404`. `inactivate` holds the user and then `audit` asks `FOR KEY SHARE` on the actor, `apps/api/src/students/students.service.ts:274`, while `update` holds the admins and waits for the user, `apps/api/src/users/users.service.ts:115`-`:116`. By reading, `PATCH /api/students/:id` of the e-mail and the anonymization share it, not probed; the Handoff names only `inactivate`. Carried from a9ebfbf + round 10.
+- **`verify` after a `PUT`:** recorded as open at `checks.md:537`, `:538`, older than this feature.
+- **A `PUT` in flight when the ficha goes `inactive`:** own and administrator's `PUT` queued behind `DELETE /api/students/:id` answer `204` and change the password of a disabled user. The user stays inactive and the sessions gone, so no access follows; no check speaks of it. Carried from a9ebfbf + round 10.
+- **Orphan attempts row:** a wrong code in flight across `consume` rearms `2fa-attempts-2fa-<id>` after the delete (`verify-two-factor.mjs:89`). No session and no challenge; the row lapses in 600 s and no new challenge uses its id. Carried from round 9.
+- **Precision gap, C94 login with 2FA:** "nenhuma linha de desafio" is read at `portal-cutoff.test.ts:663`, `:744` by `pendingChallenges`, which filters `value = <user id>` and cannot see the attempts row, whose `value` is a count. The sequential proof at `:562` does read it. Carried from a9ebfbf + round 10.
+- **`deadlocks`:** the proofs with a gate or none do not read it, and C94 does not claim it there, the new proof included. The queued lines only ever follow a status that fails first; M12 is the carried witness.
+- **An orphan session row:** if `record` throws in `disable` or `confirm` (`auth.controller.ts:263`, `:287`), the check does not run and the new row stays, but no cookie goes out, so no client holds it. Carried from a9ebfbf + round 10.
 
-- **Precision gap, C33:** `checks.md:160`, "as cláusulas do consumo são provadas à parte", overclaims by one clause. Listed under Coverage.
-- **`checks.md:399` and `:447`:** ten hides two situations of C33. Listed under Coverage.
-- **`checks.md:488`:** attributes the joint kill to the anonymized case, which the shipped loop never reaches. Listed under Coverage.
-- **The loop at `apps/api/test/portal-password.test.ts:187` stops at the first case that fails,** so the anonymized case never shows
-  failing in the shipped order. One test per case, or `expect.soft`, would show both. Not a gap in the claim: reversed, it dies.
-- **Consume on a `suspended` ficha has no assertion.** My truth table reads `204`, and a first access is allowed for `suspended` (C16), so a
-  link can be issued there. No check or AC states the consume outcome. A mutation of the clause to `status !== 'active'` was not injected;
-  from the code, I expect it to survive. No artifact claims this, so it is a note and not a coverage gap.
+Carried, from the earlier rounds named:
 
-Re-read against the current tree:
-
-- **CLOSED: F13 and "the token closing is outside any rollback assertion".** See above.
-- **CLOSED: F12.** Killed at `portal-password.test.ts:193`. The state is still unreachable through the API, per round 4; a SQL state proves it.
-- **CLOSED: `checks.md:441` and `:486` of round 4.** Now `:443` and `:488`, both fixed.
-- **CLOSED, by the new Proof: C33 passes for a second reason.** `open_token_on_ficha_inactive_or_anonymized_by_sql_422` reaches the clause.
-- **Possible deadlock, still open, read from the code, not observed:** `consume` locks token then user
-  (`apps/api/src/portal/portal.service.ts:201`), `inactivate` updates user then token
-  (`apps/api/src/students/students.service.ts:274`, `:278`). A true interleaving could abort one with a `500`. No state is left wrong. I did
-  not try to produce it this round, and nothing in the diff bears on it. Out of scope for a fix.
-- **`STATE.md` and `ROADMAP.md`, still true:** both still record the feature as verified at round 2 (`.specs/STATE.md:183`,
-  `.specs/ROADMAP.md:28`). Out of this round's edit scope.
-- **Precision gap, C76, still true (carried from 5881ed0):** `checks.md:302` says `user_linked`; the HTTP code is
-  `staff_user_linked` (`apps/api/src/privacy/privacy.controller.ts:76`). `user_linked` is only the internal outcome.
-- **`DELETE /api/students/:id/photo` also deletes a pending photo, still true:** `checks.md:487` records it as deliberate.
-  It remains without a check, and `plan.md:62` says version listings ignore a pending one. Code unchanged.
-- **`pendingPhoto.url` to all four profiles, still true:** `checks.md:487` records it as AD-033 behaviour, and the screen
-  shows it only to `admin` and `reception`. Code unchanged.
-- **C26, C45, C59, C60, C86, C91, still true:** the rewritten text matches the tests. The approvals are recorded in
-  `checks.md`; this report cannot confirm them independently. The same goes for the user's request and authorizations that
-  `checks.md:488` records for C93, C69, C33 and rounds 4 and 5.
-- **C67's proof runs at the desktop width, still true.** Beside-ness below the wrap width of `flex-wrap` is not claimed by
-  the check and was not measured.
+- **The loop at `apps/api/test/portal-password.test.ts:187` stops at the first case that fails.** Reversed, it dies. Carried from a9ebfbf + round 5.
+- **Precision gap, C76:** `checks.md:303` says `user_linked`; the HTTP code is `staff_user_linked` (`apps/api/src/privacy/privacy.controller.ts:76`). Carried from 5881ed0.
+- **`DELETE /api/students/:id/photo` also deletes a pending photo:** `checks.md:531` records it as deliberate, without a check. Carried from cf26676.
+- **`pendingPhoto.url` to all four profiles:** `checks.md:531` records it as AD-033 behaviour. Carried from cf26676.
+- **C26, C45, C59, C60, C86, C91:** the approvals are recorded in `checks.md`; this report cannot confirm them independently. Carried from cf26676.
+- **C67's proof runs at the desktop width.** Carried from cf26676.

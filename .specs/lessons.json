@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 51,
+  "next_id": 54,
   "lessons": [
     {
       "id": "L-001",
@@ -906,6 +906,60 @@
       ],
       "created": "2026-10-30T23:25:54Z",
       "last_seen": "2026-10-30T23:25:54Z"
+    },
+    {
+      "id": "L-051",
+      "key": "ac_gap::when a transaction changes a credential serialize every other writer of that credential on the same lock and recheck the value it verified",
+      "text": "When a transaction changes a credential, serialize every other writer of that credential on the same lock and recheck the value it verified",
+      "signal": "ac_gap",
+      "scope": "auth",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 1, users.service.ts:168 (auth)"
+      ],
+      "created": "2026-10-31T15:07:47Z",
+      "last_seen": "2026-10-31T15:07:47Z"
+    },
+    {
+      "id": "L-052",
+      "key": "spec_precision_gap::count a shared lock s coverage set by its callers not by the proofs that happen to exercise it",
+      "text": "Count a shared lock's coverage set by its callers, not by the proofs that happen to exercise it",
+      "signal": "spec_precision_gap",
+      "scope": "concurrency",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 2, checks.md:432 (concurrency)"
+      ],
+      "created": "2026-10-31T15:07:48Z",
+      "last_seen": "2026-10-31T15:07:48Z"
+    },
+    {
+      "id": "L-053",
+      "key": "surviving_mutant::assert the audit row and the throttle counter on every refusal branch including those reached only by a race",
+      "text": "Assert the audit row and the throttle counter on every refusal branch, including those reached only by a race",
+      "signal": "surviving_mutant",
+      "scope": "auth",
+      "status": "candidate",
+      "features": [
+        "portal-aluno"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "T1, T2, auth.controller.ts:163 (auth)"
+      ],
+      "created": "2026-10-31T15:07:48Z",
+      "last_seen": "2026-10-31T15:07:48Z"
     }
   ]
 }
