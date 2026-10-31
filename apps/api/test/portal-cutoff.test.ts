@@ -4,6 +4,7 @@ import { withAuditInsertFailing } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import { type CapturedMail, captureMail } from './support/mail.ts';
 import { createPlan } from './support/plans.ts';
+import { createStaff, staffBody } from './support/staff.ts';
 import { firstAccessBody, insertAdultStudent, passwordLink, portalSession, postConsume, postFirstAccess, postReset, tokenRows } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { fieldErrorPaths, studentRowText } from './support/students.ts';
@@ -970,6 +971,19 @@ test('enrollment_ahead_of_student_inactivation_201_204_without_deadlock', async 
 
   expect(first.status).toBe(201);
   expect(second.status).toBe(204);
+  expect(raised).toBe(0);
+});
+
+test('staff_link_ahead_of_user_patch_204_200_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const user = await stack.seed({ role: 'reception' });
+  const record = await createStaff(admin, staffBody(880001));
+
+  const { first, second, raised } = await queuedOnUser(user.id, () => admin.put(`/api/staff/${record.id}/user`, { userId: user.id }), userPatch(admin, user.id));
+
+  expect(first.status).toBe(204);
+  expect(second.status).toBe(200);
+  expect((await stack.query<{ user_id: string }>('select user_id from staff where id = $1', [record.id]))[0]!.user_id).toBe(user.id);
   expect(raised).toBe(0);
 });
 

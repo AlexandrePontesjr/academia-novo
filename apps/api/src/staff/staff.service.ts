@@ -2,6 +2,7 @@ import type { CreateStaffRequest, Staff, StaffListItem, UpdateStaffRequest } fro
 import { and, type Database, eq, isNull, schema, sql } from '@academia/database';
 import { audit, type AuditActor, diffOf } from '../audit/audit.ts';
 import { isUniqueViolation } from '../db-errors.ts';
+import { lockActiveAdmins } from '../users/active-admins.ts';
 
 const { staff, users } = schema;
 
@@ -148,6 +149,7 @@ export class StaffService {
     if (!UUID.test(id)) return 'not_found';
     try {
       return await this.db.transaction(async (tx): Promise<LinkOutcome> => {
+        await lockActiveAdmins(tx);
         const [row] = await tx.select().from(staff).where(identified(id)).for('update');
         if (!row) return 'not_found';
         const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId));
