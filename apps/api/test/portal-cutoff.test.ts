@@ -904,6 +904,68 @@ test('reset_password_ahead_of_user_patch_204_200_without_deadlock', async () => 
   expect(raised).toBe(0);
 });
 
+const userPatch = (admin: Client, userId: string) => () => admin.patch(`/api/users/${userId}`, { name: 'Outro Nome' });
+
+test('inactivation_ahead_of_user_patch_204_404_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const { student, user } = await portalSession(stack, mail);
+
+  const { first, second, raised } = await queuedOnUser(user.id, () => admin.request('DELETE', `/api/students/${student.id}`), userPatch(admin, user.id));
+
+  expect(first.status).toBe(204);
+  expect(second.status).toBe(404);
+  expect(await userActive(user.id)).toBe(false);
+  expect(raised).toBe(0);
+});
+
+test('two_factor_reset_ahead_of_user_patch_204_200_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const staff = await stack.seed({ role: 'reception' });
+
+  const { first, second, raised } = await queuedOnUser(staff.id, () => admin.request('DELETE', `/api/users/${staff.id}/two-factor`), userPatch(admin, staff.id));
+
+  expect(first.status).toBe(204);
+  expect(second.status).toBe(200);
+  expect(raised).toBe(0);
+});
+
+test('student_email_patch_ahead_of_user_patch_200_404_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const { student, user } = await portalSession(stack, mail);
+  const email = `novo-${student.id}@example.com`;
+
+  const { first, second, raised } = await queuedOnUser(user.id, () => admin.patch(`/api/students/${student.id}`, { email }), userPatch(admin, user.id));
+
+  expect(first.status).toBe(200);
+  expect(second.status).toBe(404);
+  expect((await stack.query<{ email: string }>('select email from users where id = $1', [user.id]))[0]!.email).toBe(email);
+  expect(raised).toBe(0);
+});
+
+test('student_phone_patch_ahead_of_user_patch_200_404_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const { student, user } = await portalSession(stack, mail);
+
+  const { first, second, raised } = await queuedOnUser(user.id, () => admin.patch(`/api/students/${student.id}`, { phone: '11987654321' }), userPatch(admin, user.id));
+
+  expect(first.status).toBe(200);
+  expect(second.status).toBe(404);
+  expect((await stack.query<{ phone: string }>('select phone from students where id = $1', [student.id]))[0]!.phone).toBe('11987654321');
+  expect(raised).toBe(0);
+});
+
+test('anonymization_ahead_of_user_patch_204_404_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const { student, user } = await portalSession(stack, mail);
+  expect((await admin.request('DELETE', `/api/students/${student.id}`)).status).toBe(204);
+
+  const { first, second, raised } = await queuedOnUser(user.id, () => admin.post(`/api/students/${student.id}/anonymization`), userPatch(admin, user.id));
+
+  expect(first.status).toBe(204);
+  expect(second.status).toBe(404);
+  expect(raised).toBe(0);
+});
+
 test('reactivation_keeps_user_disabled_until_new_first_access', async () => {
   const { student, user } = await portalSession(stack, mail);
   expect((await reception.request('DELETE', `/api/students/${student.id}`)).status).toBe(204);

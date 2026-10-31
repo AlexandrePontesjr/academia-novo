@@ -2,6 +2,7 @@ import type { CreateUserRequest, UpdateUserRequest, User } from '@academia/contr
 import { and, type Database, eq, inArray, ne, schema, sql } from '@academia/database';
 import { audit, type AuditActor, diffOf, NO_ACTOR } from '../audit/audit.ts';
 import { hashPassword, verifyPassword } from '../password.ts';
+import { lockActiveAdmins } from './active-admins.ts';
 
 const { accounts, sessions, twoFactors, users, verifications } = schema;
 
@@ -149,12 +150,7 @@ export class UsersService {
     const before = await this.passwordHash(id);
     const hash = await hashPassword(password);
     return this.db.transaction(async (tx) => {
-      await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.role, 'admin'), eq(users.active, true)))
-        .orderBy(users.id)
-        .for('key share');
+      await lockActiveAdmins(tx);
       const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, id)).for('no key update');
       if (!user) return 'not_found';
       if ((await this.storedHash(tx, id)) !== before) return 'password_changed';
@@ -187,10 +183,11 @@ export class UsersService {
     });
   }
 
-  /** Apaga o segredo TOTP e os códigos de recuperação de alguém e encerra as sessões dele. */
+  /** Apaga o segredo TOTP e os códigos de recuperação de alguém e encerra as sessões dele; os administradores ativos vêm antes do alvo, como em `resetPassword`. */
   async resetTwoFactor(id: string, actor: AuditActor): Promise<boolean> {
     if (!UUID.test(id)) return false;
     return this.db.transaction(async (tx) => {
+      await lockActiveAdmins(tx);
       const [user] = await tx
         .update(users)
         .set({ twoFactorEnabled: false, updatedAt: new Date() })

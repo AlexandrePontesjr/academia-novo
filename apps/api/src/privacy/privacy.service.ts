@@ -14,6 +14,7 @@ import type { ColumnCipher } from '../crypto.ts';
 import { photoKey } from '../photos/photo-keys.ts';
 import { type PhotoStorage, StorageUnavailable } from '../photos/photo-storage.ts';
 import { ProblemException } from '../problem.filter.ts';
+import { lockActiveAdmins } from '../users/active-admins.ts';
 
 const {
   accounts,
@@ -181,6 +182,7 @@ export class PrivacyService {
   async anonymizeStudent(id: string, actor: AuditActor): Promise<AnonymizeOutcome> {
     if (!UUID.test(id)) return 'not_found';
     return this.db.transaction(async (tx) => {
+      await lockActiveAdmins(tx);
       // a mesma trava que a foto, a matrícula e o check-in usam; quem esperava vê a marca e não acha a linha
       const [row] = await tx
         .select({ id: students.id, status: students.status })
