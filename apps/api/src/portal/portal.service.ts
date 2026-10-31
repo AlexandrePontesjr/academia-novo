@@ -7,6 +7,7 @@ import { ACADEMY_NAME } from '../leads/leads.service.ts';
 import type { MailService } from '../mail/mail.service.ts';
 import { hashPassword } from '../password.ts';
 import { ProblemException, validationProblem } from '../problem.filter.ts';
+import { dropPendingTwoFactor } from '../users/users.service.ts';
 
 const { accounts, guardians, passwordTokens, sessions, students, users } = schema;
 
@@ -180,11 +181,23 @@ export class PortalService {
   /**
    * Define a senha pelo link (AC 18 a 22): o token travado, aberto, no prazo e de uma ficha que não foi
    * inativada nem anonimizada depois de emitido. Grava a senha na conta `credential` (criando-a no
-   * primeiro acesso), liga o usuário, marca o uso e derruba as sessões dele, tudo na transação.
+   * primeiro acesso), liga o usuário, marca o uso e derruba as sessões dele e os logins que esperam o segundo
+   * fator, tudo na transação.
+   *
+   * O usuário trava antes do token, a ordem de `inactivate`, `requestReset` e da anonimização; o token só é
+   * julgado depois da fila, porque quem estava na frente pode tê-lo fechado. `no key update` não conflita
+   * com o `key share` da chave estrangeira de `issueToken`, que no primeiro acesso já segura o token.
    */
   async consume(input: { token: string; password: string }, actor: AuditActor): Promise<void> {
     const hash = await hashPassword(input.password);
     await this.db.transaction(async (tx) => {
+      const [owner] = await tx
+        .select({ userId: passwordTokens.userId })
+        .from(passwordTokens)
+        .where(eq(passwordTokens.tokenHash, tokenHash(input.token)));
+      if (!owner) throw invalidLink();
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, owner.userId)).for('no key update');
+
       const [found] = await tx
         .select({
           id: passwordTokens.id,
@@ -198,7 +211,7 @@ export class PortalService {
         .innerJoin(users, eq(users.id, passwordTokens.userId))
         .innerJoin(students, eq(students.id, users.studentId))
         .where(eq(passwordTokens.tokenHash, tokenHash(input.token)))
-        .for('update', { of: [passwordTokens, users] });
+        .for('update', { of: passwordTokens });
       if (!found || !found.usable || found.studentStatus === 'inactive' || found.anonymized) throw invalidLink();
 
       const updated = await tx
@@ -212,6 +225,7 @@ export class PortalService {
       await tx.update(users).set({ active: true, updatedAt: new Date() }).where(eq(users.id, found.userId));
       await tx.update(passwordTokens).set({ usedAt: sql`now()` }).where(eq(passwordTokens.id, found.id));
       await tx.delete(sessions).where(eq(sessions.userId, found.userId));
+      await dropPendingTwoFactor(tx, found.userId);
       await audit.record(tx, {
         actor: { ...actor, userId: null },
         action: 'student.portal_password_set',

@@ -196,6 +196,22 @@ test('open_token_on_ficha_inactive_or_anonymized_by_sql_422', async () => {
   }
 });
 
+test('consume_on_suspended_ficha_204', async () => {
+  const { student, token } = await firstAccess({ status: 'suspended' });
+
+  expect((await postConsume(stack.client(), { token, password: PASSWORD })).status).toBe(204);
+
+  const login = (password: string) => stack.client().post('/api/auth/login', { email: student.email, password });
+  expect((await login(PASSWORD)).status).toBe(200);
+
+  mail.clear();
+  expect((await postReset(stack.client(), { email: student.email })).status).toBe(202);
+  const next = 'senha-nova-suspensa-1';
+  expect((await postConsume(stack.client(), { token: passwordLink(mail.sent[0]!).token, password: next })).status).toBe(204);
+
+  expect((await login(next)).status).toBe(200);
+});
+
 test('login_after_set_password_role_student_no_enrollment', async () => {
   const { student, token } = await firstAccess();
   expect((await postConsume(stack.client(), { token, password: PASSWORD })).status).toBe(204);

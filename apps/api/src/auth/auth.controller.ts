@@ -18,7 +18,7 @@ import {
   twoFactorVerifyRequestSchema,
 } from '@academia/contracts';
 import type { Database } from '@academia/database';
-import { BadRequestException, Body, Controller, Get, Inject, Post, Put, Req, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Inject, Post, Put, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { APIError } from 'better-auth/api';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { Request, Response } from 'express';
@@ -99,8 +99,11 @@ export class AuthController {
       throw tooManyAttempts(attempt.retryAfter);
     }
 
+    const password = user ? await this.users.passwordHash(user.id) : null;
     const signedIn = await this.signIn(email, body.password, user?.active === false, req);
-    if (!signedIn || !user) {
+    // a senha conferida pode ter trocado antes de a sessão ou o desafio existirem: vale como senha errada
+    const passwordChanged = signedIn && user ? await this.users.dropSessionsIfPasswordChanged(user.id, password) : false;
+    if (!signedIn || !user || passwordChanged) {
       logAuth(res, 'auth.login_failed', user?.id);
       // sem o e-mail digitado: de um e-mail que não é de ninguém, a linha fica sem autor e sem alvo
       await this.record('auth.login_failed', user?.id ?? null, origin);
@@ -138,6 +141,7 @@ export class AuthController {
       throw tooManyAttempts(attempt.retryAfter);
     }
 
+    const password = await this.users.passwordHash(user.id);
     const headers = fromNodeHeaders(req.headers);
     let verified: { headers: Headers };
     try {
@@ -151,6 +155,11 @@ export class AuthController {
             });
     } catch (error) {
       if (!isRejection(error)) throw error;
+      logAuth(res, 'auth.login_failed', user.id);
+      await this.record('auth.login_failed', user.id, origin);
+      throw invalidCode();
+    }
+    if (await this.users.dropSessionsIfPasswordChanged(user.id, password)) {
       logAuth(res, 'auth.login_failed', user.id);
       await this.record('auth.login_failed', user.id, origin);
       throw invalidCode();
@@ -235,21 +244,25 @@ export class AuthController {
     @Body() body: TwoFactorConfirmRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user: CurrentUser,
     @Actor() actor: AuditActor,
   ): Promise<void> {
+    const password = await this.users.passwordHash(user.id);
+    let confirmed: Headers;
     try {
       // a confirmação troca a sessão: o cookie novo segue na resposta
-      const { headers } = await this.auth.api.verifyTOTP({
+      ({ headers: confirmed } = await this.auth.api.verifyTOTP({
         body: { code: body.code },
         headers: fromNodeHeaders(req.headers),
         returnHeaders: true,
-      });
-      forwardCookies(res, headers);
+      }));
     } catch (error) {
       if (!isRejection(error)) throw error;
       throw validationProblem([{ path: 'code', message: 'Código inválido.' }]);
     }
     await this.record('auth.two_factor_enabled', actor.userId, actor);
+    await this.keepSessionOnlyIfPasswordKept(user.id, password);
+    forwardCookies(res, confirmed);
   }
 
   @Post('two-factor/disable')
@@ -260,8 +273,10 @@ export class AuthController {
     @Body() body: PasswordConfirmationRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user: CurrentUser,
     @Actor() actor: AuditActor,
   ): Promise<void> {
+    const password = await this.users.passwordHash(user.id);
     const { headers } = await this.confirmingPassword(() =>
       this.auth.api.disableTwoFactor({
         body: { password: body.password },
@@ -269,8 +284,14 @@ export class AuthController {
         returnHeaders: true,
       }),
     );
-    forwardCookies(res, headers);
     await this.record('auth.two_factor_disabled', actor.userId, actor);
+    await this.keepSessionOnlyIfPasswordKept(user.id, password);
+    forwardCookies(res, headers);
+  }
+
+  /** O 2FA já mudou e a trilha diz isso; a sessão que veio com a mudança não fica se a senha trocou no meio. */
+  private async keepSessionOnlyIfPasswordKept(userId: string, before: string | null) {
+    if (await this.users.dropSessionsIfPasswordChanged(userId, before)) throw new UnauthorizedException();
   }
 
   /** A linha de uma ação de autenticação: quem age é também o alvo. */

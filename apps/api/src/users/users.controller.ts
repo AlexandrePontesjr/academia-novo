@@ -13,7 +13,7 @@ import {
 import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post, Put } from '@nestjs/common';
 import { Roles } from '../access.ts';
 import { Actor, type AuditActor } from '../audit/audit.ts';
-import { ProblemException } from '../problem.filter.ts';
+import { ProblemException, validationProblem } from '../problem.filter.ts';
 import { Input, Output } from '../validation.ts';
 import { UsersService } from './users.service.ts';
 
@@ -60,7 +60,11 @@ export class UsersController {
     @Body() body: ResetPasswordRequest,
     @Actor() actor: AuditActor,
   ): Promise<void> {
-    if (!(await this.users.resetPassword(id, body.password, actor))) throw new NotFoundException();
+    const reset = await this.users.resetPassword(id, body.password, actor);
+    if (reset === 'not_found') throw new NotFoundException();
+    if (reset === 'password_changed') {
+      throw validationProblem([{ path: 'password', message: 'A senha deste usuário acabou de mudar. Confira antes de redefinir.' }]);
+    }
   }
 
   @Delete(':id/two-factor')
