@@ -1,8 +1,9 @@
-import type { MyProfile, StudentDetail } from '@academia/contracts';
+import { type MyProfile, saoPauloToday, type StudentDetail } from '@academia/contracts';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { withAuditInsertFailing } from './support/audit.ts';
 import type { Client } from './support/client.ts';
 import { type CapturedMail, captureMail } from './support/mail.ts';
+import { createPlan } from './support/plans.ts';
 import { firstAccessBody, insertAdultStudent, passwordLink, portalSession, postConsume, postFirstAccess, postReset, tokenRows } from './support/portal.ts';
 import { problem, type Stack, startStack } from './support/stack.ts';
 import { fieldErrorPaths, studentRowText } from './support/students.ts';
@@ -189,7 +190,7 @@ const deadlocks = async () =>
 const STATS_DELAY = 11_000;
 
 /** Segura a linha dada até `first` e depois `second` entrarem na fila, nessa ordem. */
-async function queuedOn(table: 'users' | 'password_tokens', id: string, first: () => Promise<Response>, second: () => Promise<Response>) {
+async function queuedOn(table: 'users' | 'password_tokens' | 'students', id: string, first: () => Promise<Response>, second: () => Promise<Response>) {
   const before = await deadlocks();
   const holding = stack.query(`with l as (select id from ${table} where id = $1 for update) select pg_sleep(0.7) from l`, [id]);
   await vi.waitFor(async () => expect(await backendsIn(`wait_event = 'PgSleep'`)).toBe(1), { timeout: 500, interval: 5 });
@@ -204,6 +205,8 @@ async function queuedOn(table: 'users' | 'password_tokens', id: string, first: (
 }
 
 const queuedOnUser = (userId: string, first: () => Promise<Response>, second: () => Promise<Response>) => queuedOn('users', userId, first, second);
+
+const queuedOnStudent = (studentId: string, first: () => Promise<Response>, second: () => Promise<Response>) => queuedOn('students', studentId, first, second);
 
 const accountRows = (id: string) => stack.query<{ row: string }>('select to_jsonb(a)::text as row from accounts a where user_id = $1 order by id', [id]);
 
@@ -951,6 +954,22 @@ test('student_phone_patch_ahead_of_user_patch_200_404_without_deadlock', async (
   expect(first.status).toBe(200);
   expect(second.status).toBe(404);
   expect((await stack.query<{ phone: string }>('select phone from students where id = $1', [student.id]))[0]!.phone).toBe('11987654321');
+  expect(raised).toBe(0);
+});
+
+test('enrollment_ahead_of_student_inactivation_201_204_without_deadlock', async () => {
+  const admin = (await stack.session('admin')).client;
+  const student = await insertAdultStudent(stack);
+  const plan = await createPlan(admin);
+
+  const { first, second, raised } = await queuedOnStudent(
+    student.id,
+    () => admin.post(`/api/students/${student.id}/enrollments`, { planId: plan.id, startsAt: saoPauloToday() }),
+    () => admin.request('DELETE', `/api/students/${student.id}`),
+  );
+
+  expect(first.status).toBe(201);
+  expect(second.status).toBe(204);
   expect(raised).toBe(0);
 });
 
