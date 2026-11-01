@@ -1,5 +1,259 @@
 # Portal do aluno verification
 
+**Verdict**: PASS
+**Profile**: standard
+**Diff range**: a9ebfbf..520527d
+**Round**: 14 - full over every check (proofs of all 94 run at 520527d; Coverage rows touched since a9ebfbf recomputed, the rest carried with their source)
+**Verifier**: independent sub-agent (author != verifier)
+
+PASS. The one finding of round 13 is closed, and nothing else moved.
+
+1. **H2 and H3 now die.** 520527d adds `admin_lock_does_not_wait_on_admin_row_held_at_no_key_update` (`apps/api/test/portal-cutoff.test.ts:977`-`:995`). It holds another active admin's row `for no key update` under `pg_sleep(1.5)` and asserts `expect(answer?.status).toBe(204)` (`:989`) and that the sleep is still running (`:990`), after waiting for either the answer or a backend in `wait_event_type = 'Lock'` (`:987`). Injected in a scratch worktree, H2 (`.for('no key update')`) and H3 (`.for('share')`) at `apps/api/src/users/active-admins.ts:16` both fail it at `:989` with `expected undefined to be 204`. H1 (`.for('update')`) fails it too, and still fails the enrollment proof at `:973` with `expected 500 to be 204`. All five row-lock outcomes of the helper are now pinned: none (K1 to K5, S1), `key share` (HEAD, green), `share` (H3), `no key update` (H2), `update` (H1).
+2. **All 148 Proof lines pass at 520527d**: 149 tests, 0 failed, every selector joined to its own passing test (C76's `user_linked` hits two, as since 5881ed0).
+3. **All twelve requested mutants die**, each on a named test (Faults).
+4. **No production code changed beyond what the rounds declare.** `git diff --stat cf54dc8..HEAD` touches `apps/api/test/portal-cutoff.test.ts` (+20, the new test only), `checks.md` and `verification.md`. Since `7946cc4` (rounds 6 to 11 recorded as verified), `apps/api/src` changed in exactly two commits. `e7dd251` (round 12) adds `active-admins.ts` and one `await lockActiveAdmins(tx)` call plus import in `users.service.ts` (`resetPassword`, which drops its inline copy of the same query, and `resetTwoFactor`), `students.service.ts` (`update`, `inactivate`) and `privacy.service.ts` (`anonymizeStudent`). `cf54dc8` (round 13) adds the import and the call in `StaffService.link`. Every `+`/`-` line of both was read. The only other production commit in `a9ebfbf..HEAD` is `f1eeebe`, the rounds 8 to 10 fix (`auth.controller.ts`, `portal.service.ts`, `users.controller.ts`, `users.service.ts`), recorded as verified in `7946cc4` and untouched since. `apps/web`, `packages/*` and `tests/*` have no change in `a9ebfbf..HEAD`.
+
+**Authorization of the round.** `checks.md:551` records round 14 as authorized by the user on 2026-11-01, option (b), with no production change. This report cannot confirm the authorization independently. It confirms the "no production change" half from the diff above.
+
+**Handoff read against the code.** `checks.md:551` is accurate on cause, test and result. Its claim that the test fails under H2 and H3 with `expected undefined to be 204` and passes under `key share` is reproduced here. Its path text "`node node_modulesitestitest.mjs` em `appspi`" has lost its backslashes (`\v` and `\a` were eaten), a cosmetic slip in `checks.md`.
+
+## Binding sources
+
+Not run. The profile is `standard`, and the plan marks no source as binding. 520527d touched no interface: no route, status or body changed. Carried from 5881ed0.
+
+## Checks
+
+Proofs verified at 520527d on the real tree, this round. The invocations were built by script from every `Proof:` line of `checks.md`: 148 lines (contracts 3, database 5, repo 1, api 118, web 20, stack 1). Each target got one invocation with the package's own binary and a JSON reporter: `node node_modules/vitest/vitest.mjs run <files> -t "<alternation>"` and `node node_modules/@playwright/test/cli.js test <files> -g "<alternation>"`. The api run used the real `vitest.config.ts`, so its `globalSetup` built `dist` in the real tree for the real-process tests. Every run exited 0. Totals: 149 tests passed, 0 failed (api 119, web 20, contracts 3, database 5, repo 1, stack 1). The JSON was joined against every selector. 147 selectors hit exactly one passing test. C76's `user_linked` hits `staff_active_409_not_inactive_and_linked_user_409_staff_user_linked` and `staff_not_inactive_comes_before_user_linked`, both passing. C86's `segments_have_app_loading` hits `eleven_segments_have_app_loading` (`tests/repo/motion.test.ts:119`). C92 ran with Docker 29.9.2. `pnpm verify` was not used (AD-118). `git status --porcelain` of the real tree was empty before and after.
+
+Citations. `git diff cf54dc8..HEAD` changes one cited file, `apps/api/test/portal-cutoff.test.ts`, by 20 lines inserted after `:976`. Lines up to `:976` did not move. Lines after it moved by +20, and were re-read at HEAD (`:1004`-`:1007`, `:1017`-`:1019`, `:1029`, `:1031`, `:1042`). The new test was located this round. Every other cited file is byte-identical to cf54dc8, so its citations stand as round 13 located them, with the origin each row names.
+
+| Check | Claim | Proof run | Evidence | Result |
+| --- | --- | --- | --- | --- |
+| C1 | `users_student_link`, unique, FK no cascade | db batch, exit 0; evidence carried from 5881ed0 | `packages/database/test/portal.test.ts:91` - `expect(orphan.constraint).toBe('users_student_link')`; `:102` `users_student_id_unique`; `:120` delete fails with FK | PASS |
+| C2 | five roles, four staff, role check | contracts and db batches, exit 0; evidence carried from 5881ed0 | `packages/contracts/test/portal.test.ts:18` - `expect(USER_ROLES).toEqual([...,'student'])`; `:19`; `packages/database/test/portal.test.ts:131` `users_role_valid` | PASS |
+| C3 | `password_tokens` constraints and cascade | db batch, exit 0; evidence carried from 5881ed0 | `packages/database/test/portal.test.ts:155` `password_tokens_purpose_valid`; `:161`; `:166`; `:170` owner's tokens gone, `:171` other's kept | PASS |
+| C4 | pending photo checks, one per student | db batch, exit 0; evidence carried from 5881ed0 | `packages/database/test/portal.test.ts:186` `photos_pending_not_current`; `:197` `photos_pending_student`; `:205` `photos_one_pending_idx` | PASS |
+| C5 | `0013` keeps rows | db batch, exit 0; evidence carried from 5881ed0 | `packages/database/test/portal.test.ts:263` zero tokens; `:266`-`:268` other columns equal | PASS |
+| C6 | 52 actions, written set equals vocabulary | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/contracts.test.ts:1117` - `expect(AUDIT_ACTIONS.slice(47)).toEqual([...])`; `apps/api/test/audit-auth.test.ts:408` - `expect(written).toEqual([...auditActionSchema.options].sort())`; `:411` entity `student` | PASS |
+| C7 | portal schemas accept and reject | contracts batch, exit 0; evidence carried from 5881ed0 | `packages/contracts/test/portal.test.ts:27` trimmed and lowercased; `:50` password bounds; `:83` each forbidden key; `:102` `healthNotes` refused | PASS |
+| C8 | ficha schema gains `portal`, `pendingPhoto` | contracts batch, exit 0; evidence carried from 5881ed0 | `packages/contracts/test/portal.test.ts:109`; `:112` `invited` refused; `:113` absent refused | PASS |
+| C9 | student `403` on every prior route | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-roles.test.ts:57` - `expect(response.status).toBe(403)`; `:58` `forbidden`; `:63` exceptions are exactly the six routes | PASS |
+| C10 | session, password, 2FA, logout reachable | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-roles.test.ts:86`-`:87`; `:90` `204`; `:93` `200`; `:96` `204` | PASS |
+| C11 | `GET /api/users` omits students | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/users.test.ts:326` ids equal staff ids; `:327`; `:330` order | PASS |
+| C12 | `role: student` `422`, student user `404` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/users.test.ts:337` path `role`; `:345`; `:352` `404` | PASS |
+| C13 | student web paths (19) | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/proxy.spec.ts:221` - `toHaveURL('/minha-conta')`; `:227` `200`; `:228` no redirect; `:231` count 19 | PASS |
+| C14 | staff off `/minha-conta` | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/proxy.spec.ts:239` - `toHaveURL('/dashboard')` | PASS |
+| C15 | `/login` by role, anonymous to `/login` | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/proxy.spec.ts:247`; `:251`; `:255` | PASS |
+| C16 | first access `202`, user, token, trail | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:71`; `:72` empty body; `:75` user row; `:78` `24:00:00`; `:81` trail with null author and IP | PASS |
+| C17 | one mail after commit, hash, `500` rolls back | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:97`; `:100` 43 chars; `:104` `sha256(token)`; `:110`-`:113` | PASS |
+| C18 | mail failure or delay keeps `202` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:127`; `:128` under 2 s; `:135` one `portal_mail_failed` line; `:136` no recipient | PASS |
+| C19 | second request, only newest link | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:154`; `:157`-`:158`; `:163`; `:165` `204` | PASS |
+| C20 | nine ineligible cases | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:301`-`:304` status, body, `portalRecorded`, no mail; `:293` nine cases | PASS |
+| C21 | same response for ten cases | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:322` - `expect(await shapeOf(...)).toEqual(reference)` | PASS |
+| C22 | six invalid bodies `422` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:346`-`:349` | PASS |
+| C23 | 4th CPF, 11th IP, window edge | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-throttle.test.ts:92`; `:95`-`:96` 55 to 60; `:97`; `:105`; `:111` | PASS |
+| C24 | keys in `lead_throttles` only | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-throttle.test.ts:130`-`:135`; `:139`; `:140` | PASS |
+| C25 | two concurrent, one user, one open token | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:361`; `:363`; `:365` | PASS |
+| C26 | four `portal` values; key lists gain two keys (user-approved rewrite) | api batch, exit 0; whole `students-read.test.ts` passed; evidence carried from 5881ed0 | `apps/api/test/students-read.test.ts:129` - `expect(body.portal, portal).toBe(portal)`; `:130`; `:82` instructor list | PASS |
+| C27 | four labels, no mail control | web batch, exit 0; evidence carried from cf26676 | `apps/web/e2e/students.spec.ts:894` - `getByText(label)` visible; `:903` no portal control; `:907` no portal request | PASS |
+| C28 | `/primeiro-acesso` states | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:28`; `:31`; `:37`; `:43` | PASS |
+| C29 | consume `204` and its effects | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:78`-`:80`; `:82`-`:84`; `:85` | PASS |
+| C30 | six invalid tokens, one valid at the edge | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:110`-`:112`; `:117` | PASS |
+| C31 | password bounds | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:126`-`:128`; `:130`; `:132` | PASS |
+| C32 | concurrent consume | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:143` - `toEqual([204, 422])`; `:148`-`:150` | PASS |
+| C33 | token closed by the route, open on a ficha set by SQL, and `suspended` not refused (rewritten) | api batch, exit 0; three Proofs, each one test; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:160`-`:163`; `:170`-`:172`; `:188` - `expect((await tokenRows(stack, userId)).map((row) => row.used_at)).toEqual([null])`, `:193` - `expect(refused.status).toBe(422)`, `:194`, `:195` - `expect(await credentials(userId)).toEqual(before)`; `:202` - `expect((await postConsume(stack.client(), { token, password: PASSWORD })).status).toBe(204)`, `:205`, `:210`, `:212`; F12b stays accepted | PASS |
+| C34 | login after set, `role: student` | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:221`; `:225`-`:226` | PASS |
+| C35 | reset token replaces password | api batch, exit 0; citations carried from round 11, file unchanged since 7946cc4 | `apps/api/test/portal-password.test.ts:238`-`:241` | PASS |
+| C36 | `/definir-senha` posts only on submit | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:57`; `:64`; `:71`; `:78` | PASS |
+| C37 | success and invalid link messages | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal-public.spec.ts:93`; `:104`; `:106`-`:107`; `:113` | PASS |
+| C38 | reset `202`, one hour, invalidates previous | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-reset.test.ts:43`-`:62`; `:50` `01:00:00`; `:68`-`:70` | PASS |
+| C39 | four ineligible e-mails | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-reset.test.ts:93`-`:95` | PASS |
+| C40 | 4th e-mail, 11th IP, window | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-throttle.test.ts:151`-`:154`; `:162`; `:167` | PASS |
+| C41 | invalid e-mail `422` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-reset.test.ts:110`-`:113` | PASS |
+| C42 | login links, `/esqueci-senha` states | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/login.spec.ts:100`-`:101`; `apps/web/e2e/portal-public.spec.ts:126`; `:131` | PASS |
+| C43 | profile eleven keys, no `healthNotes` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:60`; `:61`; `:79` `medium`; `:80` | PASS |
+| C44 | `/api/me/*` only by session | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:93`; `:97`; `:102`; `:104`; `:107` `404` | PASS |
+| C45 | payments equal staff's, read by `hr_finance` (user-approved rewrite) | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:125` - `expect(body).toEqual(await staff.json())`; `:126`; `:131` | PASS |
+| C46 | staff `403`, anonymous `401` on five routes | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:150`-`:151`; `:159`-`:160` | PASS |
+| C47 | `/minha-conta` data, newest first | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:58`; `:66`-`:69`; `:74` | PASS |
+| C48 | no enrollment message | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:82`-`:83` | PASS |
+| C49 | load error and retry | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:90`-`:91`; `:96`; `:101`-`:102` | PASS |
+| C50 | one column at 390 px | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:116`; `:120` | PASS |
+| C51 | four contact fields, student as author | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:183`; `:185`; `:188`; `:192`; `:196` | PASS |
+| C52 | same schemas `422` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:205`; `:209`; `:211` | PASS |
+| C53 | eight forbidden keys | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:234`-`:235`; `:239`-`:241` | PASS |
+| C54 | `/api/me/*` never changes e-mail or CPF | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-me.test.ts:273` - `expect(await identity()).toEqual(before)` | PASS |
+| C55 | e-mail follows, `409 email_in_use` | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/students-update.test.ts:135`; `:143`-`:146`; `:152`-`:153` | PASS |
+| C56 | contact form | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:131`-`:136`; `:145`; `:148`; `:162`-`:163` | PASS |
+| C57 | pending stored with 30 days | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-photo.test.ts:87`; `:91` `30 days`; `:92` three objects; `:93` author | PASS |
+| C58 | `409 pending_photo_exists`, race | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-photo.test.ts:104`-`:106`; `:112`; `:117` | PASS |
+| C59 | nine files same as staff `POST`, status `413`, `415` or `422` (rewritten, user-approved) | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:162` - `expect(response.status, name).toBe(staff.status)`; `:163` same `code`; `:164` nothing changed; `:168` - `expect([...seen].sort()).toEqual([413, 415, 422])`, the set the claim now names | PASS |
+| C60 | pending never served, `PUT` leaves it (user-approved rewrite) | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:179` ficha signs the current; `:180` - `expect(ficha.pendingPhoto?.id).toBe(pending.id)`; `:182` - `expect(ficha.pendingPhoto?.url).toContain(...medium?)`; `:189`-`:194` `201`, version 3, current, pending row identical | PASS |
+| C61 | approve | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:209`-`:217`; `:214` `in_window` for 30 and 7 days | PASS |
+| C62 | reject and purge | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:233`; `:238`; `:243`-`:245` | PASS |
+| C63 | `404`, `403`, `401`, `not_found` | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:253`-`:254`; `:266`; `:269`; `:272`-`:273`; `:276` | PASS |
+| C64 | expired pending purged | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/photos-purge.test.ts:129`-`:131` | PASS |
+| C65 | `GET /api/me/photo`, now with `422` on an invalid `variant` | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:281` `404`; `:285`-`:286` pending `null`; `:296`-`:297` `medium`; `:300`-`:301` `thumb`; `:304` - `expect(invalid.status).toBe(422)`; `:305` path `variant` | PASS |
+| C66 | concurrent approve and reject | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/portal-photo.test.ts:319`; `:321`; `:323` | PASS |
+| C67 | pending next to the current, approve, reject | web batch, exit 0; evidence carried from cf26676 | `apps/web/e2e/students.spec.ts:836` pending `src`; `:841` - `expect(beside!.x).toBeGreaterThanOrEqual(current!.x + current!.width)`; `:842`-`:843` same height band; `:851`; `:858`; `:866`-`:867`; `:874`-`:875` no buttons for two roles. F9 stacks them and fails at `:841` | PASS |
+| C68 | pending hides upload | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/portal.spec.ts:178`-`:185`; `:192`-`:197` | PASS |
+| C69 | inactivation cuts in one transaction, tokens included, and a refused one leaves the link usable (rewritten) | api batch, exit 0; citations re-read at 520527d; they sit above `:977` and did not move | `apps/api/test/portal-cutoff.test.ts:68`-`:71`; `:72` - `expect(await tokenRows(stack, failing.user.id)).toEqual(tokens)`; `:76`; `:82`; `:85`; `:97`; `:98` - `expect((await postConsume(stack.client(), { token, password: 'senha-nova-do-aluno-4' })).status).toBe(204)` | PASS |
+| C70 | suspension keeps user | api batch, exit 0; citations re-read at 520527d; they sit above `:977` and did not move | `apps/api/test/portal-cutoff.test.ts:108`-`:113`; `:114` | PASS |
+| C71 | refused `PATCH` inactive | api batch, exit 0; citations re-read at 520527d; they sit above `:977` and did not move | `apps/api/test/portal-cutoff.test.ts:124`-`:127` | PASS |
+| C72 | disabled login like inactive staff | api batch, exit 0; citations re-read at 520527d; they sit above `:977` and did not move | `apps/api/test/portal-cutoff.test.ts:138`; `:143`-`:145` | PASS |
+| C73 | reactivation keeps disabled | api batch, exit 0; citations refreshed at 520527d (+20 after `:976`) | `apps/api/test/portal-cutoff.test.ts:1029` - `expect(await userActive(user.id)).toBe(false)`; `:1031`; `:1035`-`:1036`; `:1042` | PASS |
+| C74 | anonymization clears user | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/privacy-anonymize.test.ts:278`-`:281` | PASS |
+| C75 | anonymization failure keeps user | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/privacy-anonymize.test.ts:302`-`:303`; `:308`-`:309` | PASS |
+| C76 | staff anonymization still `409` | api batch, exit 0; selector matched two tests, both passed; whole file passed; evidence carried from 5881ed0 | `apps/api/test/staff-privacy.test.ts:201`-`:202` code is `staff_user_linked`; `:359`-`:360` | PASS |
+| C93 | open link of each purpose: `DELETE` fills `used_at`; after reactivation consume `422` in `token`, `users.active` false | api batch, exit 0; citations re-read at 520527d; they sit above `:977` and did not move | `apps/api/test/portal-cutoff.test.ts:154`-`:157` - `expect(await tokensClosed(user.id)).toEqual([['first_access', true], ['reset', true]])`, `:162`-`:164`; `:174` - `expect(await tokensClosed(user!.id)).toEqual([['first_access', true]])`, `:179`-`:181` | PASS |
+| C94 | `consume` queued against every write contending for the user, both orders where the claim says so, the 2FA routes, the challenge in `verifications`, login and `verify` in flight, the own `PUT` in three interleavings and the administrator's `PUT` in four; (round 12) five routes queued ahead of `PATCH /api/users/:id`; (9cd5b5a) the admins lock "não passa de `FOR KEY SHARE`" against `FOR UPDATE`, by an enrollment ahead of `DELETE /api/students/:id`; (cf54dc8) `PUT /api/staff/:id/user` ahead of the `PATCH`; (520527d) the same bound against `FOR NO KEY UPDATE`: `DELETE /api/students/:id` answers `204` while another admin row is held `for no key update`, with no backend in `Lock` | api batch, exit 0; forty-two Proofs, one test each, all run at 520527d; citations up to `:976` unchanged since cf54dc8, later ones refreshed (+20) | `apps/api/test/portal-cutoff.test.ts:227`-`:232`, `:248`-`:253`, `:269`-`:274`, `:291`-`:297`, `:314`-`:319`, `:366`-`:369`, `:377`-`:380`, `:388`-`:391`, `:399`-`:402`, `:414`-`:419`, `:428`-`:433`, `:445`-`:449`, `:459`-`:463`, `:492`-`:498`, `:506`-`:511`, `:519`-`:522`, `:530`-`:533`, `:562`-`:567`, `:649`-`:652`, `:665`-`:668`, `:681`-`:686`, `:703`-`:706`, `:724`-`:728`, `:745`-`:748`, `:765`-`:769`, `:808`-`:811`, `:819`-`:823`, `:831`-`:834`, `:842`-`:845`, `:878`-`:882`, `:890`-`:893`, `:906`-`:908`, `:919`-`:922`, `:931`-`:933`, `:943`-`:946`, `:955`-`:958`, `:1017`-`:1019`; 9cd5b5a: `:972` - `expect(first.status).toBe(201)`, `:973` - `expect(second.status).toBe(204)`, `:974` - `expect(raised).toBe(0)`; cf54dc8: `:1004` - `expect(first.status).toBe(204)`, `:1005` - `expect(second.status).toBe(200)`, `:1006` `staff.user_id` is the user, `:1007` - `expect(raised).toBe(0)`; 520527d: `:989` - `expect(answer?.status).toBe(204)`, `:990` - `` expect(await backendsIn(`wait_event = 'PgSleep'`)).toBe(1) ``; `:864`, `:868`-`:870`; `:338` - `expect((await login(user.email, user.password)).status).toBe(401)`; `:786` - `expect((await login(user.email, replacement)).status).toBe(401)`; sentences below | PASS |
+| C77 | OpenAPI ten routes, contract bodies | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/openapi.test.ts:491`; `:172` | PASS |
+| C78 | declared access | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/access.test.ts:154`; `:157`; `:160`; `:171`; `:191` | PASS |
+| C79 | admin without 2FA blocked on `approve`/`reject` "e não nas três públicas"; student never | api batch, exit 0; evidence carried from cf26676 | `apps/api/test/enrollment.test.ts:59`-`:60` blocked; `:76` - `expect(portalPublic).toHaveLength(3)`; `:81` `422`; `:82` - `expect(text, route).not.toContain('two_factor_enrollment_required')`; `:172`-`:173` student. F7 fails at `:81` | PASS |
+| C80 | seven writes under origin check | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/csrf.test.ts:206`-`:209` | PASS |
+| C81 | hostile bodies | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/hostile-input.test.ts:135`-`:136`; `:139`; `:147`-`:148`; `:154`-`:155` | PASS |
+| C82 | audit failure rolls back seven writes | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-audit.test.ts:92`-`:93` | PASS |
+| C83 | public trail clean, refusals write none | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-audit.test.ts:114`-`:117`; `:180` | PASS |
+| C84 | 52 counted, labels | api and web batches, exit 0; evidence carried from 5881ed0 | `apps/api/test/contracts.test.ts:1333`; `:1336`; `:1346`; `apps/web/e2e/audit.spec.ts:613`-`:617` | PASS |
+| C85 | `ROLE_LABELS.student`, select with four | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/users.spec.ts:55`-`:58` | PASS |
+| C86 | `minha-conta` segment; baselines changed only in `/audit`, by five options; no `/login`, whose links are C42 (rewritten, user-approved) | repo and web batches, exit 0; evidence carried from cf26676 | `tests/repo/motion.test.ts:121` - `expect(SEGMENTS).toContain('minha-conta')`; `apps/web/e2e/motion.spec.ts:920`-`:924` compare against the baselines. Baselines compared as JSON at `6bec03d` and HEAD: same 22 keys, only `/audit` differs, only `text` and `aria`, five lines added and none removed in each of `390.json` and `1440.json` (`apps/web/e2e/fixtures/motion-baseline/1440.json:739`); no `/login` key; links at `apps/web/e2e/login.spec.ts:100`-`:101` | PASS |
+| C87 | public pages with CSP, no prefix leak | web batch, exit 0; evidence carried from 5881ed0 | `apps/web/e2e/proxy.spec.ts:181`-`:187`; `:190`; `:196` | PASS |
+| C88 | throttle module | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-throttle.test.ts:46`; `:49`; `:65`; `:77`; `:79` | PASS |
+| C89 | eligibility table, 13 rows | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:258`; `:267`; `:270`-`:274` | PASS |
+| C90 | `portalState`, six rows | api batch, exit 0; evidence carried from 5881ed0 | `apps/api/test/portal-first-access.test.ts:287`-`:288` | PASS |
+| C91 | photo proofs unchanged (user-approved rewrite) | api batch, exit 0; whole files passed; evidence carried from 5881ed0 | `apps/api/test/photos-replace.test.ts:100`-`:102`; `apps/api/test/photos-urls.test.ts:360`-`:361` | PASS |
+| C92 | real stack | stack run, exit 0; evidence carried from 5881ed0 | `tests/stack/compose.test.ts:1694`; `:1704`-`:1705`; `:1719`; `:1731`; `:1734` | PASS |
+
+### Sentences of C94 added after round 11
+
+Verified at 520527d. Each assertion is a literal at the cited line.
+
+| Sentence | Evidence | Judgment |
+| --- | --- | --- |
+| (520527d) "Com a linha de outro administrador ativo segura por `select id from users where id = $1 for no key update` e `pg_sleep(1.5)`, `DELETE /api/students/:id` por `admin` responde `204` enquanto a espera dura, sem nenhum backend em `wait_event_type = 'Lock'`" | `portal-cutoff.test.ts:982` the hold, on a second seeded `admin` (`:980`); `:985` waits until the sleep is running; `:987` waits until the answer arrives or a backend is in `wait_event_type = 'Lock'`, whichever comes first; `:989` - `expect(answer?.status).toBe(204)`; `:990` - `expect(await backendsIn("wait_event = 'PgSleep'")).toBe(1)` | holds. `:989` pins "sem nenhum backend em `Lock`": if a backend enters `Lock` before the answer, `answer` is still `undefined` there. `:990` pins "enquanto a espera dura". H1, H2 and H3 all fail at `:989` |
+| (9cd5b5a) enrollment queued ahead of `DELETE /api/students/:id`: `201`, `204`, `deadlocks` | `:972` - `expect(first.status).toBe(201)`, `:973` - `expect(second.status).toBe(204)`, `:974` - `expect(raised).toBe(0)` | holds; H1 fails at `:973` |
+| (cf54dc8) `PUT /api/staff/:id/user` ahead of `PATCH /api/users/:id`: `204`, `200`, `deadlocks` | `:1004` - `expect(first.status).toBe(204)`, `:1005` - `expect(second.status).toBe(200)`, `:1006` the link stuck, `:1007` - `expect(raised).toBe(0)` | holds; S1 fails at `:1005` |
+| (round 12) the five routes ahead of `PATCH /api/users/:id` | `:920`, `:932`, `:944`, `:956`, `:1018` (the `PATCH` status), each with `raised` at the next lines | holds; K4, K2, K3, K3, K5 fail there |
+
+## Coverage
+
+The rows below whose authority 520527d or the production commits of rounds 12 and 13 touched were recomputed at 520527d. The lock rows take their members from PostgreSQL's row-lock conflict table. `FOR KEY SHARE` conflicts only with `FOR UPDATE`. `FOR SHARE` conflicts with `FOR NO KEY UPDATE` and `FOR UPDATE`. `FOR NO KEY UPDATE` conflicts with itself, `FOR SHARE` and `FOR UPDATE`. `FOR UPDATE` conflicts with all four. So against an admin row held `FOR NO KEY UPDATE` (what an admin's own `PUT /api/auth/password` and login check hold), the helper queues under `share`, `no key update` and `update` and does not under `key share`.
+
+| Set (size) | Recomputed from | Member -> proof | Unproven |
+| --- | --- | --- | --- |
+| strength of the active-admins lock: the helper's possible row-lock outcomes (5), verified at 520527d | `apps/api/src/users/active-admins.ts:16`, the conflict table above | none (helper call removed): K1 to K5 and S1 at `portal-cutoff.test.ts:907`, `:932`, `:944`, `:956`, `:920`, `:1018`, `:1005` · `key share`: the code, green · `share`: C94 `:989`, H3 · `no key update`: C94 `:989`, H2 · `update`: C94 `:973` and `:989`, H1 | - |
+| bounds named by `checks.md:453` (2), verified at 520527d | `checks.md:453` against the table above | "não mais forte que `FOR KEY SHARE` contra `FOR UPDATE`" C94 `:973` · "contra `FOR NO KEY UPDATE`, sem espera" C94 `:989` | - |
+| admin-authored transactions that lock a `users` row before the audit, against `PATCH /api/users/:id` (`checks.md:452` says 7; recomputed 7), verified at 520527d | the round-13 sweep (below, carried), re-checked against `git diff cf54dc8..HEAD`, which touches no `src` file; `grep lockActiveAdmins` at HEAD finds the six call sites `users.service.ts:153`, `:190`, `students.service.ts:171`, `:267`, `privacy.service.ts:185`, `staff.service.ts:152` | `PUT /api/users/:id/password` `:907`, K1 · `DELETE /api/users/:id/two-factor` `:932`, K2 · `PATCH /api/students/:id` e-mail `:944`, phone `:956`, K3 · `DELETE /api/students/:id` `:920`, K4 · anonymization `:1018`, K5 · `PUT /api/staff/:id/user` `:1005`, S1 | - |
+| refused tokens (16), verified at 520527d (M1 rerun) | `portal.service.ts:198` `!owner`, `:215`, `students.service.ts:278`, `privacy.service.ts:236`, schema at `packages/contracts/src/portal.ts:23` | absent, empty, `abc`, unknown, used, expired C30 `apps/api/test/portal-password.test.ts:110` · ficha inactivated, token closed C33 `:160` · ficha inactivated, open by SQL C33 `:193` · anonymized, token deleted C33 `:170` · anonymized, open by SQL C33 `:193` · `reset` and `first_access` issued before inactivation, ficha reactivated C93 `apps/api/test/portal-cutoff.test.ts:162`, `:179` · closed by `DELETE` queued C94 `:228` · closed by reset queued C94 `:249` · closed by first access queued C94 `:270` · deleted by anonymization queued C94 `:315`; M1 fails all four queued ones | - |
+| lock strength on `users` in `consume` (bounds 2), verified at 520527d (M3, M10 rerun) | `portal.service.ts:199` | not stronger than `no key update` C94 `portal-cutoff.test.ts:269`, M3 · not weaker C94 `:292`, M10; `for share` dies at C32, M10b carried | - |
+
+The rows below are carried from round 13 (cf54dc8) under their own labels. Nothing in `cf54dc8..HEAD` touched their authorities: the only non-document change is the new test. Their citations into `portal-cutoff.test.ts` sit above `:977` and did not move.
+
+| Set (size) | Recomputed from | Member -> proof | Unproven |
+| --- | --- | --- | --- |
+| `POST /api/portal/first-access` statuses (3), carried from round 11 | `portal.controller.ts`, `portal.service.ts` | 202 C16, C94 `portal-cutoff.test.ts:269` · 422 C22 · 429 C23 | - |
+| `POST /api/password-tokens/consume` statuses (2), carried from round 11 | `portal.service.ts:198`, `:215` | 204 C29, C33 `portal-password.test.ts:202`, C35, C69, C94 `portal-cutoff.test.ts:291`, `:367` · 422 C30, C31, C33, C93, C94 | - |
+| `POST /api/password-reset` statuses (3), carried from round 11 | `portal.service.ts` | 202 C38, C94 · 422 C41 · 429 C40 | - |
+| `GET /api/me/profile` statuses (3), carried from 5881ed0 | `me.controller.ts` | 200 C43 · 401 C46 · 403 C46 | - |
+| `PATCH /api/me/profile` statuses (4), carried from 5881ed0 | `me.controller.ts` | 200 C51 · 401, 403 C46 · 422 C52, C53 | - |
+| `GET /api/me/payments` statuses (3), carried from 5881ed0 | `me.controller.ts` | 200 C45 · 401, 403 C46 | - |
+| `POST /api/me/photo` statuses (7), carried from cf26676 | `photos.service.ts`, note under `Surface` in `plan.md` | 201 C57 · 401, 403 C46 · 409 C58 · 413, 415, 422 C59 | - |
+| `GET /api/me/photo` statuses (5), carried from cf26676 | `me.controller.ts`, `photoQuerySchema` via `@QueryInput`, note under `Surface` | 200, 404 C65 · 401, 403 C46 · 422 C65 (`apps/api/test/portal-photo.test.ts:304`) | - |
+| `approve` statuses (4), carried from 5881ed0 | `photos.controller.ts` | 200 C61 · 401, 403, 404 C63 | - |
+| `reject` statuses (4), carried from 5881ed0 | `photos.controller.ts` | 204 C62 · 401, 403, 404 C63 | - |
+| `500` by new write (7), carried from 5881ed0 | `portal-audit.test.ts` table | C82 | - |
+| `403 csrf_rejected` by new write (7), carried from 5881ed0 | `csrf.test.ts` table | C80 | - |
+| new error codes (3), carried from 5881ed0 | `photos.service.ts`, `students.controller.ts` | `no_pending_photo` C63 · `pending_photo_exists` C58 · `email_in_use` C55 | - |
+| `pendingPhoto` fields at the API (4), carried from cf26676 | `pendingPhotoSchema`, `pendingOf` | `id` C60 · `version`, `createdAt` C57 · `url` C60 and C65, `apps/api/test/portal-photo.test.ts:182`, `:292` | - |
+| admin without 2FA on new routes (10), carried from cf26676 | `listRoutes`, `PUBLIC` in `enrollment.test.ts` | `approve`, `reject` and the five `/api/me/*` C79 · the three public routes C79 at `:75`-`:83` | - |
+| new routes in OpenAPI (10), carried from 5881ed0 | `listRoutes` | C77 | - |
+| public routes (13), carried from 5881ed0 | `access.test.ts` | C78 | - |
+| writes and locks contending for the user row with `consume` (`checks.md:447` says 12; recomputed 12), carried from round 11 | every lock and write on `users` in `apps/api/src` | `DELETE /api/students/:id` C94 `portal-cutoff.test.ts:232` · reset C94 `:253` · first access C94 `:274` · anonymization C94 `:319` · `PATCH /api/students/:id` C94 `:369`, `:380` · `PATCH /api/me/profile` C94 `:391`, `:402` · `DELETE /api/users/:id/two-factor` C94 `:419`, `:433` · `confirm` C94 `:511`, `:533` · `disable` C94 `:498`, `:522` · lock of `PATCH /api/users/:id` on a student C94 `:449`, `:463` · login C94 `:704` · `verify` C94 `:766` | - |
+| routes that swap the session against `consume`, by order (4), carried from round 11 | `auth.controller.ts:254`, `:281`; `better-auth` two-factor plugin | `disable` behind C94 `portal-cutoff.test.ts:493` · `disable` ahead C94 `:519` · `confirm` behind C94 `:507` · `confirm` ahead C94 `:530` | - |
+| routes that create a session or challenge outside a transaction, against `consume` (`checks.md:449` says 5; recomputed 7 with `disable` and `confirm`, which have the row above), carried from round 11 | session creators and `verifications` writes | `verify` after, TOTP and backup code C94 `portal-cutoff.test.ts:562` · `verify` in flight C94 `:681` · login in flight, plain C94 `:649` · login in flight, 2FA C94 `:665` · `disable`, `confirm` C94 `:493`, `:507` | - |
+| lock of the check (`checks.md:450` says 4; recomputed 4), carried from round 11 | callers of `dropSessionsIfPasswordChanged`, one lock line `users.service.ts:218`; fault L | login C94 `portal-cutoff.test.ts:704` · login with 2FA C94 `:746` · `verify` C94 `:766` · `disable`, second request C94 `:725` | - |
+| writes on the password against `consume` (`checks.md:451` says 7; recomputed 7), carried from round 11 | `accounts` writers | `PUT /api/auth/password` in flight `portal-cutoff.test.ts:809`, behind `:820`, ahead `:832` · `PUT /api/users/:id/password` in flight `:843`, during the hash `:868`, behind `:879`, ahead `:891` | - |
+| tokens refused by when the token went away, carried from round 11 | `portal.service.ts:198`, `:215` | before the request C30, C33 · while `consume` waits, closed C94 · deleted while it waits C94 `portal-cutoff.test.ts:315` | - |
+| ficha states accepted at consume (2), carried from round 11 | `students_status_valid`, `portal.service.ts:215` | `active` C29 `portal-password.test.ts:78` · `suspended` C33 `:202`, `:210` | - |
+| effects of `inactivate` in one transaction (4), carried from a9ebfbf + round 5 | `plan.md:45`, `students.service.ts:273`-`:278` | ficha, user, sessions C69 `apps/api/test/portal-cutoff.test.ts:69`-`:71` · tokens C69 `:72`, `:98` | - |
+| ficha states refused at consume (2 admitted), carried from a9ebfbf + round 5 | `students_status_valid`, `students_anonymized_clean` | `inactive` C33 `apps/api/test/portal-password.test.ts:193` · `inactive` and anonymized C33 `:193` | - |
+| first access situations (13), refusals (9), uniform response (10), carried from 5881ed0 | `firstAccessDecision` | C89, C20, C21 | - |
+| `portal` states (4) and edges (2), carried from 5881ed0 | `portalState` | C26, C90 | - |
+| limits (4 keys), window (2 edges), carried from 5881ed0 | `PORTAL_LIMITS` | C23, C40, C88 | - |
+| files refused by the pipeline (9), carried from cf26676 | `photos-upload.test.ts` | C59, statuses `413`, `415`, `422` | - |
+| readings of the current photo (3), carried from 5881ed0 | `photos.service.ts:376` | list, ficha, check-in C60 | - |
+| ficha transitions touching the user (4), carried from cf26676 | `students.service.ts:262` | C69, C70, C71, C73 | - |
+| tables cleared on anonymization (5), carried from 5881ed0 | `privacy.service.ts`, `clearStudentUser` | C74 | - |
+| ficha elements of the pending review (2), carried from cf26676 | AC 51 | pending photo, buttons and the current photo beside it C67 | - |
+| screens in the motion baseline (22 paths), carried from cf26676 | `motion-baseline/1440.json`, `390.json` | C86 for all 22 | - |
+| startup config: `MailService` (2 assemblies), carried from 5881ed0 | `apps/api/src/app.module.ts:169`, `:186`; `tests/stack/compose.test.ts:1704` | tests C17 · stack C92 | - |
+| startup config: `PhotoPurge` (2 assemblies), carried from 5881ed0 | `apps/api/src/app.module.ts:128`; `apps/api/test/photos-purge.test.ts:167` | C62, C64 | - |
+
+Sweep of the round-13 report (transactions that lock or write `users` before an admin-authored audit, seven foreign keys to `users`, `unlink` confirmed by probe): carried from cf54dc8. No `src` file changed since, so the sweep's inputs are byte-identical.
+
+## Test policy rows
+
+The third row was re-judged at 520527d because it classifies `portal-cutoff.test.ts`'s target routes and the new test sits in it. The others are carried from round 13 with the sources that round gave them; the files they classify are unchanged since cf54dc8.
+
+| Row | Files it classifies | Required proof | Expectation met |
+| --- | --- | --- | --- |
+| Eligibility with many conditions | `portal.service.ts` `firstAccessDecision` | service table C89 · boundary C20, C21 | yes - outside the diff |
+| State derived from two tables | `portal.service.ts` `portalState` | pure C90 · boundary C26 | yes - outside the diff |
+| Route that decides, over HTTP, with role cut and trail (`auth-rbac`: one case per line of the decision table) | `portal.controller.ts`, `me.controller.ts`, `photos.controller.ts`, `students.controller.ts`, `students.service.ts` `inactivate`, `consume`, `auth.controller.ts` routes, `users.controller.ts` `resetPassword`, `users.service.ts` `changeOwnPassword`, `resetPassword`, `dropSessionsIfPasswordChanged`, `dropPendingTwoFactor` | C16 to C83, C93, C94 | yes - every interleaving has its statuses asserted over HTTP (`portal-cutoff.test.ts:907`, `:920`, `:932`, `:944`, `:956`, `:973`, `:989`, `:1005`, `:1018`), and the lock-strength bound is now asserted at `:989` |
+| Database constraint | `0013_portal.sql` | C1 to C5 | yes |
+| Count in a window | `lead-throttle.ts` | module C88 · boundary C23, C40 | yes |
+| Side effect after commit | `portal.service.ts` `deliver` | capture C17, C18, C38 | yes |
+| Screen against the `FakeApi` | `minha-conta`, public pages, ficha | C27, C28, C36, C37, C42, C47 to C50, C56, C67, C68 | yes |
+| Stack through `psql` | `tests/stack/compose.test.ts` | C92 | yes |
+
+`Swept`, `existing` rows: carried from round 13. The global guard is at `apps/api/src/app.module.ts:202`, and the origin check is carried from 5881ed0. Neither was touched.
+
+## Faults injected
+
+Verified at 520527d, in `git worktree add --detach %TEMP%\r14w HEAD`, outside the repo. The scratch had six directory junctions for `node_modules` made with `New-Item -ItemType Junction` (root, `apps\api`, `packages\database`, `packages\contracts`, `packages\config`, `packages\ui`). No `pnpm`, `turbo` or package script ran in the scratch. Tests ran as `node node_modules\vitest\vitest.mjs run -c vitest.scratch.config.ts test/portal-cutoff.test.ts -t "^(...)$"` from the scratch's `apps\api`, with an untracked config equal to `vitest.config.ts` minus `globalSetup` and `coverage`, and a JSON reporter. None of the tests below needs `dist`. Each mutant was applied by script on bytes, run, restored, and checked by SHA-256 against the saved original. `students.service.ts` kept its NULs. The green baseline came first: the 14 tests used below all passed on the unmutated scratch.
+
+Isolation: the real tree's `git status --porcelain` was empty at the start and is empty after. At the end, the scratch's `git status --porcelain` showed only the untracked config. The junctions were removed with `cmd /c rmdir` before `git worktree remove --force`. After cleanup, `git worktree list` shows only the real tree, `apps\api\node_modules\vitest\vitest.mjs` exists in the real tree, and a scan of the real tree's `node_modules` link targets (root, `.pnpm\node_modules`, each app, package and test package, and their `@` scopes) finds 0 pointing at the scratch or `%TEMP%`. No `git stash`, `reset`, `checkout` or `commit` touched the real tree.
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| K1: `lockActiveAdmins(tx)` removed from `resetPassword` | `apps/api/src/users/users.service.ts:153` | yes - `reset_password_ahead_of_user_patch_204_200_without_deadlock`, `portal-cutoff.test.ts:907`, `expected 500 to be 200` |
+| K2: removed from `resetTwoFactor` | `apps/api/src/users/users.service.ts:190` | yes - `two_factor_reset_ahead_of_user_patch_204_200_without_deadlock`, `:932`, `expected 500 to be 200` |
+| K3: removed from `StudentsService.update` | `apps/api/src/students/students.service.ts:171` | yes - `student_email_patch_ahead_of_user_patch_200_404_without_deadlock` `:944` and `student_phone_patch_ahead_of_user_patch_200_404_without_deadlock` `:956`, `expected 500 to be 404` |
+| K4: removed from `inactivate` | `apps/api/src/students/students.service.ts:267` | yes - `inactivation_ahead_of_user_patch_204_404_without_deadlock`, `:920`, `expected 500 to be 404` |
+| K5: removed from `anonymizeStudent` | `apps/api/src/privacy/privacy.service.ts:185` | yes - `anonymization_ahead_of_user_patch_204_404_without_deadlock`, `:1018`, `expected 500 to be 404` |
+| S1: removed from `StaffService.link` | `apps/api/src/staff/staff.service.ts:152` | yes - `staff_link_ahead_of_user_patch_204_200_without_deadlock`, `:1005`, `expected 500 to be 200` |
+| H1: `.for('key share')` -> `.for('update')` in the helper; the nine admin-lock tests | `apps/api/src/users/active-admins.ts:16` | yes - `enrollment_ahead_of_student_inactivation_201_204_without_deadlock` `:973`, `expected 500 to be 204`, and `admin_lock_does_not_wait_on_admin_row_held_at_no_key_update` `:989`, `expected undefined to be 204`; the other seven pass |
+| H2: `.for('key share')` -> `.for('no key update')`; the nine admin-lock tests | `apps/api/src/users/active-admins.ts:16` | yes - `admin_lock_does_not_wait_on_admin_row_held_at_no_key_update`, `:989`, `expected undefined to be 204`; the other eight pass, the enrollment proof included |
+| H3: `.for('key share')` -> `.for('share')`; the nine admin-lock tests | `apps/api/src/users/active-admins.ts:16` | yes - `admin_lock_does_not_wait_on_admin_row_held_at_no_key_update`, `:989`, `expected undefined to be 204`; the other eight pass |
+| M1: old order in `consume`, token and user locked in one statement (owner lookup, its check and the user lock removed; `of: [passwordTokens, users]`) | `apps/api/src/portal/portal.service.ts:194`-`:199`, `:214` | yes - `inactivation_against_consume_204_422_without_deadlock` `:228`, `reset_against_consume_202_422_without_deadlock` `:249`, `anonymization_ahead_of_consume_204_422_without_deadlock` `:315`, `expected 500 to be 422`; `first_access_against_consume_202_422_without_deadlock` `:270`, `expected 204 to be 422`; `consume_ahead_of_inactivation_on_held_token_204_204_without_deadlock` `:291`, `expected 500 to be 204` |
+| M3: `users` locked `for update` in `consume` | `apps/api/src/portal/portal.service.ts:199` | yes - `first_access_against_consume_202_422_without_deadlock`, `:269`, `expected 500 to be 202` |
+| M10: `users` locked `for key share` in `consume` | `apps/api/src/portal/portal.service.ts:199` | yes - `consume_ahead_of_inactivation_on_held_token_204_204_without_deadlock`, `:292`, `expected 500 to be 204` |
+| earlier faults (X1 to X8, A, A2, B to E, L, F, T1, T2, M8, M11 and those carried before): carried from round 12 | `users.service.ts`, `auth.controller.ts`, `portal.service.ts` | yes - carried. No production line they touch changed after round 12 (`e7dd251` only replaced `resetPassword`'s inline admin query with the helper call, which K1 and H1 to H3 cover) |
+
+The five-fault cap of `verify.md` does not apply: every fault here was requested by the dispatch.
+
+## Gate
+
+`python C:\Users\Admin\.claude\skills\tlc-spec-lean\scripts\validate_verification.py portal-aluno` from the repo root - exit 0: "validate_verification: 0 error(s), 0 warning(s) across [portal-aluno]".
+
+Proofs: 149 tests passed, 0 failed, from 148 Proof lines (contracts 3, database 5, repo 1, api 119, web 20, stack 1).
+
+## Open findings (do not change the verdict on their own)
+
+- **The reason clause of C94's enrollment sentence** (`checks.md:310`): "uma trava mais forte dos administradores no `DELETE` fecharia o ciclo" is still true only of `FOR UPDATE`. `FOR NO KEY UPDATE` and `FOR SHARE` coexist with the audit's `KEY SHARE` and do not close that cycle. The user chose option (b) in round 14, which keeps the sentence and adds the proof. The behaviour the sentence bounds is now pinned at `:989`, and the new sentence gives the right reason for that case (`FOR KEY SHARE`, "que não conflita com `FOR NO KEY UPDATE`"). This is a wording precision gap in a `porque` clause, not an unproven behaviour.
+- **`checks.md:551`** has lost the backslashes of its scratch path (`node_modulesitestitest.mjs`, `appspi`). Cosmetic.
+- **Timing of the new proof.** It waits up to 500 ms for the hold and 1000 ms for the answer. It passed twice this round (real tree and scratch baseline). A loaded machine could push the `DELETE` past 1 s and give a false red, never a false green.
+- **Rounds past the bound.** Rounds 4 to 14 all went past the three of `verify.md`.
+- Carried from round 13, unchanged by the diff: `STATE.md` and `.specs/ROADMAP.md:28` may be behind the feature's rounds; `verify` after a `PUT` (`checks.md:546`); a `PUT` in flight when the ficha goes `inactive` changes a disabled user's password; the orphan attempts row; the precision gap of C94's login with 2FA (`portal-cutoff.test.ts:667`, `:748`); the orphan session row if `record` throws in `disable` or `confirm`; the loop at `apps/api/test/portal-password.test.ts:187`; the precision gap of C76 (`user_linked` against `staff_user_linked`, `apps/api/src/privacy/privacy.controller.ts:76`); `DELETE /api/students/:id/photo` deleting the pending photo; `pendingPhoto.url` to all four profiles; the user-approved rewrites of C26, C45, C59, C60, C86 and C91; C67 proven at desktop width only; `unlink` closed as a question by probe.
+- **Closed by 520527d:** H2 and H3 (killed at `:989`), and with them the round-13 Coverage member "`no key update`, `share`" of the strength row.
+
+## History
+
+Round 13's report (FAIL at cf54dc8) is kept verbatim below as history. It sits in a fenced block so that the completion gate reads only the current round's rows; rounds 1 to 12 are in the git history of this file (`git log -- .specs/features/portal-aluno/verification.md`).
+
+```text
+# Portal do aluno verification
+
 **Verdict**: FAIL
 **Profile**: standard
 **Diff range**: a9ebfbf..cf54dc8
@@ -286,3 +540,4 @@ Proofs: 148 tests passed, 0 failed, from 147 Proof lines (contracts 3, database 
 - **`STATE.md` and `.specs/ROADMAP.md:28`:** may still be behind the feature's rounds. Carried, outside this round's edit scope.
 - Carried from round 12, unchanged by the diff: `verify` after a `PUT` (`checks.md:546`); a `PUT` in flight when the ficha goes `inactive` changes a disabled user's password; the orphan attempts row; the precision gap of C94's login with 2FA (`portal-cutoff.test.ts:667`, `:748`); the orphan session row if `record` throws in `disable` or `confirm`; the loop at `apps/api/test/portal-password.test.ts:187`; the precision gap of C76 (`user_linked` against `staff_user_linked`, `apps/api/src/privacy/privacy.controller.ts:76`); `DELETE /api/students/:id/photo` deleting the pending photo; `pendingPhoto.url` to all four profiles; the user-approved rewrites of C26, C45, C59, C60, C86 and C91; and C67 proven at desktop width only.
 - **Closed by cf54dc8 and 9cd5b5a:** the round-12 finding `PUT /api/staff/:id/user` against `PATCH /api/users/:id` (proven closed at `portal-cutoff.test.ts:985`, S1 confirms), and H1 (killed at `:973`). The `checks.md:548` wording slip ("quatro testes") is unchanged.
+```
