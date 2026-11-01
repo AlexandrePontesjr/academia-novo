@@ -974,6 +974,26 @@ test('enrollment_ahead_of_student_inactivation_201_204_without_deadlock', async 
   expect(raised).toBe(0);
 });
 
+test('admin_lock_does_not_wait_on_admin_row_held_at_no_key_update', async () => {
+  const admin = (await stack.session('admin')).client;
+  const student = await insertAdultStudent(stack);
+  const other = await stack.seed({ role: 'admin' });
+
+  const holding = stack.query(`with l as (select id from users where id = $1 for no key update) select pg_sleep(1.5) from l`, [other.id]);
+  let answer: Response | undefined;
+  try {
+    await vi.waitFor(async () => expect(await backendsIn(`wait_event = 'PgSleep'`)).toBe(1), { timeout: 500, interval: 5 });
+    const pending = admin.request('DELETE', `/api/students/${student.id}`).then((response) => (answer = response));
+    await vi.waitFor(async () => expect(answer !== undefined || (await backendsIn(`wait_event_type = 'Lock'`)) > 0).toBe(true), { timeout: 1000, interval: 5 });
+
+    expect(answer?.status).toBe(204);
+    expect(await backendsIn(`wait_event = 'PgSleep'`)).toBe(1);
+    await pending;
+  } finally {
+    await holding;
+  }
+});
+
 test('staff_link_ahead_of_user_patch_204_200_without_deadlock', async () => {
   const admin = (await stack.session('admin')).client;
   const user = await stack.seed({ role: 'reception' });
