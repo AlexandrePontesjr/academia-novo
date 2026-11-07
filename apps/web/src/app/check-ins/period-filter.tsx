@@ -21,7 +21,7 @@ function DayField({ name, label, value, error }: { name: string; label: string; 
         aria-describedby={error ? `${id}-error` : undefined}
       />
       {error && (
-        <p id={`${id}-error`} className="text-sm text-[#f87171]">
+        <p id={`${id}-error`} className="text-sm text-status-bad">
           {error}
         </p>
       )}

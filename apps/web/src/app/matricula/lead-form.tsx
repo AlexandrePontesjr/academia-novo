@@ -43,7 +43,7 @@ function CheckField({ label, error, registration }: { label: string; error?: str
         {label}
       </label>
       {error && (
-        <p id={`${id}-error`} className="text-sm text-[#f87171]">
+        <p id={`${id}-error`} className="text-sm text-status-bad">
           {error}
         </p>
       )}

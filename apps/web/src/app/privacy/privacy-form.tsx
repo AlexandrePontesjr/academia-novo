@@ -65,7 +65,7 @@ export function PrivacyForm({ initial }: { initial: PrivacySettings }) {
           Desligado
         </label>
         {errors.inactiveStudentRetentionYears && (
-          <p id={`${yearsId}-error`} className="text-sm text-[#f87171]">
+          <p id={`${yearsId}-error`} className="text-sm text-status-bad">
             {errors.inactiveStudentRetentionYears}
           </p>
         )}
@@ -85,7 +85,7 @@ export function PrivacyForm({ initial }: { initial: PrivacySettings }) {
           <span>dias</span>
         </div>
         {errors.photoVersionRetentionDays && (
-          <p id={`${daysId}-error`} className="text-sm text-[#f87171]">
+          <p id={`${daysId}-error`} className="text-sm text-status-bad">
             {errors.photoVersionRetentionDays}
           </p>
         )}

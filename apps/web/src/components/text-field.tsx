@@ -30,7 +30,7 @@ export function TextField({ label, error, icon, registration, ...input }: TextFi
         />
       </div>
       {error && (
-        <p id={`${id}-error`} className="text-sm text-[#f87171]">
+        <p id={`${id}-error`} className="text-sm text-status-bad">
           {error}
         </p>
       )}

@@ -52,7 +52,7 @@ export function TwoFactorToggle({ enabled }: { enabled: boolean }) {
         error={errors.password?.message}
         registration={form.register('password')}
       />
-      <Button type="submit" variant="destructive" disabled={isSubmitting}>
+      <Button type="submit" variant="destructive" busy={isSubmitting}>
         Desativar verificação em duas etapas
       </Button>
     </form>

@@ -158,7 +158,7 @@ export function StudentForm({ student, guardian, lead }: { student?: Student; gu
           ))}
         </Select>
         {errors.sex && (
-          <p id={`${sexId}-error`} className="text-sm text-[#f87171]">
+          <p id={`${sexId}-error`} className="text-sm text-status-bad">
             {errors.sex.message}
           </p>
         )}
@@ -166,7 +166,7 @@ export function StudentForm({ student, guardian, lead }: { student?: Student; gu
       {showGuardian && (
         <fieldset className="grid gap-4 rounded-xl border p-4">
           <legend className="px-1 text-sm font-medium">Responsável legal</legend>
-          {errors.guardian?.message && <p className="text-sm text-[#f87171]">{errors.guardian.message}</p>}
+          {errors.guardian?.message && <p className="text-sm text-status-bad">{errors.guardian.message}</p>}
           <TextField
             label="Nome do responsável"
             autoComplete="off"
@@ -203,7 +203,7 @@ export function StudentForm({ student, guardian, lead }: { student?: Student; gu
               ))}
             </Select>
             {errors.guardian?.relationship && (
-              <p id={`${guardianRelationshipId}-error`} className="text-sm text-[#f87171]">
+              <p id={`${guardianRelationshipId}-error`} className="text-sm text-status-bad">
                 {errors.guardian.relationship.message}
               </p>
             )}
@@ -233,17 +233,17 @@ export function StudentForm({ student, guardian, lead }: { student?: Student; gu
           rows={4}
           aria-invalid={errors.healthNotes ? true : undefined}
           aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
-          className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-[#f87171]"
+          className="w-full rounded-xl border border-border-control bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-status-bad"
           {...form.register('healthNotes')}
         />
         {errors.healthNotes && (
-          <p id={`${notesId}-error`} className="text-sm text-[#f87171]">
+          <p id={`${notesId}-error`} className="text-sm text-status-bad">
             {errors.healthNotes.message}
           </p>
         )}
       </div>
       <div>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" busy={isSubmitting}>
           Salvar
         </Button>
       </div>

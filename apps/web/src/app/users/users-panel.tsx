@@ -204,7 +204,7 @@ function ResetPasswordForm({ user, onDone }: { user: User; onDone: () => void })
         <DialogClose asChild>
           <Button variant="outline">Cancelar</Button>
         </DialogClose>
-        <Button type="submit" variant="destructive" disabled={isSubmitting}>
+        <Button type="submit" variant="destructive" busy={isSubmitting}>
           Redefinir senha
         </Button>
       </DialogFooter>
@@ -258,7 +258,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </Select>
         {errors.role && (
-          <p id={`${roleId}-error`} className="text-sm text-[#f87171]">
+          <p id={`${roleId}-error`} className="text-sm text-status-bad">
             {errors.role.message}
           </p>
         )}
@@ -274,7 +274,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
         <DialogClose asChild>
           <Button variant="outline">Cancelar</Button>
         </DialogClose>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" busy={isSubmitting}>
           Criar usuário
         </Button>
       </DialogFooter>

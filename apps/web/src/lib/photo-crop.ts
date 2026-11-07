@@ -60,7 +60,7 @@ export function drawRegion(image: HTMLImageElement, region: Region, rotation: nu
   const [width, height] = rotated(image, rotation);
 
   // o JPEG não tem transparência: o que a imagem não cobre sai branco
-  context.fillStyle = '#fff';
+  context.fillStyle = 'white';
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.imageSmoothingQuality = 'high';
   context.scale(scale, scale);

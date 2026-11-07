@@ -54,7 +54,7 @@ export function TwoFactorForm() {
           registration={form.register('code')}
         />
       )}
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" busy={isSubmitting}>
         Verificar
       </Button>
       <a

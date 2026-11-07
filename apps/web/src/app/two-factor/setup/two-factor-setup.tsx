@@ -77,7 +77,7 @@ function PasswordStep({ onEnabled }: { onEnabled: (enrollment: Enrollment) => vo
         error={errors.password?.message}
         registration={form.register('password')}
       />
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" busy={isSubmitting}>
         Continuar
       </Button>
     </form>
@@ -120,7 +120,7 @@ function CodeStep({ enrollment, onConfirmed }: { enrollment: Enrollment; onConfi
         error={errors.code?.message}
         registration={form.register('code')}
       />
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" busy={isSubmitting}>
         Confirmar
       </Button>
     </form>

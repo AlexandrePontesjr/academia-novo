@@ -54,7 +54,7 @@ export function ChangePasswordForm() {
         error={errors.newPassword?.message}
         registration={form.register('newPassword')}
       />
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" busy={isSubmitting}>
         Trocar senha
       </Button>
     </form>

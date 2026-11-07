@@ -101,7 +101,7 @@ export function StaffForm({ staff }: { staff?: Staff }) {
       <TextField label="Telefone" type="tel" autoComplete="off" error={errors.phone?.message} registration={form.register('phone')} />
       <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
       <div>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" busy={isSubmitting}>
           Salvar
         </Button>
       </div>

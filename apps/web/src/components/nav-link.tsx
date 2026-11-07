@@ -14,7 +14,7 @@ const VARIANTS: Record<NavVariant, string> = {
   menu: 'flex items-center gap-3 rounded-full px-4 py-3 text-foreground hover:bg-muted',
 };
 
-/** Um link do menu: o da rota aberta fica com o fundo #1f1f1f e o ícone no acento (dukfit-app, AC 5). */
+/** Um link do menu: o da rota aberta fica com o fundo em camadas e o ícone no acento (dukfit-app, AC 5). */
 export function NavLink({
   href,
   prefetch,

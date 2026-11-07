@@ -159,7 +159,7 @@ function StudentCard({
             className={`rounded-full px-3 py-1 text-sm font-medium ${
               allowed
                 ? 'bg-[rgb(205_247_32_/_0.15)] text-primary'
-                : 'bg-[rgb(248_113_113_/_0.15)] text-[#f87171]'
+                : 'bg-[rgb(248_113_113_/_0.15)] text-status-bad'
             }`}
           >
             {allowed ? 'Liberado' : 'Bloqueado'}

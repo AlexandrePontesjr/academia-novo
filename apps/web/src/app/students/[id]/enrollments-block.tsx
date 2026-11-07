@@ -89,7 +89,7 @@ export function EnrollmentsBlock({
         {!canWrite ? null : studentStatus === 'inactive' ? (
           <p className="text-sm text-muted-foreground">Aluno inativo: reative o aluno para matricular.</p>
         ) : plans === 'failed' ? (
-          <p className="text-sm text-[#f87171]">Não foi possível carregar os planos.</p>
+          <p className="text-sm text-status-bad">Não foi possível carregar os planos.</p>
         ) : (
           <Button onClick={open}>{last ? 'Renovar' : 'Matricular'}</Button>
         )}
@@ -196,7 +196,7 @@ function EnrollDialog({
         <DialogTitle>{opening.renewing ? 'Renovar matrícula' : 'Matricular aluno'}</DialogTitle>
         <DialogDescription>O vencimento é calculado pelo plano e pelo início escolhidos.</DialogDescription>
         {plans.length === 0 ? (
-          <p className="text-sm text-[#f87171]">Nenhum plano ativo. Cadastre um plano em Planos.</p>
+          <p className="text-sm text-status-bad">Nenhum plano ativo. Cadastre um plano em Planos.</p>
         ) : (
           <>
             <div className="grid gap-1.5">
@@ -215,7 +215,7 @@ function EnrollDialog({
                 ))}
               </Select>
               {fieldErrors.planId && (
-                <p id={`${planFieldId}-error`} className="text-sm text-[#f87171]">
+                <p id={`${planFieldId}-error`} className="text-sm text-status-bad">
                   {fieldErrors.planId}
                 </p>
               )}
@@ -231,7 +231,7 @@ function EnrollDialog({
                 onChange={(event) => setStartsAt(event.target.value)}
               />
               {fieldErrors.startsAt && (
-                <p id={`${startFieldId}-error`} className="text-sm text-[#f87171]">
+                <p id={`${startFieldId}-error`} className="text-sm text-status-bad">
                   {fieldErrors.startsAt}
                 </p>
               )}
