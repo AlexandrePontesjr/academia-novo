@@ -8,7 +8,7 @@ import { FilterActions, FilterToolbar } from '../../components/filter-toolbar.ts
 import { TEXT_LINK } from '../../components/link-class.ts';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
 import { callApi } from '../../lib/api.ts';
-import { formatCpf, formatPhone, STATUS_LABELS } from '../../lib/students.ts';
+import { formatCpf, formatPhone, canWriteStudents, STATUS_LABELS } from '../../lib/students.ts';
 
 interface Applied {
   q: string;
@@ -107,6 +107,15 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
           icon={<UsersIcon />}
           title={filtered ? 'Nenhum aluno encontrado.' : 'Nenhum aluno cadastrado.'}
           {...(filtered ? { description: 'Tente outro nome, CPF, telefone ou situação.' } : {})}
+          {...(canWriteStudents(role)
+            ? {
+                action: (
+                  <Button asChild variant="outline">
+                    <Link href="/students/new">Novo aluno</Link>
+                  </Button>
+                ),
+              }
+            : {})}
         />
       ) : (
         <>

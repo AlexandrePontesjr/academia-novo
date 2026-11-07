@@ -128,7 +128,7 @@ export default async function LandingPage() {
                         data-slot="route-link"
                         href={SITE.routes[route]}
                         {...EXTERNAL}
-                        className="flex h-11 items-center justify-between gap-4 border-t text-base font-medium transition-colors hover:text-primary"
+                        className="flex h-11 items-center justify-between gap-4 border-t text-base leading-6 font-medium transition-colors hover:text-primary"
                       >
                         {SITE.routeLabels[route]}
                         <ArrowUpRightIcon className="size-4" />
@@ -142,8 +142,9 @@ export default async function LandingPage() {
         </Section>
 
         <Section id={about} eyebrow={SITE.about.eyebrow} title={SITE.about.title}>
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
-            <div className="grid content-start gap-8">
+          {/* a composição `story` da door 3: a foto 4:3 ao lado do texto, nunca atrás dele */}
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16" data-slot="story">
+            <div className="grid content-start gap-8" data-slot="story-text">
               <p className="text-xl leading-snug sm:text-2xl">{SITE.about.lead}</p>
               <p className="text-base leading-relaxed text-muted-foreground">{SITE.about.text}</p>
               <Rule />
@@ -159,9 +160,9 @@ export default async function LandingPage() {
                 <p className="text-sm text-muted-foreground">{SITE.about.listTitle}</p>
                 <ul className="grid">
                   {SITE.why.map((item) => (
-                    <li key={item.title} className="grid gap-1 border-t py-4">
+                    <li key={item.title} className="grid gap-1 border-t py-4" data-slot="why-item">
                       <h3 className="text-lg leading-snug font-medium">{item.title}</h3>
-                      <p className="text-base text-muted-foreground">{item.text}</p>
+                      <p className="text-base leading-6 text-muted-foreground">{item.text}</p>
                     </li>
                   ))}
                 </ul>
@@ -187,9 +188,9 @@ export default async function LandingPage() {
           <DevelopPair photos={SITE.structure.photos} />
           <ul className="grid gap-0 lg:grid-cols-3">
             {SITE.structure.items.map((item) => (
-              <li key={item.title} className="grid content-start gap-2 border-t py-6 lg:pr-10">
+              <li key={item.title} className="grid content-start gap-2 border-t py-6 lg:pr-10" data-slot="structure-item">
                 <h3 className="text-xl font-medium">{item.title}</h3>
-                <p className="text-base text-muted-foreground">{item.text}</p>
+                <p className="text-base leading-6 text-muted-foreground">{item.text}</p>
               </li>
             ))}
           </ul>
@@ -226,6 +227,7 @@ export default async function LandingPage() {
       <footer className={`grid gap-10 py-14 ${CONTAINER}`}>
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-start">
           <div className="grid gap-3">
+            <img data-slot="footer-logo" src={SITE.logo.src} alt={SITE.logo.alt} width={96} height={96} className="size-10" />
             <a data-slot="footer-address" href={SITE.routes.google} className="text-3xl leading-tight font-medium hover:text-primary">
               {SITE.address.street}
               <br />

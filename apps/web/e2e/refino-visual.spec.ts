@@ -567,6 +567,24 @@ test('empty_states_use_record_and_search_titles', async ({ page, api }) => {
   await expect(mainOf(page).locator('[data-slot="empty-state-title"]')).toHaveText('Nenhum funcionário cadastrado.');
 });
 
+// Extra do round 2 - door 7/AC 7: o ramo de ação opcional do `EmptyState` tem consumidor real
+test('empty_state_offers_an_action', async ({ page, api }) => {
+  serveWorld(api, 'admin');
+  api.on('GET', '/api/students', { status: 200, body: { items: [], nextCursor: null } });
+  await page.goto('/students');
+
+  const empty = mainOf(page).locator('[data-slot="empty-state"]');
+  await expect(empty).toHaveCount(1);
+  // o título de C49 continua o do registro vazio
+  await expect(empty.locator('[data-slot="empty-state-title"]')).toHaveText('Nenhum aluno cadastrado.');
+
+  const action = empty.locator('[data-slot="empty-state-action"]');
+  await expect(action).toBeVisible();
+  const link = action.getByRole('link', { name: 'Novo aluno', exact: true });
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute('href', '/students/new');
+});
+
 // C50 - o `PAGE_BODY` é um corpo simples: a `Table` não fica dentro de um segundo cartão
 test('list_tables_sit_in_a_plain_body_without_a_second_card', async ({ page, api }) => {
   serveWorld(api, 'admin');

@@ -676,3 +676,33 @@ Size from `wc -c` of the files each slice touches, divided by four.
   - Tirar a `Table` do DOM abaixo de 768 px: as duas apresentações ficam no DOM e se escondem por CSS,
     que é o que as provas de C8/C51 medem (`toBeHidden`) e o que mantém a troca de breakpoint sem
     remontar a lista; a cascata da `motion` fica nas duas apresentações.
+- **Round 2 fixes (verifier round 1):** os 5 gaps ranqueados na `verification.md` foram fechados sobre
+  `ac39d9d`, sem tocar nos 70 checks (claims, `Test policy` e `plan.md` intocados) e sem enfraquecer
+  prova nenhuma. O que mudou, gap a gap: (1) **logo da door 3** - `SITE.logo.src` passa a ser
+  `/dukfit/logo-dukfit-96.webp` (`site-content.ts:15`), o cabeçalho mede o mesmo arquivo em 96×96
+  (`site-header.tsx:131`) e o rodapé ganhou o logo com `data-slot="footer-logo"` e o `alt` do `SITE`
+  (`page.tsx:230`); (2) **régua da palavra da navegação** (door 6; `sections.md:398-401`) - a constante
+  `NAV_WORD_RULE` (`rule-link.ts:13-14`) desenha no `::after` 1 px de `--primary`, origem à esquerda,
+  `scaleX(0)→scaleX(1)` em 200 ms, e as quatro palavras usam a mesma régua do título linkado
+  (`site-header.tsx:140`), sem tocar no CTA nem no menu do celular; (3) **composições `story`/`pair`**
+  (door 3) - `data-slot="story"`/`"story-text"` na `#academia` (`page.tsx:146-147`) e
+  `data-slot="pair"` na `#estrutura` (`develop-pair.tsx:65`) dão ancoragem estável à prova de arranjo
+  4:3/topos alinhados (a composição já estava correta); (4) **ação opcional do `EmptyState`** (door 7,
+  AC 7) - o vazio de `/students` ganhou o link "Novo aluno" para `/students/new` quando o papel escreve
+  (`students-list.tsx:110-119`), mantendo os títulos de C49; (5) **texto de lista a 16/24** (binding
+  source `sections.md:409-410`) - `leading-6` explícito nos itens da `#estrutura` e do bloco `why`
+  (`page.tsx:165,193`), nas rotas da `#visita` (`page.tsx:131`) e nas features do `#planos`
+  (`plans-pricing.tsx:30`), sem mudar rótulo de negócio. Provas extras, com nomes distintos dos checks:
+  `E2E landing.spec.ts -g "landing_logo_is_the_96_in_the_header_and_the_footer"`,
+  `-g "nav_word_draws_its_ruler_on_hover"`,
+  `-g "about_photo_is_a_four_by_three_story_and_structure_pair_levels_the_tops"`,
+  `-g "landing_list_text_is_sixteen"` (as quatro em `landing.spec.ts:530,550,589,636`) e
+  `E2E refino-visual.spec.ts -g "empty_state_offers_an_action"` (`refino-visual.spec.ts:571`). O
+  baseline C39 foi **regravado** com `MOTION_BASELINE=record` sobre o código final: a única diferença
+  nos dois JSON é o `img "DUK FIT Academia"` novo dentro de `contentinfo` (rodapé), com cópia de `main`
+  e foco idênticos; a prova sem `record` passa. Provas rodadas: E2E 22/22 em `landing.spec.ts`, 75/75
+  no conjunto `landing-header.spec.ts` (13) + `dukfit.spec.ts` (34) + `refino-visual.spec.ts` (28),
+  incluindo C28, C49 e C70, e 29/29 em `motion.spec.ts`; `pnpm verify` sai 0 no commit desta linha.
+  Numa das execuções o `lists_stagger_8_items_at_40ms_and_cap_the_rest` (não tocado por esta rodada)
+  falhou por amostragem do primeiro quadro no `/students` a 1440 (9,5 px contra o >10 esperado) e
+  passou isolado e na re-execução completa; nenhuma prova foi alterada por causa disso.

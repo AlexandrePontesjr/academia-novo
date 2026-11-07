@@ -62,7 +62,7 @@ export function DevelopPair({ photos }: { photos: readonly Photo[] }) {
   };
 
   return (
-    <div ref={ref} className="grid gap-6 sm:grid-cols-2">
+    <div ref={ref} className="grid gap-6 sm:grid-cols-2" data-slot="pair">
       {photos.map((photo) => (
         <figure key={photo.src} data-slot="structure-photo" data-moment="picture-develops" className="aspect-[4/3] overflow-hidden" style={style}>
           <PhotoFrame photo={photo} />

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { type MouseEvent, useEffect, useState } from 'react';
 import { SITE } from '../../app/site-content.ts';
 import { Wordmark } from '../wordmark.tsx';
+import { NAV_WORD_RULE } from './rule-link.ts';
 
 const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
@@ -127,7 +128,7 @@ export function SiteHeader({ session }: { session: boolean }) {
       {...(scrolled ? { 'data-scrolled': '' } : {})}
     >
       <a href="#" className="flex min-w-0 items-center gap-3">
-        <img src={SITE.logo.src} alt={SITE.logo.alt} width={40} height={40} className="size-10" data-slot="hero-logo" />
+        <img src={SITE.logo.src} alt={SITE.logo.alt} width={96} height={96} className="size-10" data-slot="hero-logo" />
         <Wordmark className="max-sm:sr-only" />
       </a>
       <nav aria-label={SITE.labels.nav} className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur lg:flex">
@@ -136,7 +137,7 @@ export function SiteHeader({ session }: { session: boolean }) {
             key={item.href}
             href={item.href}
             {...(current === item.href ? { 'aria-current': 'location' as const } : {})}
-            className="rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground aria-[current=location]:bg-white/10 aria-[current=location]:text-foreground"
+            className={`rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground aria-[current=location]:bg-white/10 aria-[current=location]:text-foreground ${NAV_WORD_RULE}`}
           >
             {item.label}
           </a>

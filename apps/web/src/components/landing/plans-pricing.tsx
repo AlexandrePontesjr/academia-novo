@@ -27,7 +27,7 @@ export function PlansPricing() {
         <p className="text-sm text-muted-foreground">{plans.featuresLabel}</p>
         <ul className="grid">
           {plan.features.map((feature) => (
-            <li key={feature} className="flex items-center gap-3 border-t py-4 text-base">
+            <li key={feature} className="flex items-center gap-3 border-t py-4 text-base leading-6" data-slot="plan-feature">
               <CheckIcon className="size-4 shrink-0 text-primary" />
               {feature}
             </li>

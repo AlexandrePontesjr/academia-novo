@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './support/fake-api.ts';
 import { DESKTOP, MOBILE, framesOf, settle, startSampling } from './support/motion.ts';
 import { styleOf } from './support/identidade.ts';
@@ -525,3 +525,139 @@ test('no_horizontal_scroll_and_shared_edges_at_five_widths', async ({ page }) =>
     }
   }
 });
+
+// Extra do round 2 - door 3: o logo é o arquivo de 96 px no cabeçalho e no rodapé (`plan.md:108`)
+test('landing_logo_is_the_96_in_the_header_and_the_footer', async ({ page }) => {
+  await page.goto('/');
+  const headerLogo = page.locator('[data-slot="site-header"] img[data-slot="hero-logo"]');
+  const footerLogo = page.locator('footer img[data-slot="footer-logo"]');
+  await expect(headerLogo).toHaveCount(1);
+  await expect(footerLogo).toHaveCount(1);
+  await expect(headerLogo).toBeVisible();
+  await expect(footerLogo).toBeVisible();
+
+  expect(SITE.logo.src).toBe('/dukfit/logo-dukfit-96.webp');
+  for (const [slot, logo] of [
+    ['cabeçalho', headerLogo],
+    ['rodapé', footerLogo],
+  ] as const) {
+    expect(await logo.getAttribute('src'), slot).toBe('/dukfit/logo-dukfit-96.webp');
+    expect(await logo.getAttribute('alt'), slot).toBe(SITE.logo.alt);
+  }
+});
+
+// Extra do round 2 - door 6: a palavra da navegação desenha a régua no hover (`sections.md:398-401`)
+test('nav_word_draws_its_ruler_on_hover', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto('/');
+  await settle(page);
+
+  const word = page
+    .locator('[data-slot="site-header"]')
+    .getByRole('navigation', { name: SITE.labels.nav, exact: true })
+    .getByRole('link', { name: SITE.nav[0]!.label, exact: true });
+  await expect(word).toBeVisible();
+
+  const ruler = () =>
+    word.evaluate((element) => {
+      const style = getComputedStyle(element, '::after');
+      return {
+        transform: style.transform,
+        origin: style.transformOrigin,
+        height: style.height,
+        background: style.backgroundColor,
+        duration: style.transitionDuration,
+      };
+    });
+
+  // antes do hover a régua existe, mas está recolhida à esquerda
+  const rest = await ruler();
+  expect(scaleOf(rest.transform)).toBeCloseTo(0, 2);
+  expect(rest.height).toBe('1px');
+  expect(rest.background).toBe(LIME);
+  expect(rest.origin.startsWith('0px')).toBe(true);
+  const milliseconds = Number.parseFloat(rest.duration) * 1_000;
+  expect(milliseconds).toBeGreaterThanOrEqual(150);
+  expect(milliseconds).toBeLessThanOrEqual(250);
+
+  // no hover a palavra desenha a régua da esquerda para a direita
+  await word.hover();
+  await expect.poll(async () => scaleOf((await ruler()).transform)).toBeCloseTo(1, 2);
+});
+
+// Extra do round 2 - doors 3/4: `story` 4:3 na academia e `pair` com o mesmo ratio e topos alinhados
+test('about_photo_is_a_four_by_three_story_and_structure_pair_levels_the_tops', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto('/');
+  await settle(page);
+
+  const ratioOf = async (locator: Locator) => {
+    const box = (await locator.boundingBox())!;
+    return box.width / box.height;
+  };
+
+  // `story` na `#academia`: a foto 4:3 ao lado do texto, nunca atrás dele
+  const story = page.locator('#academia [data-slot="story"]');
+  await expect(story).toHaveCount(1);
+  const frame = story.locator('[data-slot="photo-frame"]');
+  await expect(frame).toHaveCount(1);
+  expect(await ratioOf(frame)).toBeCloseTo(4 / 3, 1);
+
+  const textBox = (await story.locator('[data-slot="story-text"]').boundingBox())!;
+  const frameBox = (await frame.boundingBox())!;
+  expect(textBox.x + textBox.width, 'texto à esquerda da foto').toBeLessThanOrEqual(frameBox.x);
+  expect(Math.min(textBox.y + textBox.height, frameBox.y + frameBox.height), 'texto e foto na mesma faixa').toBeGreaterThan(
+    Math.max(textBox.y, frameBox.y),
+  );
+
+  // `pair` na `#estrutura`: duas fotos do mesmo ratio, com os topos alinhados
+  const pair = page.locator('#estrutura [data-slot="pair"]');
+  await expect(pair).toHaveCount(1);
+  const photos = pair.locator('[data-slot="structure-photo"]');
+  await expect(photos).toHaveCount(2);
+  await pair.scrollIntoViewIfNeeded();
+  // o `picture-develops` roda uma vez: a prova mede o estado final
+  await expect.poll(async () => photos.first().evaluate((element) => getComputedStyle(element).transform), { timeout: 5_000 }).toBe('none');
+
+  const boxes = await photos.evaluateAll((elements) =>
+    elements.map((element) => {
+      const box = element.getBoundingClientRect();
+      return { width: box.width, height: box.height, top: box.top };
+    }),
+  );
+  for (const [index, box] of boxes.entries()) {
+    expect(box.width / box.height, `par ${index}`).toBeCloseTo(4 / 3, 1);
+  }
+  expect(Math.abs(boxes[0]!.top - boxes[1]!.top), 'topos alinhados').toBeLessThanOrEqual(1);
+  expect(Math.abs(boxes[0]!.width - boxes[1]!.width), 'mesma largura').toBeLessThanOrEqual(1);
+});
+
+// Extra do round 2 - binding source do skill: o texto de lista da landing a 16/24 no mínimo (`sections.md:409-410`)
+test('landing_list_text_is_sixteen', async ({ page }) => {
+  const lists = [
+    { label: 'horário e rotas da visita', selector: '#visita [data-slot="visit-hours"], #visita [data-slot="route-link"]', count: 4 },
+    { label: 'features dos planos', selector: '#planos [data-slot="plan-feature"]', count: 3 },
+    { label: 'itens da estrutura', selector: '#estrutura [data-slot="structure-item"] p', count: 3 },
+    { label: 'itens do bloco de diferenciais', selector: '#academia [data-slot="why-item"] p', count: 4 },
+  ];
+
+  for (const size of [DESKTOP, MOBILE]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await settle(page);
+    for (const list of lists) {
+      const metrics = await page.locator(list.selector).evaluateAll((elements) =>
+        elements.map((element) => {
+          const style = getComputedStyle(element);
+          return { size: Number.parseFloat(style.fontSize), line: Number.parseFloat(style.lineHeight) };
+        }),
+      );
+      expect(metrics.length, `${list.label} a ${size.width}`).toBe(list.count);
+      for (const metric of metrics) {
+        expect(metric.size, `${list.label} a ${size.width} px`).toBeGreaterThanOrEqual(16);
+        expect(metric.line, `${list.label} a ${size.width} px`).toBeGreaterThanOrEqual(24);
+      }
+    }
+  }
+});
+

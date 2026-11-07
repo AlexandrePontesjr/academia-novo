@@ -11,7 +11,8 @@ export const SITE = {
   kind: 'place',
   name: 'DukFit',
   legalName: 'DUK FIT Academia',
-  logo: { src: '/dukfit/logo-dukfit-512.webp', small: '/dukfit/logo-dukfit-96.webp', alt: 'DUK FIT Academia' },
+  // a door 3 fixa o `logo-dukfit-96.webp` no cabeçalho e no rodapé; o `small` serve o `Brand` do app
+  logo: { src: '/dukfit/logo-dukfit-96.webp', small: '/dukfit/logo-dukfit-96.webp', alt: 'DUK FIT Academia' },
   instagram: { handle: '@dukfitacademia', url: 'https://www.instagram.com/dukfitacademia/' },
   footer: 'Musculação e acompanhamento em Flores, Manaus.',
   rights: 'Todos os direitos reservados.',
