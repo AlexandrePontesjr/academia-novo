@@ -500,3 +500,53 @@ Size from `wc -c` of the files each slice touches, divided by four.
 - **Boundary:** vazio - o Build ainda não começou. Base da feature: `67c22e6`. Sem push. Cada builder
   acrescenta aqui as três linhas do template (`Boundary`, `Settled mid-build`, `Abandoned`) ao fechar
   o batch no verde.
+- **Boundary (batch A):** S1 + S3 fechadas sobre a base da feature (`67c22e6`, com plano e checks em
+  `823fc95`), sem push e sem tocar `.specs/STATE.md`; os checks do batch A (C1-C13 e C32-C46) estão
+  provados, e o baseline C39 da `motion` continua verde (regravado só no batch C, sobre o código
+  final). `pnpm verify` **não sai 0 neste ambiente** por duas falhas pré-existentes e fora do escopo
+  do A, as mesmas da AD-118: (1) o `turbo` nega a escrita das tarefas filhas de teste em `%TEMP%`
+  (`EPERM: operation not permitted, mkdir 'C:\Users\Admin\AppData\Local\Temp\<id>\ssr'`) e o
+  `@academia/repo-tests:test` morre antes de rodar (log `.turbo/refino-a/verify-plain.log`, e o mesmo
+  em `823fc95` no log de base `.turbo/refino-a/baseline-verify.log`); (2) sem runtime de contêiner
+  (Docker ausente), os testes de `@academia/database` e `@academia/api` não sobem o
+  `PostgreSqlContainer` (`Could not find a working container runtime strategy`, log
+  `.turbo/refino-a/database-test.log`). O que este ambiente permite rodar foi rodado, sem enfraquecer
+  nada: `turbo run lint typecheck build` sai 0 nas 16 tarefas dos 8 pacotes com `TEMP`/`TMP`
+  apontados para a árvore (`.turbo/refino-a/verify-ltb.log`); `@academia/contracts` 20 testes;
+  `@academia/repo-tests` 89 testes; e a suíte de tela inteira sai 0 com 467 testes em
+  `.turbo/refino-a/playwright-full-1.log`. As provas do batch foram rodadas uma a uma pelo comando
+  do check: REPO 12/12 verdes (9 de `refino.test.ts`, C2 e C12 em `identidade.test.ts`, C44/C65 em
+  `motion.test.ts`) e E2E 25/25 verdes em `.turbo/refino-a/proofs-e2e.log` (C4, C6-C11, C32-C46 e o
+  baseline C39). Commits: `c9acd49` (tokens e peças), `937ae3f` (literais de cor, borda de controle e
+  `Button busy`), `1e83ec0` (entrada e portal do aluno) e `542111d` (provas).
+- **Settled mid-build (batch A):**
+  - O `ScreenHeader` foi provado no `/minha-conta`: o bloco de identidade do portal é o próprio
+    `ScreenHeader` (olho "Minha conta", nome como `h2` de 30 px, o plano como meta e o `StatusBadge`
+    do período atual nas ações, ao lado da foto), porque no batch A nenhuma tela de equipe consome a
+    peça ainda; as 20 telas do batch C herdam o componente sem mudar o contrato.
+  - O `EmptyState` sem períodos ganhou a descrição "Fale com a recepção para fazer sua matrícula."
+    (a C7 pede a descrição de 14 px e a C38 só fixa o título): é texto de tela reversível, não regra
+    de negócio, e entra no `Settled` para o Verifier poder cobrá-lo.
+  - `/minha-conta` deixou de ter `h1` de página: o título de 30 px do bloco de identidade é o `h2` do
+    `ScreenHeader`. O ARIA/foco/cópia da tela não entram no baseline C39, que segue verde.
+  - O cartão de resumo usa como "próximo vencimento" o primeiro período por pagar (do vencimento
+    mais antigo) e, com todos pagos, o de vencimento mais recente; é o mesmo período cujo badge
+    aparece na identidade, e a data sai em `--status-bad` quando a situação é `overdue` (C37, C38).
+  - `tests/repo/motion.test.ts` passou a contar 12 segmentos com `AppLoading` e o teste
+    `twelve_segments_have_app_loading`, porque o `loading.tsx` de `/minha-conta` virou o esqueleto do
+    portal (C44) - é a reescrita que o `Supersedes` já previa para C44/C65.
+  - `apps/web/e2e/identidade.spec.ts` e `e2e/support/identidade.ts` foram tocados no mínimo: as duas
+    asserções de borda de controle passaram de `--input` para `--border-control` (C11), como a Open
+    question 1 autoriza; nenhuma outra cláusula mudou.
+  - O lime antigo `rgb(205 247 32)` do `/check-in` **fica** para o batch C: o literal do arquivo é
+    `rgb(205_247_32_/_0.15)`, que não é hex nem as formas que a C3 lista, e a tela é S4; ela troca por
+    `StatusBadge` na C52/C59. As demais cores antigas saíram na C3.
+  - O `PersonPhoto` da ficha virou responsivo (96×128 abaixo de 768 px, 120×160 a partir dele), como a
+    C36 pede; a ficha do aluno e o check-in do batch C herdam a mesma moldura.
+- **Abandoned (batch A):**
+  - Provar a C11 num componente isolado: o `Select` foi medido numa tela existente (`/audit`) e o
+    `Input`/`Button` outline no `/login` e no `/minha-conta`; nenhuma tela de equipe mudou de layout.
+  - Fazer o `pnpm verify` literal passar: a causa é de ambiente (turbo/%TEMP% e Docker), está
+    registrada acima com os logs em vez de substituída por um caminho que não prova o portão (L-041).
+  - Criar uma rota ou tela de demonstração para as peças: o `ScreenHeader`, o `EmptyState` e a
+    `ListOrTable` são provados nas telas que a S3 já entrega.
