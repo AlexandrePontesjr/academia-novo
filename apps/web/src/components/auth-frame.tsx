@@ -20,13 +20,10 @@ export function AuthFrame({ children }: { children: ReactNode }) {
         <div className="flex h-full flex-col justify-end gap-3 p-10">
           <p className="inline-flex items-center gap-2 text-sm text-foreground">
             <span className="size-2 rounded-full bg-primary" data-slot="eyebrow-dot" />
-            {SITE.eyebrow}
+            {SITE.about.eyebrow}
           </p>
-          <p className="text-7xl leading-none font-medium tracking-tight">
-            {SITE.tagline[0]}
-            <br />
-            {SITE.tagline[1]}
-          </p>
+          <p className="max-w-xl text-5xl leading-none font-medium tracking-tight">{SITE.hero.title}</p>
+          <p className="max-w-md text-sm text-muted-foreground">{SITE.hero.subline}</p>
         </div>
       </div>
       <div className="flex items-center justify-center">{children}</div>

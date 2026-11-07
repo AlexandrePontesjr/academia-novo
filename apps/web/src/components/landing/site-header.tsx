@@ -18,14 +18,15 @@ function scrollTo(href: string) {
 function SessionCta({ session, className }: { session: boolean; className: string }) {
   return (
     <Link href={session ? '/dashboard' : '/login'} className={className}>
-      {session ? SITE.cta.member : SITE.cta.guest}
+      {session ? SITE.labels.member : SITE.labels.guest}
     </Link>
   );
 }
 
 /**
- * O menu do celular (motion, door 7): um diálogo em tela cheia com as seções em links grandes, em
- * cascata, os CTAs e o Instagram. Escolher uma seção fecha o menu e rola até ela.
+ * O menu do celular (motion, door 7; refino visual, door 5): um diálogo em tela cheia com as seções em
+ * links grandes, em cascata, a ação principal, o CTA da sessão e o Instagram. Escolher uma seção fecha
+ * o menu e rola até ela.
  */
 function SiteMenu({ session, open, onOpenChange }: { session: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
   const go = (href: string) => (event: MouseEvent) => {
@@ -59,11 +60,10 @@ function SiteMenu({ session, open, onOpenChange }: { session: boolean; open: boo
         </nav>
         <div className="mt-auto grid gap-4">
           <a
-            href="#planos"
-            onClick={go('#planos')}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 font-medium text-primary-foreground"
+            href={SITE.hero.cta.href}
+            className="pressable inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 font-medium text-primary-foreground"
           >
-            {SITE.cta.join}
+            {SITE.hero.cta.label}
           </a>
           <SessionCta session={session} className="inline-flex h-12 items-center justify-center rounded-full border px-6 font-medium" />
           <a href={SITE.instagram.url} {...EXTERNAL} className="inline-flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -77,9 +77,10 @@ function SiteMenu({ session, open, onOpenChange }: { session: boolean; open: boo
 }
 
 /**
- * O cabeçalho flutuante da landing (motion, door 7; AD-105): fixo no topo da página inteira,
- * transparente sobre o hero e com fundo depois de 24 px de rolagem. A partir de 1024 px mostra as
- * seções, com a da tela marcada; abaixo disso, o botão "Abrir menu".
+ * O cabeçalho flutuante da landing (motion, door 7; AD-105; refino visual, door 5): fixo no topo da
+ * página inteira, transparente sobre o hero e com fundo depois de 24 px de rolagem. A partir de 1024 px
+ * mostra as seções, com a da tela marcada, e o CTA da sessão; abaixo disso, o logo e o "Abrir menu" - o
+ * CTA da sessão fica dentro do menu.
  */
 export function SiteHeader({ session }: { session: boolean }) {
   const [scrolled, setScrolled] = useState(false);
@@ -93,23 +94,30 @@ export function SiteHeader({ session }: { session: boolean }) {
     return () => window.removeEventListener('scroll', update);
   }, []);
 
+  // a seção da tela é a última que já passou a linha do cabeçalho
   useEffect(() => {
-    // a seção da tela é a primeira que cruza a faixa logo abaixo do cabeçalho
-    const sections = SITE.nav.map((item) => document.querySelector<HTMLElement>(item.href)).filter((section) => section !== null);
-    const inBand = new Set<Element>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) inBand.add(entry.target);
-          else inBand.delete(entry.target);
-        }
-        const first = sections.find((section) => inBand.has(section));
-        setCurrent(first ? `#${first.id}` : undefined);
-      },
-      { rootMargin: '-96px 0px -60% 0px' },
-    );
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+    const sections = SITE.nav
+      .map((item) => {
+        const element = document.querySelector<HTMLElement>(item.href);
+        return element ? { href: item.href, element } : null;
+      })
+      .filter((section) => section !== null);
+    const update = () => {
+      // a seção da tela é a que passou a linha do cabeçalho por último na ordem da página
+      let best: { href: string; top: number } | undefined;
+      for (const { href, element } of sections) {
+        const top = element.getBoundingClientRect().top - 96;
+        if (top <= 0 && (best === undefined || top > best.top)) best = { href, top };
+      }
+      setCurrent(best?.href);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
   }, []);
 
   return (
@@ -137,7 +145,7 @@ export function SiteHeader({ session }: { session: boolean }) {
       <div className="flex items-center gap-2">
         <SessionCta
           session={session}
-          className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium whitespace-nowrap text-primary-foreground hover:bg-primary/90 sm:px-5"
+          className="hidden h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium whitespace-nowrap text-primary-foreground hover:bg-primary/90 sm:px-5 lg:inline-flex"
         />
         <button
           type="button"

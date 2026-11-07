@@ -1,46 +1,48 @@
-import { CheckIcon, DumbbellIcon } from '@academia/ui';
+import { CheckIcon } from '@academia/ui';
 import { SITE } from '../../app/site-content.ts';
+import { RULE_LINK } from './rule-link.ts';
 
 /**
- * Os planos da landing: um cartão por plano, sem valor - a mensalidade é definida na matrícula, no
- * sistema (AD-106), e o cartão manda ao pré-cadastro (AD-117).
+ * Os planos da landing (refino visual, door 4): um bloco em linhas com régua, sem cartão e sem valor -
+ * a mensalidade é definida na matrícula (AD-106) e o link vai ao pré-cadastro (AD-117).
  */
 export function PlansPricing() {
   const { plans } = SITE;
+  const plan = plans.items[0]!;
 
   return (
-    <ul className="grid max-w-md gap-4" data-slot="plans">
-      {plans.items.map((plan) => (
-        <li key={plan.name} className="grid content-start gap-6 rounded-2xl border border-primary/60 bg-card p-6" data-slot="plan-card">
-          <div className="grid gap-3">
-            <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <DumbbellIcon className="size-5" />
-            </span>
-            <h3 className="text-xl font-medium">{plan.name}</h3>
-            <p className="text-sm text-muted-foreground">{plan.text}</p>
-          </div>
-          <p className="text-2xl font-medium" data-slot="plan-price">
-            {plans.price}
-          </p>
-          <div className="grid gap-3">
-            <p className="text-sm font-medium">{plans.featuresLabel}</p>
-            <ul className="grid gap-2 text-sm text-muted-foreground">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-2">
-                  <CheckIcon className="size-4 text-primary" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <a
-            href={plan.cta.href}
-            className="inline-flex h-11 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {plan.cta.label}
+    <div className="grid" data-slot="plans">
+      <div className="grid gap-3 border-t pt-6 pb-8">
+        <h3 className="text-2xl leading-snug font-medium sm:text-3xl">
+          <a href={plan.cta.href} data-slot="plan-title" className={`inline-block ${RULE_LINK}`}>
+            {plan.name}
           </a>
-        </li>
-      ))}
-    </ul>
+        </h3>
+        <p className="text-base text-muted-foreground">{plan.text}</p>
+        <p className="text-xl font-medium" data-slot="plan-price">
+          {plans.price}
+        </p>
+      </div>
+      <div className="grid gap-3 border-t pt-6 pb-8">
+        <p className="text-sm text-muted-foreground">{plans.featuresLabel}</p>
+        <ul className="grid">
+          {plan.features.map((feature) => (
+            <li key={feature} className="flex items-center gap-3 border-t py-4 text-base">
+              <CheckIcon className="size-4 shrink-0 text-primary" />
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="border-t pt-8">
+        <a
+          href={plan.cta.href}
+          data-slot="section-cta"
+          className="pressable inline-flex h-12 w-fit items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground hover:-translate-y-px"
+        >
+          {plan.cta.label}
+        </a>
+      </div>
+    </div>
   );
 }
