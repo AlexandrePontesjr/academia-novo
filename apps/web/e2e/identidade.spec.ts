@@ -7,11 +7,11 @@ import { STAFF_ID } from './support/staff.ts';
 import {
   AUTHENTICATED,
   BORDER,
+  BORDER_CONTROL,
   CARD,
   DANGER,
   DARK,
   HEADER,
-  INPUT,
   LIGHT,
   LIME,
   RED,
@@ -216,7 +216,8 @@ test('form_controls_use_the_dark_surface_and_the_lime_focus', async ({ page, api
 
   const email = page.getByLabel('E-mail');
   expect((await styleOf(email, 'background-color')).rgb).toBe(CARD);
-  expect((await styleOf(email, 'border-top-color')).rgb).toBe(INPUT);
+  // a borda de controle do refino visual: o limite do componente alcança 3:1 contra o cartão
+  expect((await styleOf(email, 'border-top-color')).rgb).toBe(BORDER_CONTROL);
   expect((await styleOf(email, 'color')).rgb).toBe(LIGHT);
 
   await email.evaluate((element) => element.setAttribute('placeholder', 'exemplo@academia.com'));
@@ -232,7 +233,7 @@ test('form_controls_use_the_dark_surface_and_the_lime_focus', async ({ page, api
   await open(page, api, '/students');
   const select = page.getByLabel('Situação', { exact: true });
   expect((await styleOf(select, 'background-color')).rgb).toBe(CARD);
-  expect((await styleOf(select, 'border-top-color')).rgb).toBe(INPUT);
+  expect((await styleOf(select, 'border-top-color')).rgb).toBe(BORDER_CONTROL);
   expect((await styleOf(select, 'color')).rgb).toBe(LIGHT);
 });
 

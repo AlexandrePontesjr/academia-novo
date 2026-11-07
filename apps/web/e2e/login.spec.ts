@@ -8,14 +8,48 @@ async function submitLogin(page: Page, email = 'marina@exemplo.com', password = 
   await page.getByRole('button', { name: 'Entrar' }).click();
 }
 
-test('login_page_shows_form_in_pt_br', async ({ page }) => {
+test('login_says_system_access_and_offers_student_entry', async ({ page }) => {
   await page.goto('/login');
 
+  // o olho da porta (14 px) e o caminho do aluno
+  const eyebrow = page.getByText('Acesso ao sistema', { exact: true });
+  await expect(eyebrow).toBeVisible();
+  expect(await eyebrow.evaluate((element) => getComputedStyle(element).fontSize)).toBe('14px');
+  await expect(page.getByRole('link', { name: 'Sou aluno', exact: true })).toHaveAttribute('href', '/primeiro-acesso');
+  await expect(page.getByRole('link', { name: 'Esqueci minha senha', exact: true })).toHaveAttribute('href', '/esqueci-senha');
+
+  // o título e os rótulos ficam como estavam, na moldura da entrada
   await expect(page.getByRole('heading', { name: 'Bem-vindo de volta', exact: true })).toBeVisible();
   await expect(page.getByLabel('E-mail')).toBeVisible();
   await expect(page.getByLabel('Senha')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
+  await expect(page.locator('[data-slot="auth-photo"]')).toHaveCount(1);
+  await expect(page.locator('[data-slot="brand"]')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
+});
+
+test('login_submit_is_busy_and_the_message_is_an_alert', async ({ page, api }) => {
+  // a mensagem de "Senha definida" é um Alert do tema, com `role="alert"`, não um parágrafo cru
+  await page.goto('/login?senha=definida');
+  const alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toHaveCount(1);
+  await expect(alert).toHaveText('Senha definida. Entre com seu e-mail e a nova senha.');
+
+  // em envio, o botão usa `Button busy`: spinner de 16 px, `aria-busy` e desabilitado
+  api.on('POST', '/api/auth/login', 'hang');
+  await page.goto('/login');
+  await submitLogin(page);
+
+  const button = page.getByRole('button', { name: 'Entrar', exact: true });
+  await expect(button).toHaveAttribute('aria-busy', 'true');
+  await expect(button).toBeDisabled();
+  const spinner = button.locator('[data-slot="spinner"]');
+  await expect(spinner).toBeVisible();
+  // o giro tira a caixa de medição do 16 px: o tamanho do indicador é o do CSS
+  expect(await spinner.evaluate((element) => ({ width: getComputedStyle(element).width, height: getComputedStyle(element).height }))).toEqual({
+    width: '16px',
+    height: '16px',
+  });
 });
 
 test('home_shows_name_and_role_label_for_four_roles', async ({ page, api }) => {
@@ -92,11 +126,4 @@ test('empty_login_is_rejected_before_any_request', async ({ page, api }) => {
   await expect(page.getByLabel('Senha')).toHaveAccessibleDescription(/\S/);
   expect(api.requests.filter((request) => request.path === '/api/auth/login')).toEqual([]);
   expect(api.writes()).toEqual([]);
-});
-
-test('login_links_first_access_and_forgot_password', async ({ page }) => {
-  await page.goto('/login');
-
-  await expect(page.getByRole('link', { name: 'Primeiro acesso', exact: true })).toHaveAttribute('href', '/primeiro-acesso');
-  await expect(page.getByRole('link', { name: 'Esqueci minha senha', exact: true })).toHaveAttribute('href', '/esqueci-senha');
 });

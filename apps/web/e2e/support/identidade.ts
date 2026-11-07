@@ -15,6 +15,8 @@ export const CARD = 'rgb(15, 15, 15)';
 export const HEADER = 'rgb(26, 26, 26)';
 export const BORDER = 'rgb(38, 38, 38)';
 export const INPUT = 'rgb(42, 42, 42)';
+/** A borda de controle do refino visual (`--border-control`), 3:1 contra o cartão. */
+export const BORDER_CONTROL = 'rgb(107, 107, 107)';
 export const LIME = 'rgb(252, 244, 60)';
 export const RED = 'rgb(220, 38, 38)';
 export const DANGER = 'rgb(248, 113, 113)';

@@ -93,8 +93,9 @@ test('the_dukfit_dependency_guard_is_gone', () => {
 
 // S3 - carregamento
 
-// `leads` entrou com a `pre-cadastro`: todo segmento novo do shell ganha o mesmo carregamento (AD-101)
-const SEGMENTS = ['dashboard', 'students', 'staff', 'plans', 'payments', 'check-in', 'check-ins', 'audit', 'users', 'privacy', 'account', 'leads', 'minha-conta'];
+// `leads` entrou com a `pre-cadastro`: todo segmento novo do shell ganha o mesmo carregamento (AD-101).
+// `minha-conta` saiu com o portal do aluno: a tela tem o próprio esqueleto (refino visual, C44).
+const SEGMENTS = ['dashboard', 'students', 'staff', 'plans', 'payments', 'check-in', 'check-ins', 'audit', 'users', 'privacy', 'account', 'leads'];
 const GLOBALS = 'packages/ui/src/globals.css';
 
 /** O bloco de um `@keyframes`, da chave que abre até a que fecha. */
@@ -116,11 +117,11 @@ test.each(SEGMENTS)('segment_has_app_loading: %s', (segment) => {
   expect(read('apps/web/src/components/app-loading.tsx')).toContain('export function AppLoading()');
 });
 
-test('eleven_segments_have_app_loading', () => {
-  expect(SEGMENTS).toHaveLength(13);
-  expect(SEGMENTS).toContain('minha-conta');
+test('twelve_segments_have_app_loading', () => {
+  expect(SEGMENTS).toHaveLength(12);
   const all = readdirSync(join(ROOT, 'apps/web/src/app'), { recursive: true, encoding: 'utf8' }).filter((path) => /(^|[\\/])loading\.tsx$/.test(path));
-  expect(all.map((path) => path.split(/[\\/]/)[0]).sort()).toEqual([...SEGMENTS].sort());
+  // o portal do aluno tem `loading.tsx` próprio, fora do `AppLoading` da equipe (refino visual, C44)
+  expect(all.map((path) => path.split(/[\\/]/)[0]).sort()).toEqual([...SEGMENTS, 'minha-conta'].sort());
 });
 
 test('skeleton_pulse_keyframes_are_the_door_three_literal', () => {
