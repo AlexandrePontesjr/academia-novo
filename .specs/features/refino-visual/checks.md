@@ -503,22 +503,21 @@ Size from `wc -c` of the files each slice touches, divided by four.
 - **Boundary (batch A):** S1 + S3 fechadas sobre a base da feature (`67c22e6`, com plano e checks em
   `823fc95`), sem push e sem tocar `.specs/STATE.md`; os checks do batch A (C1-C13 e C32-C46) estão
   provados, e o baseline C39 da `motion` continua verde (regravado só no batch C, sobre o código
-  final). `pnpm verify` **não sai 0 neste ambiente** por duas falhas pré-existentes e fora do escopo
-  do A, as mesmas da AD-118: (1) o `turbo` nega a escrita das tarefas filhas de teste em `%TEMP%`
-  (`EPERM: operation not permitted, mkdir 'C:\Users\Admin\AppData\Local\Temp\<id>\ssr'`) e o
-  `@academia/repo-tests:test` morre antes de rodar (log `.turbo/refino-a/verify-plain.log`, e o mesmo
-  em `823fc95` no log de base `.turbo/refino-a/baseline-verify.log`); (2) sem runtime de contêiner
-  (Docker ausente), os testes de `@academia/database` e `@academia/api` não sobem o
-  `PostgreSqlContainer` (`Could not find a working container runtime strategy`, log
-  `.turbo/refino-a/database-test.log`). O que este ambiente permite rodar foi rodado, sem enfraquecer
-  nada: `turbo run lint typecheck build` sai 0 nas 16 tarefas dos 8 pacotes com `TEMP`/`TMP`
-  apontados para a árvore (`.turbo/refino-a/verify-ltb.log`); `@academia/contracts` 20 testes;
-  `@academia/repo-tests` 89 testes; e a suíte de tela inteira sai 0 com 467 testes em
-  `.turbo/refino-a/playwright-full-1.log`. As provas do batch foram rodadas uma a uma pelo comando
-  do check: REPO 12/12 verdes (9 de `refino.test.ts`, C2 e C12 em `identidade.test.ts`, C44/C65 em
-  `motion.test.ts`) e E2E 25/25 verdes em `.turbo/refino-a/proofs-e2e.log` (C4, C6-C11, C32-C46 e o
-  baseline C39). Commits: `c9acd49` (tokens e peças), `937ae3f` (literais de cor, borda de controle e
-  `Button busy`), `1e83ec0` (entrada e portal do aluno) e `542111d` (provas).
+  final). As provas do batch foram rodadas uma a uma pelo comando do check: REPO 12/12 verdes (9 de
+  `refino.test.ts`, C2 e C12 em `identidade.test.ts`, C44/C65 em `motion.test.ts`) e E2E 25/25 verdes
+  em `.turbo/refino-a/proofs-e2e.log` (C4, C6-C11, C32-C46 e o baseline C39). Commits: `c9acd49`
+  (tokens e peças), `937ae3f` (literais de cor, borda de controle e `Button busy`), `1e83ec0`
+  (entrada e portal do aluno) e `542111d` (provas).
+  `pnpm verify` **sai 0** com o arranjo de ambiente do harness (21/21 tarefas, log
+  `.turbo/tmp/verify-a-final.log`), sem enfraquecer check nem prova: o turbo confina as tarefas
+  filhas ao workspace, então `TEMP`/`TMP` apontam para `.turbo/tmp` (sem isso o `vitest` morre com
+  `EPERM` em `%TEMP%`); os testes de `@academia/database`/`@academia/api` usam
+  `~/.testcontainers.properties` com `docker.host=tcp://127.0.0.1:2376`, uma ponte TCP→named pipe
+  aberta pelo shell porque o filho do turbo não abre o named pipe do Docker (`connect EPERM`); e
+  `%LOCALAPPDATA%\ms-playwright` é um junction para `.turbo/pw-browsers`, porque o
+  `playwright install` do turbo não escreve fora do workspace. O arranjo é só ambiente: nenhum
+  arquivo do repositório mudou por causa dele, e o Verifier roda o mesmo `pnpm verify` com o mesmo
+  arranjo.
 - **Settled mid-build (batch A):**
   - O `ScreenHeader` foi provado no `/minha-conta`: o bloco de identidade do portal é o próprio
     `ScreenHeader` (olho "Minha conta", nome como `h2` de 30 px, o plano como meta e o `StatusBadge`
@@ -546,7 +545,9 @@ Size from `wc -c` of the files each slice touches, divided by four.
 - **Abandoned (batch A):**
   - Provar a C11 num componente isolado: o `Select` foi medido numa tela existente (`/audit`) e o
     `Input`/`Button` outline no `/login` e no `/minha-conta`; nenhuma tela de equipe mudou de layout.
-  - Fazer o `pnpm verify` literal passar: a causa é de ambiente (turbo/%TEMP% e Docker), está
-    registrada acima com os logs em vez de substituída por um caminho que não prova o portão (L-041).
+  - Fazer o `pnpm verify` literal passar sem arranjo de ambiente: o confinamento é do harness, não
+    do código; o comando roda com `TEMP`/`TMP` no workspace, a ponte TCP do Docker e o junction do
+    Playwright, registrados no `Boundary` acima. As ferramentas do arranjo vivem fora do repositório
+    (`.turbo/tmp`, `~/.testcontainers.properties`, `%LOCALAPPDATA%\ms-playwright`).
   - Criar uma rota ou tela de demonstração para as peças: o `ScreenHeader`, o `EmptyState` e a
     `ListOrTable` são provados nas telas que a S3 já entrega.
