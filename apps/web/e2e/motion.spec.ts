@@ -207,7 +207,7 @@ test('every_shell_route_has_one_page_motion_main', async ({ page, api }) => {
   test.setTimeout(180_000);
   serveWorld(api, 'admin');
   const routes = SHELL_PATHS.filter((path) => !path.endsWith('/print'));
-  expect(routes).toHaveLength(19);
+  expect(routes).toHaveLength(20);
   for (const path of routes) {
     await page.goto(path);
     await expect(page.locator('[data-motion="page"]'), path).toHaveCount(1);
@@ -363,7 +363,7 @@ test('button_presses_to_0_98_in_150ms_and_not_when_reduced', async ({ page, api 
   serveWorld(api, 'admin');
   await page.goto('/students');
   await settle(page);
-  const button = page.getByRole('button', { name: 'Buscar', exact: true });
+  const button = page.getByRole('button', { name: 'Filtrar', exact: true });
   const transition = await button.evaluate((element) => {
     const style = getComputedStyle(element);
     return { property: style.transitionProperty, duration: style.transitionDuration };
@@ -371,12 +371,12 @@ test('button_presses_to_0_98_in_150ms_and_not_when_reduced', async ({ page, api 
   const properties = transition.property.split(', ');
   expect(properties).toContain('transform');
   expect(transition.duration.split(', ')[properties.indexOf('transform')]).toBe('0.15s');
-  expect(await heldTransform(page, 'Buscar')).toBe('matrix(0.98, 0, 0, 0.98, 0, 0)');
+  expect(await heldTransform(page, 'Filtrar')).toBe('matrix(0.98, 0, 0, 0.98, 0, 0)');
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/students');
   await settle(page);
-  expect(await heldTransform(page, 'Buscar')).toBe('none');
+  expect(await heldTransform(page, 'Filtrar')).toBe('none');
 });
 
 test('busy_button_has_aria_busy_spinner_and_stays_disabled', async ({ page, api }) => {
@@ -532,6 +532,9 @@ async function navigateTo(page: Page, name: string) {
 }
 
 const ROWS = 'main:not([data-old]) tbody tr > td:first-child';
+/** Abaixo de 768 px as listas são cartões (ListOrTable); a entrada visível é a delas. */
+const LIST_CARDS = 'main:not([data-old]) [data-slot="panel-rows"] > li';
+const visibleRows = (size: { width: number }) => (size.width < 768 ? LIST_CARDS : ROWS);
 const CARDS = 'main:not([data-old]) [data-slot="dashboard-grid"] > section';
 
 /** De `from`, navega até `name` e amostra `selector` (todos) desde o quadro em que o `main` novo monta. */
@@ -591,7 +594,7 @@ test('lists_stagger_8_items_at_40ms_and_cap_the_rest', async ({ page, api }) => 
   await page.setViewportSize(MOBILE);
   serveTwelve(api);
   for (const list of LISTS) {
-    const frames = await sampleEntrance(page, '/dashboard', list.link, ROWS);
+    const frames = await sampleEntrance(page, '/dashboard', list.link, visibleRows(MOBILE));
     expect(frames.at(-1)!.targets, list.path).toHaveLength(12);
     const times = firstShown(frames, 12);
     for (const [index, time] of times.entries()) {
@@ -618,7 +621,7 @@ test('reduced_motion_lists_are_static', async ({ page, api }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   serveTwelve(api);
   const runs = [
-    ...LISTS.map((list) => ({ from: '/dashboard', name: list.link, selector: ROWS, label: list.path })),
+    ...LISTS.map((list) => ({ from: '/dashboard', name: list.link, selector: visibleRows(MOBILE), label: list.path })),
     { from: '/students', name: 'Início', selector: CARDS, label: '/dashboard' },
   ];
   for (const run of runs) {
@@ -631,12 +634,14 @@ test('reduced_motion_lists_are_static', async ({ page, api }) => {
 });
 
 /** O nome do link de cada linha (o aluno, o plano, o funcionário) e o nome acessível de cada linha, na ordem do DOM. */
+// locator('a'), não getByRole('link'): abaixo de 768 px a tabela fica escondida atrás dos cartões e
+// o papel não aparece na árvore de acessibilidade; a ordem e os nomes afirmados continuam os mesmos.
 const rowsOf = async (page: Page) => {
   const rows = page.locator('main tbody tr');
   const result: Array<{ link: string | null; name: string }> = [];
   for (let index = 0; index < (await rows.count()); index += 1) {
     const row = rows.nth(index);
-    const link = row.getByRole('link');
+    const link = row.locator('a');
     result.push({ link: (await link.count()) > 0 ? (await link.first().textContent())!.trim() : null, name: await row.evaluate((element) => (element as HTMLElement).innerText) });
   }
   return result;
@@ -685,7 +690,7 @@ test('replaced_rows_animate_once_and_same_rows_do_not_restart', async ({ page, a
   // a busca troca as linhas: a primeira linha nova entra escondida
   await field.fill('Aluno');
   await startSampling(page, ['main tbody tr:first-child > td:first-child'], { ms: 900 });
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
   let frames = await framesOf(page);
   await expect(page.locator('main tbody tr').first()).toContainText('Aluno 7');
   expect(frames.some((frame) => Number(frame.targets[0]?.opacity ?? 1) < 1), 'a primeira linha nova começa escondida').toBe(true);
@@ -693,7 +698,7 @@ test('replaced_rows_animate_once_and_same_rows_do_not_restart', async ({ page, a
 
   // a mesma busca de novo devolve as mesmas linhas: nada recomeça
   await startSampling(page, [rows], { all: true, ms: 900 });
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
   frames = await framesOf(page);
   for (const frame of frames) {
     for (const target of frame.targets) expect(Number(target!.opacity), 'mesmas linhas').toBe(1);
@@ -898,7 +903,7 @@ test('copy_names_and_focus_order_match_the_baseline', async ({ page, api }) => {
   const record = process.env.MOTION_BASELINE === 'record';
   // os contadores de id como estavam quando o baseline foi gravado, com esta prova rodando sozinha
   fixtureIds.set({ expiring: 0, enrollments: 1, periods: 1, confirmations: 0, openIds: 0 });
-  expect(SHELL_PATHS).toHaveLength(21);
+  expect(SHELL_PATHS).toHaveLength(22);
 
   for (const size of [MOBILE, DESKTOP]) {
     await page.setViewportSize(size);

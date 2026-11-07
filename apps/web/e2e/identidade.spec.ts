@@ -31,7 +31,7 @@ import {
 test('every_authenticated_screen_uses_the_dark_background_and_foreground', async ({ page, api }) => {
   test.setTimeout(180_000);
   serveWorld(api, 'admin');
-  expect(AUTHENTICATED).toHaveLength(22);
+  expect(AUTHENTICATED).toHaveLength(24);
 
   for (const screen of AUTHENTICATED) {
     await open(page, api, screen.path);
@@ -166,8 +166,8 @@ test('lime_accent_only_on_primary_actions_links_and_focus', async ({ page, api }
       };
       const backgrounds: string[] = [];
       const texts: string[] = [];
-      // as marcas lime do de-para da dukfit-app: pontos, rótulos de métrica, marca, ícone ativo e gráficos
-      const DE_PARA = '[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="eyebrow-dot"], [data-slot="wordmark"], [data-slot="wordmark"] *, [data-slot="nav-icon"], [data-slot="nav-icon"] *, [data-slot="metric-tile"] > dt, [data-slot="week-column"] *, [data-slot="gauge"] *';
+      // as marcas lime do de-para da dukfit-app e as situações do refino visual (o `--status-ok` é o acento)
+      const DE_PARA = '[data-slot="stat-pill-dot"], [data-slot="menu-dot"], [data-slot="eyebrow-dot"], [data-slot="wordmark"], [data-slot="wordmark"] *, [data-slot="nav-icon"], [data-slot="nav-icon"] *, [data-slot="metric-tile"] > dt, [data-slot="week-column"] *, [data-slot="gauge"] *, [data-slot="status-badge"]';
       for (const element of [document.body, ...Array.from(document.querySelectorAll('body *'))]) {
         if (element.matches(DE_PARA)) continue;
         const style = getComputedStyle(element);
@@ -296,7 +296,8 @@ test('check_in_badges_use_the_allowed_and_blocked_values', async ({ page, api })
   await field.press('Enter');
   const allowed = page.getByText('Liberado', { exact: true });
   await expect(allowed).toBeVisible();
-  expect((await styleOf(allowed, 'background-color')).raw).toBe('rgba(205, 247, 32, 0.15)');
+  // o badge da door 7: o `--status-ok` (o acento) sobre a superfície `--status-ok-surface`
+  expect((await styleOf(allowed, 'background-color')).raw).toBe('rgba(252, 244, 60, 0.14)');
   expect((await styleOf(allowed, 'color')).rgb).toBe(LIME);
 
   api.on('GET', statusPath(studentId), {
@@ -307,7 +308,7 @@ test('check_in_badges_use_the_allowed_and_blocked_values', async ({ page, api })
   await field.press('Enter');
   const blocked = page.getByText('Bloqueado', { exact: true });
   await expect(blocked).toBeVisible();
-  expect((await styleOf(blocked, 'background-color')).raw).toBe('rgba(248, 113, 113, 0.15)');
+  expect((await styleOf(blocked, 'background-color')).raw).toBe('rgba(248, 113, 113, 0.14)');
   expect((await styleOf(blocked, 'color')).rgb).toBe(DANGER);
 });
 
@@ -335,7 +336,7 @@ test('destructive_button_uses_the_red_surface_and_light_text', async ({ page, ap
 test('every_screen_keeps_its_copy_and_arrangement', async ({ page, api }) => {
   test.setTimeout(240_000);
   serveWorld(api, 'admin');
-  expect(SCREENS).toHaveLength(24);
+  expect(SCREENS).toHaveLength(26);
 
   for (const screen of SCREENS) {
     const response = await open(page, api, screen.path);

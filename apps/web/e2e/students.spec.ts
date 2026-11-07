@@ -147,7 +147,7 @@ test('search_field_status_filter_and_two_buttons', async ({ page, api }) => {
   await expect(page.getByRole('textbox', { name: 'Buscar por nome, CPF ou telefone', exact: true })).toBeVisible();
   const filter = page.getByLabel('Situação', { exact: true });
   expect(await filter.locator('option').allTextContents()).toEqual(['Todas', 'Ativo', 'Inativo', 'Suspenso']);
-  await expect(page.getByRole('button', { name: 'Buscar', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Filtrar', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Limpar', exact: true })).toBeVisible();
   // acima da tabela
   const field = await page.getByLabel('Buscar por nome, CPF ou telefone').boundingBox();
@@ -167,7 +167,7 @@ test('search_sends_q_without_putting_it_in_the_url', async ({ page, api }) => {
 
   await page.getByLabel('Buscar por nome, CPF ou telefone').fill('529.982.247-25');
   await page.getByLabel('Situação', { exact: true }).selectOption({ label: 'Inativo' });
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
 
   await expect(page.getByRole('link', { name: 'Achada pela Busca' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Primeira Lista' })).toHaveCount(0);
@@ -188,7 +188,7 @@ test('next_page_keeps_search_and_status_and_sends_cursor', async ({ page, api })
   await page.goto('/students');
   await page.getByLabel('Buscar por nome, CPF ou telefone').fill('silva');
   await page.getByLabel('Situação', { exact: true }).selectOption({ label: 'Suspenso' });
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Da Primeira Página' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Próxima página', exact: true }).click();
@@ -208,14 +208,14 @@ test('empty_search_shows_not_found_message', async ({ page, api }) => {
   await page.goto('/students');
 
   await page.getByLabel('Buscar por nome, CPF ou telefone').fill('ninguém');
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
 
   await expect(page.getByText('Nenhum aluno encontrado.', { exact: true })).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
 
   await page.getByLabel('Buscar por nome, CPF ou telefone').fill('');
   await page.getByLabel('Situação', { exact: true }).selectOption({ label: 'Inativo' });
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
 
   await expect(page.getByText('Nenhum aluno encontrado.', { exact: true })).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);

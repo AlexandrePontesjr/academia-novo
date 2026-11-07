@@ -1,5 +1,5 @@
-/* A tela e os valores que a prova da identidade e a da dukfit-app leem (identidade-visual, dukfit-app). */
-import type { Role } from '@academia/contracts';
+/* A tela e os valores que a prova da identidade e a da dukfit-app leem (identidade-visual, dukfit-app, refino visual). */
+import type { MyProfile, Role } from '@academia/contracts';
 import type { Locator, Page } from '@playwright/test';
 import { historyItemOf, listItemOf, reportItemOf, reportOf, statusOf, statusPath } from './check-ins.ts';
 import { serveDashboard } from './dashboard.ts';
@@ -27,7 +27,23 @@ export const STAFF = staffOf();
 export const ONE_ENROLLMENT = enrollmentOf();
 export const ONE_PERIOD = periodOf();
 
-/** Alimenta a API falsa com tudo o que as 24 telas leem, para um perfil. */
+/** O aluno do portal (a sessão `student`), com o perfil e os pagamentos servidos pela API falsa. */
+export const PORTAL_NAME = 'Ana Souza';
+export const PORTAL_PROFILE: MyProfile = {
+  name: PORTAL_NAME,
+  cpf: '52998224725',
+  birthDate: '2000-01-01',
+  email: 'ana@exemplo.com',
+  phone: '11912345678',
+  address: 'Rua das Flores, 10',
+  emergencyContactName: 'Bia Lima',
+  emergencyContactPhone: '11933334444',
+  status: 'active',
+  photoUrl: null,
+  pendingPhoto: null,
+};
+
+/** Alimenta a API falsa com tudo o que as 26 telas leem, para um perfil. */
 export function serveWorld(api: FakeApi, role: Role) {
   servePlans(api, stateOf({ plans: [planOf()], enrollments: { [STUDENT_ID]: [ONE_ENROLLMENT] } }));
   serveFicha(api, role, STUDENT, stateOf({ plans: [planOf()], enrollments: { [STUDENT_ID]: [ONE_ENROLLMENT] } }));
@@ -49,10 +65,14 @@ export function serveWorld(api: FakeApi, role: Role) {
   api.on('GET', staffExportPath, attachment(staffExportOf(), `funcionario-${STAFF_ID}.json`));
   api.on('GET', '/api/check-ins', { status: 200, body: reportOf({ total: 1, items: [reportItemOf(2)] }) });
   api.on('GET', '/api/audit-logs', { status: 200, body: { items: [], nextCursor: null } });
+  api.on('GET', '/api/leads', { status: 200, body: { items: [] } });
   api.on('GET', '/api/privacy-settings', {
     status: 200,
     body: { inactiveStudentRetentionYears: null, photoVersionRetentionDays: 30 },
   });
+  // a área do aluno: o perfil e os períodos da sessão `student` (portal-aluno)
+  api.on('GET', '/api/me/profile', { status: 200, body: PORTAL_PROFILE });
+  api.on('GET', '/api/me/payments', { status: 200, body: { items: [] } });
   api.session = sessionOf(role);
 }
 
@@ -79,8 +99,10 @@ export const flat = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 export interface Screen {
   path: string;
-  /** `false` nas telas sem o shell (login e cadastro do 2FA). */
+  /** `false` nas telas sem o shell (login, 2FA e o portal do aluno). */
   shell: boolean;
+  /** `true` na tela do portal, que abre com a sessão `student`. */
+  student?: boolean;
   /** Os h1/h2/h3 de `main`, na ordem do DOM (o h1 do shell fica no header). */
   headings: string[];
   columns?: string[];
@@ -111,6 +133,14 @@ export const SCREENS: Screen[] = [
     texts: ['Confirme sua senha para gerar o QR code.'],
   },
   {
+    path: '/minha-conta',
+    shell: false,
+    student: true,
+    headings: [PORTAL_NAME, 'Foto', 'Meus dados', 'Pagamentos'],
+    labels: ['Telefone', 'Endereço', 'Contato de emergência (nome)', 'Contato de emergência (telefone)'],
+    texts: ['Minha conta', 'Você ainda não tem matrícula registrada.', 'Sair'],
+  },
+  {
     path: '/dashboard',
     shell: true,
     headings: [
@@ -132,7 +162,7 @@ export const SCREENS: Screen[] = [
     headings: ['Alunos'],
     columns: ['Nome', 'CPF', 'Telefone', 'Situação'],
     labels: ['Buscar por nome, CPF ou telefone', 'Situação'],
-    texts: ['Novo aluno', 'Buscar', 'Limpar'],
+    texts: ['Novo aluno', 'Filtrar', 'Limpar', '2 resultados'],
   },
   {
     path: '/students/new',
@@ -155,7 +185,17 @@ export const SCREENS: Screen[] = [
   {
     path: `/students/${STUDENT_ID}`,
     shell: true,
-    headings: ['Rafaela Prado Cunha', 'Responsável e consentimentos', 'Matrículas', 'Pagamentos', 'Presenças', 'Privacidade'],
+    headings: [
+      'Rafaela Prado Cunha',
+      'Identificação',
+      'Contato',
+      'Emergência',
+      'Responsável e consentimentos',
+      'Matrículas',
+      'Pagamentos',
+      'Presenças',
+      'Privacidade',
+    ],
     columns: [
       'Plano',
       'Início',
@@ -170,7 +210,7 @@ export const SCREENS: Screen[] = [
       'Hora',
       'Registrado por',
     ],
-    texts: ['Editar', 'Inativar'],
+    texts: ['Editar', 'Inativar', 'Ativo'],
   },
   {
     path: `/students/${STUDENT_ID}/edit`,
@@ -188,7 +228,7 @@ export const SCREENS: Screen[] = [
       'Contato de emergência (telefone)',
       'Observações de saúde',
     ],
-    texts: ['Salvar'],
+    texts: ['Salvar', 'Cancelar'],
   },
   {
     path: '/staff',
@@ -216,7 +256,7 @@ export const SCREENS: Screen[] = [
     shell: true,
     headings: ['Editar funcionário'],
     labels: ['Nome completo', 'CPF', 'Cargo', 'Setor', 'Data de admissão', 'Telefone', 'E-mail'],
-    texts: ['Salvar'],
+    texts: ['Salvar', 'Cancelar'],
   },
   {
     path: '/plans',
@@ -237,7 +277,7 @@ export const SCREENS: Screen[] = [
     shell: true,
     headings: ['Editar plano'],
     labels: ['Nome', 'Periodicidade', 'Valor (R$)', 'Regras de acesso'],
-    texts: ['Salvar', 'Inativar'],
+    texts: ['Salvar', 'Inativar', 'Cancelar'],
   },
   {
     path: '/payments',
@@ -245,6 +285,7 @@ export const SCREENS: Screen[] = [
     headings: ['Pagamentos'],
     columns: ['Aluno', 'Plano', 'Período', 'Pagar até', 'Valor', 'Situação'],
     labels: ['Situação'],
+    texts: ['Filtrar', 'Limpar', '1 resultado'],
   },
   {
     path: '/check-ins',
@@ -252,7 +293,7 @@ export const SCREENS: Screen[] = [
     headings: ['Presenças'],
     columns: ['Data', 'Hora', 'Aluno', 'Registrado por'],
     labels: ['De', 'Até'],
-    texts: ['Total no período: 1'],
+    texts: ['Filtrar', 'Limpar', 'Total no período: 1'],
   },
   {
     path: '/check-in',
@@ -266,7 +307,14 @@ export const SCREENS: Screen[] = [
     shell: true,
     headings: ['Auditoria'],
     labels: ['De', 'Até', 'Usuário', 'Ação', 'IP'],
-    texts: ['Nenhum registro encontrado.'],
+    texts: ['Filtrar', 'Limpar', '0 resultados', 'Nenhum registro encontrado.'],
+  },
+  {
+    path: '/leads',
+    shell: true,
+    headings: ['Interessados'],
+    labels: ['Situação'],
+    texts: ['Filtrar', 'Limpar', '0 resultados', 'Nenhum interessado.'],
   },
   {
     path: '/users',
@@ -285,7 +333,7 @@ export const SCREENS: Screen[] = [
   {
     path: '/account',
     shell: true,
-    headings: ['Trocar senha', 'Verificação em duas etapas'],
+    headings: ['Minha conta', 'Trocar senha', 'Verificação em duas etapas'],
     labels: ['Senha atual', 'Nova senha'],
   },
   {
@@ -341,6 +389,7 @@ export const AUTHENTICATED = SCREENS.filter(
 /** Abre a tela com a sessão que ela espera; devolve a resposta do documento. */
 export async function open(page: Page, api: FakeApi, path: string) {
   if (path.startsWith('/login')) api.session = undefined;
-  else if (!api.session) api.session = sessionOf('admin');
+  else if (path.startsWith('/minha-conta')) api.session = sessionOf('student', { name: PORTAL_NAME, email: PORTAL_PROFILE.email ?? undefined });
+  else api.session = sessionOf('admin');
   return page.goto(path);
 }

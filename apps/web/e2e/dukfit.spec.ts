@@ -298,8 +298,9 @@ test('no_horizontal_scroll_on_shell_screens_at_360_and_1440', async ({ page, api
   serveWorld(api, 'admin');
   api.session = sessionOf('admin');
   const paths = SHELL_SCREENS.map((screen) => screen.path);
-  expect(paths).toHaveLength(21);
+  expect(paths).toHaveLength(22);
   expect(paths).toContain('/dashboard');
+  expect(paths).toContain('/leads');
 
   for (const size of [NARROW, DESKTOP]) {
     await page.setViewportSize(size);
@@ -711,30 +712,38 @@ test('inicio_goes_to_dashboard_and_not_found_links_to_root', async ({ page, api 
 test('inner_screens_have_30_medium_title_and_dark_panels', async ({ page, api }) => {
   serveWorld(api, 'admin');
   api.session = sessionOf('admin');
-  for (const path of ['/students', '/students/new', `/students/${STUDENT.id}`, '/plans', '/account', '/check-in', '/users']) {
+  const titles: Array<[string, string]> = [
+    ['/students', 'Alunos'],
+    ['/students/new', 'Novo aluno'],
+    [`/students/${STUDENT.id}`, STUDENT.name],
+    ['/plans', 'Planos'],
+    ['/account', 'Minha conta'],
+    ['/check-in', 'Check-in'],
+    ['/users', 'Usuários'],
+  ];
+  for (const [path, title] of titles) {
     await page.goto(path);
-    const title = page.getByRole('main').locator('h2').first();
-    await expect(title, path).toBeVisible();
-    expect((await styleOf(title, 'font-size')).raw, path).toBe('30px');
-    expect((await styleOf(title, 'font-weight')).raw, path).toBe('500');
+    const header = page.getByRole('main').locator('[data-slot="screen-header"]');
+    await expect(header, path).toHaveCount(1);
+    const heading = header.getByRole('heading', { level: 2 });
+    await expect(heading, path).toHaveText(title);
+    expect((await styleOf(heading, 'font-size')).raw, path).toBe('30px');
+    expect((await styleOf(heading, 'font-weight')).raw, path).toBe('500');
+  }
 
-    // o bloco do conteúdo: o irmão seguinte da linha do título ou, na conta, a seção que o contém
-    const panel = await title.evaluate((heading) => {
-      const row = heading.parentElement!.tagName === 'MAIN' ? heading : heading.parentElement!;
-      const blocks = [row.nextElementSibling, heading.closest('section')].filter((element) => element !== null);
-      for (const element of blocks) element.setAttribute('data-probe', 'panel');
-      return blocks.length;
-    });
-    expect(panel, path).toBeGreaterThan(0);
-    const blocks = page.locator('[data-probe="panel"]');
-    const styles = [];
-    for (let index = 0; index < (await blocks.count()); index += 1) {
-      styles.push({
-        background: (await styleOf(blocks.nth(index), 'background-color')).rgb,
-        radius: (await styleOf(blocks.nth(index), 'border-top-left-radius')).raw,
-      });
+  // as superfícies com cartão continuam cartões escuros de 16 px: os dois cartões da conta e o bloco
+  // de identidade da ficha (o corpo da lista é um corpo simples desde o refino visual, AC 49)
+  for (const [path, selector] of [
+    ['/account', 'main section'],
+    [`/students/${STUDENT.id}`, '[data-slot="identity"]'],
+  ] as const) {
+    await page.goto(path);
+    const panels = page.locator(selector);
+    expect(await panels.count(), path).toBeGreaterThan(0);
+    for (let index = 0; index < (await panels.count()); index += 1) {
+      expect((await styleOf(panels.nth(index), 'background-color')).rgb, `${path} ${index}`).toBe(CARD);
+      expect((await styleOf(panels.nth(index), 'border-top-left-radius')).raw, `${path} ${index}`).toBe('16px');
     }
-    expect(styles, path).toContainEqual({ background: CARD, radius: '16px' });
   }
 });
 
@@ -743,16 +752,14 @@ test('mobile_tables_scroll_inside_panel_and_forms_are_full_width', async ({ page
   serveWorld(api, 'admin');
   api.session = sessionOf('admin');
 
+  // abaixo de 768 px a lista é de cartões: as mesmas linhas, sem tabela e sem rolagem horizontal
   await page.goto('/students');
-  const table = page.getByRole('main').locator('table').first();
-  await expect(table).toBeAttached();
-  const wrapper = await table.evaluate((element) => {
-    const parent = element.parentElement!;
-    return { overflow: getComputedStyle(parent).overflowX, table: element.scrollWidth, wrapper: parent.clientWidth };
-  });
-  expect(wrapper.overflow).toBe('auto');
-  expect(wrapper.table).toBeGreaterThanOrEqual(wrapper.wrapper);
+  await expect(page.locator('[data-slot="panel-rows"]')).toBeVisible();
+  await expect(page.getByRole('main').locator('table')).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth === document.documentElement.clientWidth)).toBe(true);
+  const main = page.getByRole('main');
+  expect((await styleOf(main, 'padding-left')).raw).toBe('16px');
+  expect((await styleOf(main, 'padding-right')).raw).toBe('16px');
 
   await page.goto('/students/new');
   const form = page.getByRole('main').locator('form').first();
@@ -766,6 +773,12 @@ test('mobile_tables_scroll_inside_panel_and_forms_are_full_width', async ({ page
   }
   const submit = form.locator('button[type="submit"]');
   expect(Math.round((await submit.boundingBox())!.width)).toBe(formWidth);
+
+  // o gutter do `main` a partir de 1024 px é 32 px, como as provas da dukfit-app fixam (AC 63)
+  await page.setViewportSize(DESKTOP);
+  await page.goto('/students');
+  expect((await styleOf(page.getByRole('main'), 'padding-left')).raw).toBe('32px');
+  expect((await styleOf(page.getByRole('main'), 'padding-right')).raw).toBe('32px');
 });
 
 test('print_pages_have_no_shell_nav_or_fab', async ({ page, api }) => {

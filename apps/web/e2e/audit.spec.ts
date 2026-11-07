@@ -369,7 +369,7 @@ test('five_filters_and_two_buttons_above_the_table', async ({ page, api }) => {
   const tableTop = (await table.boundingBox())!.y;
   const controls = [
     ...['De', 'Até', 'Usuário', 'Ação', 'IP'].map((label) => page.getByLabel(label, { exact: true })),
-    ...['Filtrar', 'Limpar filtros'].map((name) => page.getByRole('button', { name, exact: true })),
+    ...['Filtrar', 'Limpar'].map((name) => page.getByRole('button', { name, exact: true })),
   ];
   expect(controls).toHaveLength(7);
   for (const control of controls) {
@@ -501,7 +501,7 @@ test('clear_filters_goes_to_audit_without_query', async ({ page, api }) => {
   expect(auditCalls(api).at(-1)!.query).not.toBe('');
   const callsBefore = auditCalls(api).length;
 
-  await page.getByRole('button', { name: 'Limpar filtros', exact: true }).click();
+  await page.getByRole('button', { name: 'Limpar', exact: true }).click();
 
   await expect(page).toHaveURL('/audit');
   expect(new URL(page.url()).search).toBe('');

@@ -11,7 +11,7 @@ const settingsRequests = (api: FakeApi) => api.requests.filter((request) => requ
 const puts = (api: FakeApi) => settingsRequests(api).filter((request) => request.method === 'PUT');
 const years = (page: Page) => page.getByLabel(YEARS, { exact: true });
 const days = (page: Page) => page.getByLabel(DAYS, { exact: true });
-const off = (page: Page) => page.getByRole('checkbox', { name: 'Desligado', exact: true });
+const off = (page: Page) => page.getByRole('switch', { name: 'Desligado', exact: true });
 const save = (page: Page) => page.getByRole('button', { name: 'Salvar', exact: true });
 
 function serve(api: FakeApi, settings: { inactiveStudentRetentionYears: number | null; photoVersionRetentionDays: number }) {
@@ -37,7 +37,7 @@ test('settings_form_shows_off_or_years_saves_and_shows_field_errors', async ({ p
   await page.goto('/privacy');
 
   await expect(page.getByText(YEARS, { exact: true })).toBeVisible();
-  await expect(off(page)).toBeChecked();
+  await expect(off(page)).toHaveAttribute('aria-checked', 'true');
   await expect(years(page)).toHaveValue('');
   await expect(page.getByText(DAYS, { exact: true })).toBeVisible();
   await expect(days(page)).toHaveValue('30');
@@ -45,7 +45,7 @@ test('settings_form_shows_off_or_years_saves_and_shows_field_errors', async ({ p
 
   serve(api, { inactiveStudentRetentionYears: 5, photoVersionRetentionDays: 30 });
   await page.goto('/privacy');
-  await expect(off(page)).not.toBeChecked();
+  await expect(off(page)).toHaveAttribute('aria-checked', 'false');
   await expect(years(page)).toHaveValue('5');
   await expect(page.getByText('anos', { exact: true })).toBeVisible();
 
@@ -107,11 +107,11 @@ test('off_sends_null_and_twenty_sends_twenty', async ({ page, api }) => {
   serve(api, { inactiveStudentRetentionYears: 5, photoVersionRetentionDays: 30 });
   await page.goto('/privacy');
 
-  await off(page).check();
+  await off(page).click();
   await save(page).click();
   await expect(page.getByText('Configurações salvas.', { exact: true })).toBeVisible();
 
-  await off(page).uncheck();
+  await off(page).click();
   await years(page).fill('20');
   await save(page).click();
   await expect.poll(() => puts(api).length).toBe(2);

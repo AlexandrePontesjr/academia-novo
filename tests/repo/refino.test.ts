@@ -206,6 +206,22 @@ test('no_screen_passes_disabled_is_submitting', () => {
   for (const path of files) expect(read(path), path).not.toContain('disabled={isSubmitting}');
 });
 
+// C50 - o PAGE_BODY é um corpo simples, sem borda e sem raio
+
+test('page_body_is_a_plain_body_container', () => {
+  const body = read('apps/web/src/components/page-body.ts');
+  expect(body).toContain("export const PAGE_BODY = 'grid gap-6';");
+  // nenhum cartão, borda ou raio: a `Table` não fica dentro de um segundo cartão
+  expect(body).not.toMatch(/\bborder\b|\brounded\b|PANEL/);
+
+  const screens = ['students', 'staff', 'plans', 'payments', 'check-ins', 'audit'];
+  expect(screens).toHaveLength(6);
+  for (const screen of screens) {
+    const page = read(`apps/web/src/app/${screen}/page.tsx`);
+    expect(page, screen).toContain('className={PAGE_BODY} data-slot="page-body"');
+  }
+});
+
 // C11 - a borda de controle alcança 3:1 contra o cartão
 
 test('border_control_reaches_three_to_one_on_card', () => {
