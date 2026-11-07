@@ -551,3 +551,56 @@ Size from `wc -c` of the files each slice touches, divided by four.
     (`.turbo/tmp`, `~/.testcontainers.properties`, `%LOCALAPPDATA%\ms-playwright`).
   - Criar uma rota ou tela de demonstração para as peças: o `ScreenHeader`, o `EmptyState` e a
     `ListOrTable` são provados nas telas que a S3 já entrega.
+- **Boundary (batch B):** S2 (C14-C31) fechada sobre o batch A (`d62a830`), sem push e sem tocar
+  `.specs/STATE.md`: a landing virou o lugar da DukFit em Flores, Manaus na forma da door 2
+  (`site-content.ts`, `page.tsx` e `components/landing`). As provas foram rodadas pelo comando do
+  check: E2E 18/18 em `landing.spec.ts` (C14-C30, com C17 e C25 em duas provas cada), 6/6 em
+  `dukfit.spec.ts` (C17, C29 e as cláusulas do herói/sessão que a door 2 quebra por desenho) e 13/13
+  em `landing-header.spec.ts` (C28 e C70); REPO 9/9 em `identidade.test.ts` (C31, incluindo
+  `landing_page_has_no_literal_text_in_jsx`). Junto, a suíte adjacente (csp, portal-public, proxy,
+  shell e refino-visual) deu 56/56 verdes, o baseline C39 foi regravado e a prova dele e as 4 provas
+  da `motion` que tocam a landing ficaram verdes. `pnpm verify` **sai 0** com o arranjo de ambiente do
+  harness: 21/21 tarefas, 467 testes E2E do web, 891 da API e 89 de repositório, log
+  `.turbo/tmp/verify-b-final.log`. Commits: `a8ece87` (a landing como lugar), `f298dbf` (as provas) e
+  o commit deste handoff.
+- **Settled mid-build (batch B):**
+  - O `data-type="place"` do `<html>` é marcado no navegador pelo `PlaceDocument` (client, recebe
+    `SITE.kind`): o layout raiz é um só para o app inteiro e o Next não oferece atributo de `<html>`
+    por rota, então `proxy.ts` e `layout.tsx` ficam intocados; as três metas saem do `metadata` do
+    `page.tsx`, server-side. A C14 é provada no DOM renderizado, onde a prova da tela mede.
+  - A entrada do herói (opacidade 0→1 e y 12→0 em 300 ms) e o `picture-develops` da `#estrutura`
+    (escala 1.06→1 e recorte em 600 ms, uma vez) são transições CSS dirigidas por um efeito de
+    montagem e por `IntersectionObserver`, não pelo `motion`: com `MotionConfig reducedMotion="user"`
+    o `motion` deixa a opacidade inicial no DOM sob `prefers-reduced-motion` e a C25 falharia; curva e
+    duração continuam lidas de `MOTION`.
+  - A régua do título linkado e a escala 1.03 da foto linkada são medidas pelo `transform` computado
+    dos utilitários arbitrários do Tailwind (`after:[transform:scaleX(…)]`,
+    `group-hover:[transform:scale(1.03)]`), e o botão sobe 1 px pela propriedade `translate`
+    (`hover:-translate-y-px`) sem conflitar com o `scale(0.98)` do `.pressable` no `:active`.
+  - O CTA da sessão saiu do cabeçalho abaixo de 1024 px e vive no `SiteMenu` (door 5): `SITE.cta.*`
+    deu lugar a `SITE.labels.guest/member` e `SITE.hero.cta` no `site-header.tsx`, e a prova do menu
+    passou a esperar as quatro palavras de `SITE.nav` (a contagem estava fixa em 5).
+  - A seção corrente do cabeçalho passou de `IntersectionObserver` para a posição de rolagem: com as
+    seções de uma tela, a seção anterior ficava presa na faixa e o `aria-current` atrasava uma seção.
+    `current_section_link_has_aria_current_location` continua a mesma.
+  - O `auth-frame.tsx` (decoração do login) lia `SITE.eyebrow`/`SITE.tagline`, que a door 2 remove;
+    passa a ler `SITE.about.eyebrow`, `SITE.hero.title` e `SITE.hero.subline` (a moldura é
+    `aria-hidden`).
+  - O baseline C39 foi **regravado com `MOTION_BASELINE=record`** sobre o código deste batch
+    (`1440.json` e `390.json`), sem relaxar a comparação: a cópia, a ARIA e o foco da landing mudaram
+    por desenho. A `#planos` **entrou** no baseline (a exclusão da `motion` era da AD-106 e não vale
+    mais) e a barra de ação fixa entrou no `LANDING_EXCLUDED` porque a presença dela depende da
+    rolagem que a sequência de 40 Tabs provoca - ela é provada pela C28. A gravação final continua
+    sendo do batch C, sobre o código final.
+  - `tests/repo/identidade.test.ts` › `site_content_is_the_only_source_of_landing_copy` teve a lista
+    de chaves da door 3 trocada pela da door 2 (as chaves antigas deixaram de existir); as demais
+    cláusulas (fonte única, sem telefone/WhatsApp, sem literais no `page.tsx`) continuam.
+- **Abandoned (batch B):**
+  - `inner_screens_have_30_medium_title_and_dark_panels` e
+    `mobile_tables_scroll_inside_panel_and_forms_are_full_width`, do `dukfit.spec.ts`: ficam intocadas
+    e verdes, porque as telas da equipe são do batch C (C64), que as reescreve sobre o código final.
+  - Provar a C22 por `data-slot` de `Panel`: a peça não expõe slot; a prova mede raio 0 em foto e
+    moldura, nenhum bloco de conteúdo arredondado e nenhuma sombra, o que cobre o `Panel` e o cartão.
+  - `data-page-mode="short"` e a página compacta da skill (menos de 8 fotos): o plano manteve as seis
+    seções com as quatro cenas reais (Assumption "Densidade da landing"), então a landing não é a
+    *short page*.
