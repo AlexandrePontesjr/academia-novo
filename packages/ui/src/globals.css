@@ -25,6 +25,19 @@
   --destructive: #dc2626;
   --destructive-foreground: #fafafa;
   --radius: 1rem;
+  /* Refino visual (door 1): a situação, o número forte, o gráfico apagado e a borda de controle.
+     O vermelho de erro `#f87171` e o âmbar `#f59e0b` saem dos componentes e passam a viver aqui. */
+  --status-ok: var(--primary);
+  --status-ok-surface: rgb(252 244 60 / 0.14);
+  --status-warn: #f59e0b;
+  --status-warn-surface: rgb(245 158 11 / 0.14);
+  --status-bad: #f87171;
+  --status-bad-surface: rgb(248 113 113 / 0.14);
+  --status-idle: #a3a3a3;
+  --status-idle-surface: #1a1a1a;
+  --muted-strong: #d4d4d4;
+  --chart-off: #404040;
+  --border-control: #6b6b6b;
   /* a curva de todo movimento do tema, a mesma de `MOTION.ease` (motion, door 1) */
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -44,6 +57,19 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  /* Refino visual (door 1): as classes `text-status-*`, `bg-status-*-surface`, `text-muted-strong`,
+     `bg-chart-off` e `border-border-control` do tema. */
+  --color-status-ok: var(--status-ok);
+  --color-status-ok-surface: var(--status-ok-surface);
+  --color-status-warn: var(--status-warn);
+  --color-status-warn-surface: var(--status-warn-surface);
+  --color-status-bad: var(--status-bad);
+  --color-status-bad-surface: var(--status-bad-surface);
+  --color-status-idle: var(--status-idle);
+  --color-status-idle-surface: var(--status-idle-surface);
+  --color-muted-strong: var(--muted-strong);
+  --color-chart-off: var(--chart-off);
+  --color-border-control: var(--border-control);
   --radius-md: 0.75rem;
   --radius-lg: var(--radius);
   --radius-xl: var(--radius);

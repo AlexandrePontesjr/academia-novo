@@ -49,9 +49,11 @@ export function useEntrance() {
 /** O atraso do item `index` de uma cascata: 40 ms por item até o 8º; do 9º em diante, o do 8º. */
 const delayOf = (index: number) => MOTION.stagger * Math.min(index, MOTION.staggerMax - 1);
 
-type EnterProps = Pick<HTMLAttributes<HTMLElement>, 'className' | 'id' | 'children' | 'aria-labelledby'> & {
+type EnterProps = Pick<HTMLAttributes<HTMLElement>, 'className' | 'id' | 'children' | 'aria-labelledby' | 'aria-label'> & {
   index: number;
   as?: 'div' | 'section' | 'li' | 'td';
+  /** O `data-slot` do bloco, como as peças do tema são lidas pelas provas. */
+  'data-slot'?: string;
 };
 
 /** Um bloco que entra uma vez ao montar, `index` × 40 ms depois do primeiro (door 4). */

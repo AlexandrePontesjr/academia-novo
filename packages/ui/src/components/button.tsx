@@ -12,7 +12,7 @@ const buttonVariants = cva(
         // todo botão é pill, como na referência; a ação primária leva o amarelo do acento
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-transparent hover:bg-secondary',
+        outline: 'border border-border-control bg-transparent hover:bg-secondary',
         ghost: 'hover:bg-secondary',
         link: 'text-primary underline underline-offset-4',
       },

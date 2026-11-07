@@ -2,10 +2,10 @@ import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
 import { Reveal } from '../motion.tsx';
 
-/** A superfície da referência: cartão #0f0f0f, borda do tema e raio de 16 px. */
+/** A superfície da referência: o cartão do tema, com a borda e o raio de 16 px. */
 export const PANEL = 'rounded-2xl border bg-card p-5';
 
-/** O botão redondo ↗ do canto do `Panel`: 32 px, borda #262626, ícone no texto secundário. */
+/** O botão redondo ↗ do canto do `Panel`: 32 px, borda do tema, ícone no texto secundário. */
 export const PANEL_ARROW =
   'inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:border-primary hover:text-primary';
 
@@ -66,7 +66,7 @@ export function MetricTile({ label, value, caption }: { label: string; value: Re
   );
 }
 
-/** A pílula flutuante ("45 Min" da referência): fundo #1f1f1f, ponto lime, rótulo e valor. */
+/** A pílula flutuante ("45 Min" da referência): fundo em camadas, ponto do acento, rótulo e valor. */
 export function StatPill({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm" data-slot="stat-pill">
@@ -77,9 +77,10 @@ export function StatPill({ label, value }: { label: string; value: ReactNode }) 
   );
 }
 
-const LIME = '#fcf43c';
-const ORANGE = '#f59e0b';
-const OFF = '#404040';
+// as cores do gráfico e do de-para saem dos tokens do tema (door 1 do refino visual)
+const LIME = 'var(--primary)';
+const ORANGE = 'var(--status-warn)';
+const OFF = 'var(--chart-off)';
 
 /** Quantas das `ticks` marcas acendem: a proporção de `value` sobre o maior valor, nunca dividindo por zero. */
 export const litTicks = (ticks: number, value: number, max: number) => Math.round((ticks * value) / Math.max(1, max));
@@ -184,7 +185,7 @@ export function WeekBars({ days, label, ...props }: { days: Array<{ day: string;
             </span>
             <div className="flex h-36 items-end gap-0.5" aria-hidden="true">
               {[0, 1, 2].map((bar) => (
-                <div key={bar} className="flex h-full w-1.5 items-end rounded-full bg-[#262626]">
+                <div key={bar} className="flex h-full w-1.5 items-end rounded-full bg-border">
                   <div className="w-full rounded-full" style={{ height: `${height}%`, backgroundColor: color }} data-slot="week-bar" />
                 </div>
               ))}

@@ -6,8 +6,8 @@ const alertVariants = cva('rounded-xl border px-4 py-3 text-sm', {
   variants: {
     variant: {
       // o alerta padrão é uma superfície em camadas, com o texto secundário do tema (AC 13)
-      default: 'border-border bg-muted text-[#d4d4d4]',
-      destructive: 'border-[#f87171] bg-[#f87171]/10 text-[#f87171]',
+      default: 'border-border bg-muted text-muted-strong',
+      destructive: 'border-status-bad bg-status-bad/10 text-status-bad',
     },
   },
   defaultVariants: { variant: 'default' },
