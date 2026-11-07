@@ -604,3 +604,75 @@ Size from `wc -c` of the files each slice touches, divided by four.
   - `data-page-mode="short"` e a página compacta da skill (menos de 8 fotos): o plano manteve as seis
     seções com as quatro cenas reais (Assumption "Densidade da landing"), então a landing não é a
     *short page*.
+- **Boundary (batch C):** S4 (C47-C70) fechada sobre o batch B (`9aa8210`), sem push e sem tocar
+  `.specs/STATE.md`: as 20 telas com `Shell` ganharam o `ScreenHeader` e o corpo simples, as listas
+  passaram a `ListOrTable`/`EmptyState`/`StatusBadge` com a toolbar de filtros, as fichas ganharam
+  identidade, grupos e cartões, os formulários marcas de obrigatório, seções e "Cancelar", e
+  `/privacy`, `/account` e `/check-in` receberam o interruptor temático, os dois cartões e o `Panel`.
+  As provas do batch foram rodadas uma a uma pelo comando do check: REPO 10/10 em `refino.test.ts`
+  (com a C50 nova) e 25/25 em `motion.test.ts` (C65); E2E 17/17 novos em `refino-visual.spec.ts`
+  (C47-C64), 23/23 em `identidade.spec.ts` (C63, C70 e as 26 telas) e 34/34 em `dukfit.spec.ts`
+  (C17, C29, C64 e C70). O baseline C39 foi **regravado** com `MOTION_BASELINE=record` sobre o código
+  final (`1440.json` e `390.json`, as 22 rotas com `Shell` e `/`) e a prova dele passa comparando o
+  baseline novo, sem relaxar texto, ARIA nem foco. `pnpm verify` **sai 0** com o arranjo de ambiente do
+  harness: 21/21 tarefas, 484 testes E2E do web, 891 da API, 90 de repositório, 79 de banco e 20 de
+  contratos, log `.turbo/tmp/verify-c-final-3.log`. Commits: `068c734` (as telas e as peças),
+  `366078a` (as provas) e o commit deste handoff, que carrega o baseline regravado.
+- **Settled mid-build (batch C):**
+  - C52 exige o par "Filtrar"/"Limpar": `/students` tinha "Buscar"/"Limpar" e `/audit` "Limpar
+    filtros". As provas não listadas na Open question 1 passaram a ler o rótulo novo, sem mudar
+    asserção nem dado esperado: `apps/web/e2e/students.spec.ts` (o botão da toolbar nas linhas 150,
+    170, 191, 211 e 218), `apps/web/e2e/audit.spec.ts` (`'Limpar filtros'` → `'Limpar'`, linhas 372 e
+    504) e `apps/web/e2e/motion.spec.ts` (o botão nas provas de press e de busca). Decisão do Lead em
+    2026-11-07.
+  - C57 exige o "Desligado" temático e não o checkbox nativo: `/privacy` passou a usar
+    `role="switch"`; `apps/web/e2e/privacy-settings.spec.ts` trocou `getByRole('checkbox')` por
+    `getByRole('switch')`, `.check()`/`.uncheck()` por `.click()` e `toBeChecked()` por
+    `toHaveAttribute('aria-checked')` — o estado do controle e o `PUT` com `null` continuam afirmados
+    (linhas 14, 40, 48, 110 e 114). Decisão do Lead em 2026-11-07.
+  - A `SCREENS` de `apps/web/e2e/support/identidade.ts` passou a 26 telas: entram `/leads` (com
+    `Shell`) e `/minha-conta` (sem `Shell`, aberta com a sessão `student`); `serveWorld` ganhou
+    `/api/leads`, `/api/me/profile` e `/api/me/payments`, e `open()` escolhe a sessão de cada tela. As
+    22 rotas com `Shell` do baseline C39 (21 → 22 com `/leads`) e o guard de `motion` de página
+    (19 → 20 telas não-print) acompanham a contagem.
+  - C51 manda cartões abaixo de 768 px: a `ListOrTable` virou a apresentação das listas e a prova da
+    `motion` de cascata passou a amostrar a apresentação visível (`LIST_CARDS` abaixo de 768 px, as
+    células da `Table` a partir dele); o `rowsOf` da `motion` lê `locator('a')` em vez de
+    `getByRole('link')`, porque o `<tr>` escondido não expõe papel. A ordem, os nomes e o stagger
+    afirmados não mudaram.
+  - A `ListOrTable` mantém `StaggerCell` nas células e ganhou `StaggerItem` nos cartões: a mesma lista
+    anima nas duas apresentações. O hover do cartão linkado (AC 61) sobe 2 px pelo CSS `.lift` e o
+    botão do tema sobe 1 px pela classe `.button-lift`, com o `:active` a 0,98 do `.pressable`.
+  - O hover do botão saiu do seletor `.pressable` para a classe `.button-lift` do `Button`: no seletor
+    global o CTA do herói da landing mudava de posição depois do hover e a C24 da landing
+    (`hover_and_press_answer_on_photos_titles_and_buttons`) ficava vermelha; a classe restrita mantém
+    a resposta da AC 61 no app sem tocar no CTA da landing.
+  - C54 x `students.spec.ts`: a "Situação" continua sendo um campo (`dt`/`dd`) da ficha e é o próprio
+    `StatusBadge`; para cumprir "acima dos campos" ela fica no topo do cartão de identidade, antes dos
+    grupos — o `dd` da situação é o primeiro da ficha e a lista de `dt` que `students.spec.ts` fixa não
+    mudou. O nome do bloco de identidade não é heading: o único `h2` da ficha continua sendo o
+    `ScreenHeader`, e os grupos são `h3` dentro de `section` com `aria-labelledby`.
+  - O título de `/account` é "Minha conta" (o rótulo da navegação) no `ScreenHeader`; os dois cartões
+    ficaram `md:grid-cols-2` e os títulos deles são `h3` de 20 px, porque a C47 proíbe outro texto a
+    30 px.
+  - `/privacy` ganhou três linhas de efeito (texto de tela reversível) e as unidades "anos"/"dias"
+    dentro da borda do campo.
+  - `/users` usa o `StatusBadge` de `user` também para o 2FA (não há entidade 2FA no mapa da door 7),
+    com os mesmos rótulos "Ativado"/"Desativado", e ganhou `EmptyState` para a lista sem usuários.
+  - `/check-in`: o resultado virou `Panel` (região no nome do aluno), o selo "Liberado" é
+    `StatusBadge` de `check-in` e o sucesso é um `Alert` que mantém `data-motion="feedback"` (a prova
+    da `motion` de 180 ms continua); a lista de resultados do balcão também usa `StatusBadge`.
+  - As listas migradas para `ListOrTable` mantêm os textos de negócio e os `data-slot` que as provas de
+    outras features leem (`lead-status` em volta do badge, `panel-rows`, `dt`/`dd` da ficha), e a
+    `Table` continua a de antes (raio de 16 px, cabeçalho em `--muted-strong`, hover em `--muted` a
+    50%).
+  - O baseline C39 foi regravado, não relaxado: a comparação de `main.innerText`, ARIA e foco continua
+    a mesma (`motion.spec.ts`); só os dois JSON mudaram, sobre o código final deste batch.
+- **Abandoned (batch C):**
+  - Provar o "cartão linkado" da C62 como um cartão cujo clique inteiro navega: o cartão de
+    `ListOrTable` carrega o link do registro e responde ao hover com a subida de 2 px; transformar o
+    cartão inteiro num link exigiria aninhar o link da primeira célula e mudaria a marcação das duas
+    apresentações. A prova mede a subida e o link do registro dentro do cartão.
+  - Tirar a `Table` do DOM abaixo de 768 px: as duas apresentações ficam no DOM e se escondem por CSS,
+    que é o que as provas de C8/C51 medem (`toBeHidden`) e o que mantém a troca de breakpoint sem
+    remontar a lista; a cascata da `motion` fica nas duas apresentações.
