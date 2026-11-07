@@ -1,9 +1,10 @@
 'use client';
 
 import type { CheckInsReport } from '@academia/contracts';
-import { Alert, Button, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, ListOrTable } from '@academia/ui';
 import Link from 'next/link';
 import { useState } from 'react';
+import { TEXT_LINK } from '../../components/link-class.ts';
 import { callApi } from '../../lib/api.ts';
 import { formatTime } from '../../lib/check-ins.ts';
 import { formatBirthDate } from '../../lib/students.ts';
@@ -31,30 +32,20 @@ export function ReportTable({ report }: { report: CheckInsReport }) {
 
   return (
     <div className="grid gap-4">
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Data</TableHead>
-            <TableHead>Hora</TableHead>
-            <TableHead>Aluno</TableHead>
-            <TableHead>Registrado por</TableHead>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, index) => (
-            <TableRow key={item.id}>
-              <StaggerCell index={index}>{formatBirthDate(item.day)}</StaggerCell>
-              <StaggerCell index={index}>{formatTime(item.checkedInAt)}</StaggerCell>
-              <StaggerCell index={index}>
-                <Link href={`/students/${item.student.id}`} prefetch={false} className="text-primary underline underline-offset-4">
-                  {item.student.name}
-                </Link>
-              </StaggerCell>
-              <StaggerCell index={index}>{item.checkedInBy.name}</StaggerCell>
-            </TableRow>
-          ))}
-        </tbody>
-      </Table>
+      <ListOrTable
+        head={['Data', 'Hora', 'Aluno', 'Registrado por']}
+        rows={items.map((item) => ({
+          key: item.id,
+          cells: [
+            formatBirthDate(item.day),
+            formatTime(item.checkedInAt),
+            <Link key="student" href={`/students/${item.student.id}`} prefetch={false} className={TEXT_LINK}>
+              {item.student.name}
+            </Link>,
+            item.checkedInBy.name,
+          ],
+        }))}
+      />
       {failed && <Alert variant="destructive">Não foi possível carregar as presenças.</Alert>}
       {nextCursor && (
         <div>

@@ -1,9 +1,11 @@
 'use client';
 
 import type { Role, StudentsResponse, StudentStatus } from '@academia/contracts';
-import { Alert, Button, Input, Label, Select, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
+import { Alert, Button, EmptyState, Input, Label, ListOrTable, Select, StatusBadge, UsersIcon } from '@academia/ui';
 import Link from 'next/link';
 import { type FormEvent, useId, useState } from 'react';
+import { FilterActions, FilterToolbar } from '../../components/filter-toolbar.tsx';
+import { TEXT_LINK } from '../../components/link-class.ts';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
 import { callApi } from '../../lib/api.ts';
 import { formatCpf, formatPhone, STATUS_LABELS } from '../../lib/students.ts';
@@ -23,7 +25,8 @@ const STATUS_OPTIONS: Array<{ value: '' | StudentStatus; label: string }> = [
 
 /**
  * A lista com a busca. A busca e a página seguinte vão à API pelo navegador e não mexem no endereço
- * da página: o que se digita (um CPF, um telefone) não fica no histórico nem no log de acesso.
+ * da página: o que se digita (um CPF, um telefone) não fica no histórico nem no log de acesso. A
+ * toolbar é a mesma das outras listas (AC 51) e a tabela vira cartões abaixo de 768 px (AC 50).
  */
 export function StudentsList({ initial, role }: { initial: StudentsResponse; role: Role }) {
   const searchId = useId();
@@ -61,37 +64,36 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
     return load({ q: '', status: '' });
   }
 
+  const filtered = applied.q !== '' || applied.status !== '';
+
   return (
     <div className="grid gap-4">
-      <form onSubmit={search} className="grid gap-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor={searchId}>Buscar por nome, CPF ou telefone</Label>
-            <Input id={searchId} name="q" value={q} maxLength={100} onChange={(event) => setQ(event.target.value)} />
+      <FilterToolbar count={page.items.length}>
+        <form onSubmit={search} className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor={searchId}>Buscar por nome, CPF ou telefone</Label>
+              <Input id={searchId} name="q" value={q} maxLength={100} onChange={(event) => setQ(event.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={statusId}>Situação</Label>
+              <Select
+                id={statusId}
+                name="status"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as '' | StudentStatus)}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={statusId}>Situação</Label>
-            <Select
-              id={statusId}
-              name="status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as '' | StudentStatus)}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit">Buscar</Button>
-          <Button variant="outline" onClick={clear}>
-            Limpar
-          </Button>
-        </div>
-      </form>
+          <FilterActions onClear={clear} />
+        </form>
+      </FilterToolbar>
 
       {failed ? (
         <div className="grid justify-items-start gap-4">
@@ -101,40 +103,33 @@ export function StudentsList({ initial, role }: { initial: StudentsResponse; rol
           </Button>
         </div>
       ) : page.items.length === 0 ? (
-        <p>{applied.q || applied.status ? 'Nenhum aluno encontrado.' : 'Nenhum aluno cadastrado.'}</p>
+        <EmptyState
+          icon={<UsersIcon />}
+          title={filtered ? 'Nenhum aluno encontrado.' : 'Nenhum aluno cadastrado.'}
+          {...(filtered ? { description: 'Tente outro nome, CPF, telefone ou situação.' } : {})}
+        />
       ) : (
         <>
-          <Table>
-            <thead>
-              <tr>
-                <TableHead>Nome</TableHead>
-                {withContact && <TableHead>CPF</TableHead>}
-                {withContact && <TableHead>Telefone</TableHead>}
-                <TableHead>Situação</TableHead>
-              </tr>
-            </thead>
-            <tbody>
-              {page.items.map((student, index) => (
-                <TableRow key={student.id}>
-                  <StaggerCell index={index}>
-                    <div className="flex items-center gap-3">
-                      <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
-                      <Link
-                        href={`/students/${student.id}`}
-                        prefetch={false}
-                        className="text-primary underline underline-offset-4"
-                      >
-                        {student.name}
-                      </Link>
-                    </div>
-                  </StaggerCell>
-                  {withContact && <StaggerCell index={index}>{formatCpf(student.cpf ?? '')}</StaggerCell>}
-                  {withContact && <StaggerCell index={index}>{formatPhone(student.phone ?? '')}</StaggerCell>}
-                  <StaggerCell index={index}>{STATUS_LABELS[student.status]}</StaggerCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
+          <ListOrTable
+            head={withContact ? ['Nome', 'CPF', 'Telefone', 'Situação'] : ['Nome', 'Situação']}
+            rows={page.items.map((student) => ({
+              key: student.id,
+              cells: [
+                <div key="name" className="flex items-center gap-3">
+                  <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
+                  <Link href={`/students/${student.id}`} prefetch={false} className={TEXT_LINK}>
+                    {student.name}
+                  </Link>
+                </div>,
+                ...(withContact
+                  ? [formatCpf(student.cpf ?? ''), formatPhone(student.phone ?? '')]
+                  : []),
+                <StatusBadge key="status" variant="student" status={student.status}>
+                  {STATUS_LABELS[student.status]}
+                </StatusBadge>,
+              ],
+            }))}
+          />
           {page.nextCursor && (
             <div>
               <Button variant="outline" onClick={() => load({ ...applied, cursor: page.nextCursor! })}>

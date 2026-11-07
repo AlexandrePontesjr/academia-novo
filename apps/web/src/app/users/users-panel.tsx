@@ -17,12 +17,15 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
+  EmptyState,
   Label,
   Select,
   Table,
   TableCell,
   TableHead,
   TableRow,
+  StatusBadge,
+  UsersIcon,
 } from '@academia/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -56,47 +59,58 @@ export function UsersPanel({ users }: { users: User[] }) {
       <div>
         <Button onClick={() => setCreating(true)}>Novo usuário</Button>
       </div>
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Nome</TableHead>
-            <TableHead>E-mail</TableHead>
-            <TableHead>Perfil</TableHead>
-            <TableHead>Situação</TableHead>
-            <TableHead>2FA</TableHead>
-            <TableHead>
-              <span className="sr-only">Ações</span>
-            </TableHead>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{ROLE_LABELS[user.role]}</TableCell>
-              <TableCell>{user.active ? 'Ativo' : 'Inativo'}</TableCell>
-              <TableCell>{user.twoFactorEnabled ? 'Ativado' : 'Desativado'}</TableCell>
-              <TableCell className="flex flex-wrap gap-2">
-                {user.active && (
-                  <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'deactivate', user })}>
-                    Desativar
+      {users.length === 0 ? (
+        <EmptyState icon={<UsersIcon />} title="Nenhum usuário cadastrado." />
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <TableHead>Nome</TableHead>
+              <TableHead>E-mail</TableHead>
+              <TableHead>Perfil</TableHead>
+              <TableHead>Situação</TableHead>
+              <TableHead>2FA</TableHead>
+              <TableHead>
+                <span className="sr-only">Ações</span>
+              </TableHead>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>{ROLE_LABELS[user.role]}</TableCell>
+                <TableCell>
+                  <StatusBadge variant="user" status={user.active ? 'active' : 'inactive'}>
+                    {user.active ? 'Ativo' : 'Inativo'}
+                  </StatusBadge>
+                </TableCell>
+                <TableCell>
+                  <StatusBadge variant="user" status={user.twoFactorEnabled ? 'active' : 'inactive'}>
+                    {user.twoFactorEnabled ? 'Ativado' : 'Desativado'}
+                  </StatusBadge>
+                </TableCell>
+                <TableCell className="flex flex-wrap gap-2">
+                  {user.active && (
+                    <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'deactivate', user })}>
+                      Desativar
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'resetPassword', user })}>
+                    Redefinir senha
                   </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'resetPassword', user })}>
-                  Redefinir senha
-                </Button>
-                {user.twoFactorEnabled && (
-                  <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'resetTwoFactor', user })}>
-                    Zerar 2FA
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </tbody>
-      </Table>
-
+                  {user.twoFactorEnabled && (
+                    <Button variant="outline" size="sm" onClick={() => setAction({ kind: 'resetTwoFactor', user })}>
+                      Zerar 2FA
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </tbody>
+        </Table>
+      )}
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>
           <DialogTitle>Novo usuário</DialogTitle>

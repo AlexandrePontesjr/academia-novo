@@ -10,11 +10,12 @@ import {
   STUDENT_SEXES,
   updateStudentRequestSchema,
 } from '@academia/contracts';
-import { Alert, Button, Label, Select } from '@academia/ui';
+import { Alert, Button, Select } from '@academia/ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { TextField } from '../../components/text-field.tsx';
+import { FieldLabel, TextField } from '../../components/text-field.tsx';
 import { callApi, showFieldErrors, UNAVAILABLE } from '../../lib/api.ts';
 import { RELATIONSHIP_LABELS } from '../../lib/consents.ts';
 import { LEAD_CONFLICT_MESSAGES } from '../../lib/leads.ts';
@@ -90,13 +91,23 @@ function bodyOf(values: FormValues, editing: boolean, withGuardian: boolean): Re
   return body;
 }
 
+/** A seção do formulário: um grupo de campos com o mesmo título, dentro da mesma coluna (AC 55). */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-medium text-muted-foreground">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
 /** Formulário de cadastro (`/students/new`) e de edição (`/students/<id>/edit`) de aluno. */
 export function StudentForm({ student, guardian, lead }: { student?: Student; guardian?: Guardian | null; lead?: LeadPrefill }) {
   const router = useRouter();
   const sexId = useId();
   const notesId = useId();
-  const [alert, setAlert] = useState<string>();
   const guardianRelationshipId = useId();
+  const [alert, setAlert] = useState<string>();
   const form = useForm<FormValues>({ defaultValues: defaultsOf(student, guardian, lead) });
   const { errors, isSubmitting } = form.formState;
   // o dia de hoje só é lido depois da hidratação: o servidor e o navegador podem discordar do dia
@@ -132,120 +143,141 @@ export function StudentForm({ student, guardian, lead }: { student?: Student; gu
   }
 
   return (
-    <form noValidate className="grid max-w-xl gap-4" onSubmit={form.handleSubmit(submit)}>
+    <form noValidate className="grid max-w-xl gap-6" onSubmit={form.handleSubmit(submit)}>
       {alert && <Alert variant="destructive">{alert}</Alert>}
-      <TextField label="Nome completo" autoComplete="off" error={errors.name?.message} registration={form.register('name')} />
-      <TextField label="CPF" inputMode="numeric" autoComplete="off" error={errors.cpf?.message} registration={form.register('cpf')} />
-      <TextField
-        label="Data de nascimento"
-        type="date"
-        error={errors.birthDate?.message}
-        registration={form.register('birthDate')}
-      />
-      <div className="grid gap-1.5">
-        <Label htmlFor={sexId}>Sexo</Label>
-        <Select
-          id={sexId}
-          aria-invalid={errors.sex ? true : undefined}
-          aria-describedby={errors.sex ? `${sexId}-error` : undefined}
-          {...form.register('sex')}
-        >
-          <option value=""></option>
-          {STUDENT_SEXES.map((sex) => (
-            <option key={sex} value={sex}>
-              {SEX_LABELS[sex]}
-            </option>
-          ))}
-        </Select>
-        {errors.sex && (
-          <p id={`${sexId}-error`} className="text-sm text-status-bad">
-            {errors.sex.message}
-          </p>
-        )}
-      </div>
-      {showGuardian && (
-        <fieldset className="grid gap-4 rounded-xl border p-4">
-          <legend className="px-1 text-sm font-medium">Responsável legal</legend>
-          {errors.guardian?.message && <p className="text-sm text-status-bad">{errors.guardian.message}</p>}
-          <TextField
-            label="Nome do responsável"
-            autoComplete="off"
-            error={errors.guardian?.name?.message}
-            registration={form.register('guardian.name')}
-          />
-          <TextField
-            label="CPF do responsável"
-            inputMode="numeric"
-            autoComplete="off"
-            error={errors.guardian?.cpf?.message}
-            registration={form.register('guardian.cpf')}
-          />
-          <TextField
-            label="Telefone do responsável"
-            type="tel"
-            autoComplete="off"
-            error={errors.guardian?.phone?.message}
-            registration={form.register('guardian.phone')}
-          />
-          <div className="grid gap-1.5">
-            <Label htmlFor={guardianRelationshipId}>Parentesco</Label>
-            <Select
-              id={guardianRelationshipId}
-              aria-invalid={errors.guardian?.relationship ? true : undefined}
-              aria-describedby={errors.guardian?.relationship ? `${guardianRelationshipId}-error` : undefined}
-              {...form.register('guardian.relationship')}
-            >
-              <option value=""></option>
-              {GUARDIAN_RELATIONSHIPS.map((relationship) => (
-                <option key={relationship} value={relationship}>
-                  {RELATIONSHIP_LABELS[relationship]}
-                </option>
-              ))}
-            </Select>
-            {errors.guardian?.relationship && (
-              <p id={`${guardianRelationshipId}-error`} className="text-sm text-status-bad">
-                {errors.guardian.relationship.message}
-              </p>
-            )}
-          </div>
-        </fieldset>
-      )}
-      <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
-      <TextField label="Telefone" type="tel" autoComplete="off" error={errors.phone?.message} registration={form.register('phone')} />
-      <TextField label="Endereço" autoComplete="off" error={errors.address?.message} registration={form.register('address')} />
-      <TextField
-        label="Contato de emergência (nome)"
-        autoComplete="off"
-        error={errors.emergencyContactName?.message}
-        registration={form.register('emergencyContactName')}
-      />
-      <TextField
-        label="Contato de emergência (telefone)"
-        type="tel"
-        autoComplete="off"
-        error={errors.emergencyContactPhone?.message}
-        registration={form.register('emergencyContactPhone')}
-      />
-      <div className="grid gap-1.5">
-        <Label htmlFor={notesId}>Observações de saúde</Label>
-        <textarea
-          id={notesId}
-          rows={4}
-          aria-invalid={errors.healthNotes ? true : undefined}
-          aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
-          className="w-full rounded-xl border border-border-control bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-status-bad"
-          {...form.register('healthNotes')}
+      <Section title="Identificação">
+        <TextField label="Nome completo" autoComplete="off" required error={errors.name?.message} registration={form.register('name')} />
+        <TextField label="CPF" inputMode="numeric" autoComplete="off" required error={errors.cpf?.message} registration={form.register('cpf')} />
+        <TextField
+          label="Data de nascimento"
+          type="date"
+          required
+          error={errors.birthDate?.message}
+          registration={form.register('birthDate')}
         />
-        {errors.healthNotes && (
-          <p id={`${notesId}-error`} className="text-sm text-status-bad">
-            {errors.healthNotes.message}
-          </p>
+        <div className="grid gap-1.5">
+          <FieldLabel htmlFor={sexId}>Sexo</FieldLabel>
+          <Select
+            id={sexId}
+            aria-invalid={errors.sex ? true : undefined}
+            aria-describedby={errors.sex ? `${sexId}-error` : undefined}
+            {...form.register('sex')}
+          >
+            <option value=""></option>
+            {STUDENT_SEXES.map((sex) => (
+              <option key={sex} value={sex}>
+                {SEX_LABELS[sex]}
+              </option>
+            ))}
+          </Select>
+          {errors.sex && (
+            <p id={`${sexId}-error`} className="text-sm text-status-bad">
+              {errors.sex.message}
+            </p>
+          )}
+        </div>
+        {showGuardian && (
+          <fieldset className="grid gap-4 rounded-xl border p-4">
+            <legend className="px-1 text-sm font-medium">Responsável legal</legend>
+            {errors.guardian?.message && <p className="text-sm text-status-bad">{errors.guardian.message}</p>}
+            <TextField
+              label="Nome do responsável"
+              autoComplete="off"
+              required
+              error={errors.guardian?.name?.message}
+              registration={form.register('guardian.name')}
+            />
+            <TextField
+              label="CPF do responsável"
+              inputMode="numeric"
+              autoComplete="off"
+              required
+              error={errors.guardian?.cpf?.message}
+              registration={form.register('guardian.cpf')}
+            />
+            <TextField
+              label="Telefone do responsável"
+              type="tel"
+              autoComplete="off"
+              required
+              error={errors.guardian?.phone?.message}
+              registration={form.register('guardian.phone')}
+            />
+            <div className="grid gap-1.5">
+              <FieldLabel htmlFor={guardianRelationshipId} required>
+                Parentesco
+              </FieldLabel>
+              <Select
+                id={guardianRelationshipId}
+                aria-invalid={errors.guardian?.relationship ? true : undefined}
+                aria-describedby={errors.guardian?.relationship ? `${guardianRelationshipId}-error` : undefined}
+                {...form.register('guardian.relationship')}
+              >
+                <option value=""></option>
+                {GUARDIAN_RELATIONSHIPS.map((relationship) => (
+                  <option key={relationship} value={relationship}>
+                    {RELATIONSHIP_LABELS[relationship]}
+                  </option>
+                ))}
+              </Select>
+              {errors.guardian?.relationship && (
+                <p id={`${guardianRelationshipId}-error`} className="text-sm text-status-bad">
+                  {errors.guardian.relationship.message}
+                </p>
+              )}
+            </div>
+          </fieldset>
         )}
-      </div>
-      <div>
+      </Section>
+      <Section title="Contato">
+        <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
+        <TextField label="Telefone" type="tel" autoComplete="off" required error={errors.phone?.message} registration={form.register('phone')} />
+        <TextField label="Endereço" autoComplete="off" error={errors.address?.message} registration={form.register('address')} />
+      </Section>
+      <Section title="Emergência">
+        <TextField
+          label="Contato de emergência (nome)"
+          autoComplete="off"
+          error={errors.emergencyContactName?.message}
+          registration={form.register('emergencyContactName')}
+        />
+        <TextField
+          label="Contato de emergência (telefone)"
+          type="tel"
+          autoComplete="off"
+          error={errors.emergencyContactPhone?.message}
+          registration={form.register('emergencyContactPhone')}
+        />
+      </Section>
+      <Section title="Saúde">
+        <div className="grid gap-1.5">
+          <FieldLabel htmlFor={notesId}>Observações de saúde</FieldLabel>
+          <textarea
+            id={notesId}
+            rows={4}
+            aria-invalid={errors.healthNotes ? true : undefined}
+            aria-describedby={errors.healthNotes ? `${notesId}-error` : undefined}
+            className="w-full rounded-xl border border-border-control bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-status-bad"
+            {...form.register('healthNotes')}
+          />
+          {errors.healthNotes && (
+            <p id={`${notesId}-error`} className="text-sm text-status-bad">
+              {errors.healthNotes.message}
+            </p>
+          )}
+        </div>
+      </Section>
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" busy={isSubmitting}>
           Salvar
         </Button>
+        {student && (
+          <Button variant="outline" asChild>
+            <Link href={`/students/${student.id}`} prefetch={false}>
+              Cancelar
+            </Link>
+          </Button>
+        )}
       </div>
     </form>
   );

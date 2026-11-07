@@ -3,31 +3,46 @@
 import { LEAD_STATUSES, type LeadStatus } from '@academia/contracts';
 import { Label, Select } from '@academia/ui';
 import { useRouter } from 'next/navigation';
-import { useId } from 'react';
+import { type FormEvent, useId } from 'react';
+import { FilterActions, FilterToolbar } from '../../components/filter-toolbar.tsx';
 import { LEAD_STATUS_LABELS } from '../../lib/leads.ts';
 
-/** O campo "Situação" acima da tabela: escolher carrega `/leads?status=...`, e "Em aberto" carrega `/leads`. */
-export function LeadStatusFilter({ value }: { value: LeadStatus | undefined }) {
+/**
+ * A toolbar de "Interessados": o campo "Situação" e o par "Filtrar"/"Limpar". Escolher a situação já
+ * carrega `/leads?status=...` (e "Em aberto" carrega `/leads`), como as outras listas.
+ */
+export function LeadStatusFilter({ value, count }: { value: LeadStatus | undefined; count?: number }) {
   const router = useRouter();
   const id = useId();
+  const current = value ?? '';
+
+  function go(status: string) {
+    router.push(status ? `/leads?status=${status}` : '/leads');
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    go(String(new FormData(event.currentTarget).get('status') ?? ''));
+  }
 
   return (
-    <div className="grid max-w-xs gap-1.5">
-      <Label htmlFor={id}>Situação</Label>
-      {/* a chave refaz o campo quando a URL muda: ele volta ao que ela diz */}
-      <Select
-        key={value ?? ''}
-        id={id}
-        defaultValue={value ?? ''}
-        onChange={(event) => router.push(event.target.value ? `/leads?status=${event.target.value}` : '/leads')}
-      >
-        <option value="">Em aberto</option>
-        {LEAD_STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {LEAD_STATUS_LABELS[status]}
-          </option>
-        ))}
-      </Select>
-    </div>
+    <FilterToolbar {...(count === undefined ? {} : { count })}>
+      <form key={current} onSubmit={submit} className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor={id}>Situação</Label>
+            <Select id={id} name="status" defaultValue={current} onChange={(event) => go(event.target.value)}>
+              <option value="">Em aberto</option>
+              {LEAD_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {LEAD_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <FilterActions onClear={() => router.push('/leads')} />
+      </form>
+    </FilterToolbar>
   );
 }

@@ -1,8 +1,9 @@
+import { ScreenHeader } from '@academia/ui';
 import { Shell } from '../../../components/shell.tsx';
+import { PAGE_BODY } from '../../../components/page-body.ts';
 import { canWritePlans } from '../../../lib/plans.ts';
 import { requireSession } from '../../../lib/session.ts';
 import { PlanForm } from '../plan-form.tsx';
-import { PAGE_BODY } from '../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,8 @@ export default async function NewPlanPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Novo plano</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Novo plano" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {/* quem não cadastra não chega ao formulário; a API recusaria de qualquer forma */}
         {canWritePlans(session.user.role) ? <PlanForm /> : <p>Você não tem permissão para acessar esta página.</p>}
       </div>

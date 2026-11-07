@@ -1,12 +1,13 @@
 import { type CheckInsReport, checkInsReportSchema, problemSchema } from '@academia/contracts';
+import { EmptyState, ScreenHeader, CheckInIcon } from '@academia/ui';
 import { headers } from 'next/headers';
 import { Shell } from '../../components/shell.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 import { canCheckIn } from '../../lib/check-ins.ts';
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { CheckInsLoadError } from './check-ins-load-error.tsx';
 import { type PeriodErrors, PeriodFilter } from './period-filter.tsx';
 import { ReportTable } from './report-table.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +49,8 @@ export default async function CheckInsPage({ searchParams }: { searchParams: Pro
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Presenças</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Presenças" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {!loaded ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : loaded.kind === 'failed' ? (
@@ -59,10 +60,9 @@ export default async function CheckInsPage({ searchParams }: { searchParams: Pro
         ) : (
           <>
             {/* os campos mostram o período que a API usou, com os padrões já aplicados */}
-            <PeriodFilter from={loaded.report.from} to={loaded.report.to} errors={{}} />
-            <p>Total no período: {loaded.report.total}</p>
+            <PeriodFilter from={loaded.report.from} to={loaded.report.to} errors={{}} total={loaded.report.total} />
             {loaded.report.items.length === 0 ? (
-              <p>Nenhuma presença no período.</p>
+              <EmptyState icon={<CheckInIcon />} title="Nenhuma presença no período." />
             ) : (
               <ReportTable key={`${loaded.report.from}/${loaded.report.to}`} report={loaded.report} />
             )}

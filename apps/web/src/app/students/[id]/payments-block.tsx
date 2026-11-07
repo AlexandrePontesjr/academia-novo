@@ -14,6 +14,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  StatusBadge,
 } from '@academia/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -71,7 +72,9 @@ export function PaymentsBlock({
                 <TableCell className="whitespace-nowrap">{formatPrice(item.priceCents)}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span>{PAYMENT_STATUS_LABELS[item.status]}</span>
+                    <StatusBadge variant="payment" status={item.status}>
+                      {PAYMENT_STATUS_LABELS[item.status]}
+                    </StatusBadge>
                     {(item.status === 'pending' || item.status === 'overdue') && (
                       <Button variant="outline" size="sm" onClick={() => setConfirming(item)}>
                         Confirmar pagamento

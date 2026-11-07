@@ -1,8 +1,9 @@
 'use client';
 
-import { Button, Input, Label } from '@academia/ui';
+import { Input, Label } from '@academia/ui';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useId } from 'react';
+import { FilterActions, FilterToolbar } from '../../components/filter-toolbar.tsx';
 
 /** As mensagens do `422` da API, pelo nome do parâmetro. */
 export type PeriodErrors = Partial<Record<'from' | 'to', string>>;
@@ -29,8 +30,21 @@ function DayField({ name, label, value, error }: { name: string; label: string; 
   );
 }
 
-/** "De" e "Até" acima da tabela: enviar leva os dois para a query string de `/check-ins`. */
-export function PeriodFilter({ from, to, errors }: { from: string; to: string; errors: PeriodErrors }) {
+/**
+ * A toolbar de "Presenças": "De" e "Até", o par "Filtrar"/"Limpar" e o total do período. Enviar leva
+ * os dois dias para a query string de `/check-ins`; "Limpar" devolve a tela ao período padrão.
+ */
+export function PeriodFilter({
+  from,
+  to,
+  errors,
+  total,
+}: {
+  from: string;
+  to: string;
+  errors: PeriodErrors;
+  total?: number;
+}) {
   const router = useRouter();
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -45,13 +59,17 @@ export function PeriodFilter({ from, to, errors }: { from: string; to: string; e
   }
 
   return (
-    // a chave refaz o formulário quando o período muda: os campos voltam ao que a página diz
-    <form key={`${from}/${to}`} onSubmit={submit} className="flex flex-wrap items-start gap-4">
-      <DayField name="from" label="De" value={from} error={errors.from} />
-      <DayField name="to" label="Até" value={to} error={errors.to} />
-      <Button type="submit" className="mt-6">
-        Filtrar
-      </Button>
-    </form>
+    <FilterToolbar
+      {...(total === undefined ? {} : { count: total, countLabel: `Total no período: ${total}` })}
+    >
+      {/* a chave refaz o formulário quando o período muda: os campos voltam ao que a página diz */}
+      <form key={`${from}/${to}`} onSubmit={submit} className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DayField name="from" label="De" value={from} error={errors.from} />
+          <DayField name="to" label="Até" value={to} error={errors.to} />
+        </div>
+        <FilterActions onClear={() => router.push('/check-ins')} />
+      </form>
+    </FilterToolbar>
   );
 }

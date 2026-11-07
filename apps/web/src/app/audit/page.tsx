@@ -8,11 +8,13 @@ import {
   type User,
   usersResponseSchema,
 } from '@academia/contracts';
-import { Table, TableCell, TableHead, TableRow } from '@academia/ui';
+import { EmptyState, ListOrTable, ScreenHeader, ShieldIcon } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Shell } from '../../components/shell.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
+import { TEXT_LINK } from '../../components/link-class.ts';
 import {
   actionLabel,
   AUDIT_FILTERS,
@@ -24,7 +26,6 @@ import {
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { AuditFilters } from './audit-filters.tsx';
 import { AuditLoadError } from './audit-load-error.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +96,7 @@ function target(item: AuditLog, users: User[]): ReactNode {
   // a trilha não guarda o nome do aluno: o link leva à ficha
   if (item.entity === 'student') {
     return (
-      <Link href={`/students/${item.entityId}`} prefetch={false} className="text-primary underline underline-offset-4">
+      <Link href={`/students/${item.entityId}`} prefetch={false} className={TEXT_LINK}>
         Ver aluno
       </Link>
     );
@@ -103,7 +104,7 @@ function target(item: AuditLog, users: User[]): ReactNode {
   // idem para o funcionário: o link leva à ficha
   if (item.entity === 'staff') {
     return (
-      <Link href={`/staff/${item.entityId}`} prefetch={false} className="text-primary underline underline-offset-4">
+      <Link href={`/staff/${item.entityId}`} prefetch={false} className={TEXT_LINK}>
         Ver funcionário
       </Link>
     );
@@ -111,7 +112,7 @@ function target(item: AuditLog, users: User[]): ReactNode {
   // o plano se abre na edição, que é onde ele é lido por inteiro
   if (item.entity === 'plan') {
     return (
-      <Link href={`/plans/${item.entityId}/edit`} prefetch={false} className="text-primary underline underline-offset-4">
+      <Link href={`/plans/${item.entityId}/edit`} prefetch={false} className={TEXT_LINK}>
         Ver plano
       </Link>
     );
@@ -121,47 +122,38 @@ function target(item: AuditLog, users: User[]): ReactNode {
   return user?.name ?? item.entityId;
 }
 
-function AuditTable({ items, users, plans }: { items: AuditLog[]; users: User[]; plans: Plan[] }) {
+function AuditRows({ items, users, plans }: { items: AuditLog[]; users: User[]; plans: Plan[] }) {
   return (
-    <Table>
-      <thead>
-        <tr>
-          <TableHead>Data e hora</TableHead>
-          <TableHead>Usuário</TableHead>
-          <TableHead>Ação</TableHead>
-          <TableHead>Alvo</TableHead>
-          <TableHead>IP</TableHead>
-          <TableHead>Navegador</TableHead>
-          <TableHead>Detalhes</TableHead>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => {
-          const details = diffDetails(item, users, plans);
-          return (
-            <TableRow key={item.id}>
-              <TableCell className="whitespace-nowrap">{formatInstant(item.createdAt)}</TableCell>
-              <TableCell>{item.user?.name ?? NONE}</TableCell>
-              <TableCell>{actionLabel(item.action)}</TableCell>
-              <TableCell>{target(item, users)}</TableCell>
-              <TableCell>{item.ip ?? NONE}</TableCell>
-              <TableCell className="max-w-xs break-words">{item.userAgent ?? NONE}</TableCell>
-              <TableCell>
-                {details.length > 0 ? (
-                  <ul>
-                    {details.map((detail) => (
-                      <li key={detail}>{detail}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  NONE
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </tbody>
-    </Table>
+    <ListOrTable
+      head={['Data e hora', 'Usuário', 'Ação', 'Alvo', 'IP', 'Navegador', 'Detalhes']}
+      rows={items.map((item) => {
+        const details = diffDetails(item, users, plans);
+        return {
+          key: item.id,
+          cells: [
+            <span key="when" className="whitespace-nowrap">
+              {formatInstant(item.createdAt)}
+            </span>,
+            item.user?.name ?? NONE,
+            actionLabel(item.action),
+            target(item, users),
+            item.ip ?? NONE,
+            <span key="agent" className="break-words">
+              {item.userAgent ?? NONE}
+            </span>,
+            details.length > 0 ? (
+              <ul key="details">
+                {details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            ) : (
+              NONE
+            ),
+          ],
+        };
+      })}
+    />
   );
 }
 
@@ -189,8 +181,8 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Auditoria</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Auditoria" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {loaded.kind === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : loaded.kind === 'failed' ? (
@@ -201,16 +193,17 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
               values={filters}
               users={loaded.users.map(({ id, name }) => ({ id, name }))}
               errors={loaded.kind === 'invalid' ? loaded.errors : {}}
+              {...(loaded.kind === 'ok' ? { count: loaded.page.items.length } : {})}
             />
             {loaded.kind === 'ok' &&
               (loaded.page.items.length === 0 ? (
-                <p>Nenhum registro encontrado.</p>
+                <EmptyState icon={<ShieldIcon />} title="Nenhum registro encontrado." />
               ) : (
                 <>
-                  <AuditTable items={loaded.page.items} users={loaded.users} plans={loaded.plans} />
+                  <AuditRows items={loaded.page.items} users={loaded.users} plans={loaded.plans} />
                   {nextPage && (
                     <div>
-                      <Link href={nextPage} prefetch={false} className="text-sm text-primary underline underline-offset-4">
+                      <Link href={nextPage} prefetch={false} className={`text-sm ${TEXT_LINK}`}>
                         Próxima página
                       </Link>
                     </div>

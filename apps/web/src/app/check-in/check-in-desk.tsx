@@ -1,7 +1,7 @@
 'use client';
 
 import type { CheckInStatus, RegisteredCheckIn, StudentListItem, StudentsResponse } from '@academia/contracts';
-import { Alert, Button, Input, Label } from '@academia/ui';
+import { Alert, Button, EmptyState, Input, Label, Panel, StatusBadge, UsersIcon } from '@academia/ui';
 import { type FormEvent, useId, useRef, useState } from 'react';
 import { PersonPhoto } from '../../components/photo/person-photo.tsx';
 import { callApi } from '../../lib/api.ts';
@@ -104,7 +104,7 @@ export function CheckInDesk() {
           </Button>
         </div>
       ) : view.kind === 'none' ? (
-        <p>Nenhum aluno encontrado.</p>
+        <EmptyState icon={<UsersIcon />} title="Nenhum aluno encontrado." />
       ) : view.kind === 'results' ? (
         <ul aria-label="Alunos encontrados" className="grid gap-2">
           {view.items.map((student) => (
@@ -116,7 +116,9 @@ export function CheckInDesk() {
               >
                 <PersonPhoto name={student.name} photoUrl={student.photoUrl} shape="thumb" />
                 <span className="flex-1">{student.name}</span>
-                <span className="text-sm text-muted-foreground">{STATUS_LABELS[student.status]}</span>
+                <StatusBadge variant="student" status={student.status}>
+                  {STATUS_LABELS[student.status]}
+                </StatusBadge>
               </button>
             </li>
           ))}
@@ -148,54 +150,45 @@ function StudentCard({
   const allowed = status.access === 'allowed';
 
   return (
-    <section aria-labelledby="check-in-card-heading" className="flex flex-wrap gap-6 rounded-2xl border bg-card p-4">
-      <PersonPhoto name={student.name} photoUrl={status.photoUrl} shape="ficha" />
-      <div className="grid content-start gap-3">
-        <h3 id="check-in-card-heading" className="text-lg font-semibold">
-          {student.name}
-        </h3>
-        <p>
-          <span
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
-              allowed
-                ? 'bg-[rgb(205_247_32_/_0.15)] text-primary'
-                : 'bg-[rgb(248_113_113_/_0.15)] text-status-bad'
-            }`}
-          >
+    <Panel id="check-in-card-heading" title={student.name}>
+      <div className="flex flex-wrap gap-6">
+        <PersonPhoto name={student.name} photoUrl={status.photoUrl} shape="ficha" />
+        <div className="grid content-start gap-3">
+          <StatusBadge variant="check-in" status={status.access}>
             {allowed ? 'Liberado' : 'Bloqueado'}
-          </span>
-        </p>
-        {enrollment ? (
-          <div>
-            <p>
-              {enrollment.plan.name} · {PERIOD_LABELS[enrollment.plan.period]}
-            </p>
-            <p className="text-sm text-muted-foreground">Vence em {formatBirthDate(enrollment.endsAt)}</p>
-          </div>
-        ) : (
-          <p>Sem matrícula vigente</p>
-        )}
-        {status.blockReasons.length > 0 && (
-          <ul aria-label="Motivos do bloqueio" className="list-disc pl-5">
-            {status.blockReasons.map((reason) => (
-              <li key={reason}>{BLOCK_REASON_LABELS[reason]}</li>
-            ))}
-          </ul>
-        )}
-        {registeredAt ? (
-          <p role="status" data-motion="feedback">Presença registrada às {formatTime(registeredAt)}.</p>
-        ) : status.checkedInAt ? (
-          <p>Presença já registrada hoje às {formatTime(status.checkedInAt)}.</p>
-        ) : (
-          allowed && (
+          </StatusBadge>
+          {enrollment ? (
             <div>
-              <Button busy={pending} onClick={onRegister}>
-                Registrar presença
-              </Button>
+              <p>
+                {enrollment.plan.name} · {PERIOD_LABELS[enrollment.plan.period]}
+              </p>
+              <p className="text-sm text-muted-foreground">Vence em {formatBirthDate(enrollment.endsAt)}</p>
             </div>
-          )
-        )}
+          ) : (
+            <p>Sem matrícula vigente</p>
+          )}
+          {status.blockReasons.length > 0 && (
+            <ul aria-label="Motivos do bloqueio" className="list-disc pl-5">
+              {status.blockReasons.map((reason) => (
+                <li key={reason}>{BLOCK_REASON_LABELS[reason]}</li>
+              ))}
+            </ul>
+          )}
+          {registeredAt ? (
+            <Alert data-motion="feedback">Presença registrada às {formatTime(registeredAt)}.</Alert>
+          ) : status.checkedInAt ? (
+            <p>Presença já registrada hoje às {formatTime(status.checkedInAt)}.</p>
+          ) : (
+            allowed && (
+              <div>
+                <Button busy={pending} onClick={onRegister}>
+                  Registrar presença
+                </Button>
+              </div>
+            )
+          )}
+        </div>
       </div>
-    </section>
+    </Panel>
   );
 }

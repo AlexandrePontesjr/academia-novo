@@ -10,10 +10,8 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
-  StaggerCell,
-  Table,
-  TableHead,
-  TableRow,
+  ListOrTable,
+  StatusBadge,
 } from '@academia/ui';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -24,8 +22,9 @@ import { formatPhone } from '../../lib/students.ts';
 const FAILED = 'Não foi possível concluir. Tente novamente.';
 
 /**
- * A tabela de interessados com as ações de cada linha: marcar contatado e reabrir sem confirmação,
- * descartar num diálogo que nomeia o interessado, e matricular para quem cadastra aluno.
+ * A lista de interessados com as ações de cada linha: marcar contatado e reabrir sem confirmação,
+ * descartar num diálogo que nomeia o interessado, e matricular para quem cadastra aluno. A tabela vira
+ * cartões abaixo de 768 px (AC 50) e a situação é o `StatusBadge` da door 7.
  */
 export function LeadsTable({ leads, canConvert }: { leads: Lead[]; canConvert: boolean }) {
   const [rows, setRows] = useState(leads);
@@ -50,70 +49,62 @@ export function LeadsTable({ leads, canConvert }: { leads: Lead[]; canConvert: b
 
   return (
     <>
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Nome</TableHead>
-            <TableHead>E-mail</TableHead>
-            <TableHead>Telefone</TableHead>
-            <TableHead>Origem</TableHead>
-            <TableHead>E-mail confirmado</TableHead>
-            <TableHead>Recebido em</TableHead>
-            <TableHead>Situação</TableHead>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((lead, index) => (
-            <TableRow key={lead.id} data-lead={lead.id}>
-              <StaggerCell index={index}>{lead.name}</StaggerCell>
-              <StaggerCell index={index} className="break-all">
-                {lead.email}
-              </StaggerCell>
-              <StaggerCell index={index} className="whitespace-nowrap">
-                {formatPhone(lead.phone)}
-              </StaggerCell>
-              <StaggerCell index={index}>{LEAD_SOURCE_LABELS[lead.source]}</StaggerCell>
-              <StaggerCell index={index}>{lead.emailVerified ? 'Sim' : 'Não'}</StaggerCell>
-              <StaggerCell index={index} className="whitespace-nowrap">
-                {formatReceivedAt(lead.createdAt)}
-              </StaggerCell>
-              {/* as ações da linha moram na célula da situação: a tabela tem as sete colunas da AC 48 */}
-              <StaggerCell index={index}>
-                <span className="block" data-slot="lead-status">
+      <ListOrTable
+        head={['Nome', 'E-mail', 'Telefone', 'Origem', 'E-mail confirmado', 'Recebido em', 'Situação']}
+        rows={rows.map((lead) => ({
+          key: lead.id,
+          rowProps: { 'data-lead': lead.id },
+          cells: [
+            lead.name,
+            <span key="email" className="break-all">
+              {lead.email}
+            </span>,
+            <span key="phone" className="whitespace-nowrap">
+              {formatPhone(lead.phone)}
+            </span>,
+            LEAD_SOURCE_LABELS[lead.source],
+            lead.emailVerified ? 'Sim' : 'Não',
+            <span key="received" className="whitespace-nowrap">
+              {formatReceivedAt(lead.createdAt)}
+            </span>,
+            // as ações da linha moram na célula da situação: a tabela tem as sete colunas da AC 48
+            <div key="status" className="grid gap-2">
+              <div data-slot="lead-status">
+                <StatusBadge variant="lead" status={lead.status}>
                   {LEAD_STATUS_LABELS[lead.status]}
-                </span>
-                <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-                  {lead.status === 'new' && (
-                    <Button variant="outline" busy={pending === lead.id} onClick={() => change(lead, 'contacted')}>
-                      Marcar contatado
-                    </Button>
-                  )}
-                  {(lead.status === 'new' || lead.status === 'contacted') && (
-                    <>
-                      {canConvert && (
-                        <Button asChild>
-                          <Link href={`/students/new?lead=${lead.id}`} prefetch={false}>
-                            Matricular
-                          </Link>
-                        </Button>
-                      )}
-                      <Button variant="destructive" onClick={() => setDiscarding(lead)}>
-                        Descartar
+                </StatusBadge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 empty:hidden">
+                {lead.status === 'new' && (
+                  <Button variant="outline" busy={pending === lead.id} onClick={() => change(lead, 'contacted')}>
+                    Marcar contatado
+                  </Button>
+                )}
+                {(lead.status === 'new' || lead.status === 'contacted') && (
+                  <>
+                    {canConvert && (
+                      <Button asChild>
+                        <Link href={`/students/new?lead=${lead.id}`} prefetch={false}>
+                          Matricular
+                        </Link>
                       </Button>
-                    </>
-                  )}
-                  {lead.status === 'discarded' && (
-                    <Button variant="outline" busy={pending === lead.id} onClick={() => change(lead, 'new')}>
-                      Reabrir
+                    )}
+                    <Button variant="destructive" onClick={() => setDiscarding(lead)}>
+                      Descartar
                     </Button>
-                  )}
-                </div>
-                {alerts[lead.id] && <Alert variant="destructive">{alerts[lead.id]}</Alert>}
-              </StaggerCell>
-            </TableRow>
-          ))}
-        </tbody>
-      </Table>
+                  </>
+                )}
+                {lead.status === 'discarded' && (
+                  <Button variant="outline" busy={pending === lead.id} onClick={() => change(lead, 'new')}>
+                    Reabrir
+                  </Button>
+                )}
+              </div>
+              {alerts[lead.id] && <Alert variant="destructive">{alerts[lead.id]}</Alert>}
+            </div>,
+          ],
+        }))}
+      />
 
       <Dialog open={discarding !== undefined} onOpenChange={(open) => !open && setDiscarding(undefined)}>
         <DialogContent>

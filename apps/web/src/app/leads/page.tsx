@@ -1,4 +1,5 @@
 import { leadStatusSchema } from '@academia/contracts';
+import { EmptyState, ScreenHeader, UserIcon } from '@academia/ui';
 import { Shell } from '../../components/shell.tsx';
 import { PAGE_BODY } from '../../components/page-body.ts';
 import { canReadLeads } from '../../lib/leads.ts';
@@ -21,17 +22,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Interessados</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Interessados" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {!allowed ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : (
           <>
-            <LeadStatusFilter value={status} />
+            <LeadStatusFilter value={status} {...(leads === undefined ? {} : { count: leads.length })} />
             {!leads ? (
               <LeadsLoadError />
             ) : leads.length === 0 ? (
-              <p>Nenhum interessado.</p>
+              <EmptyState icon={<UserIcon />} title="Nenhum interessado." />
             ) : (
               // converte quem cadastra aluno: o "Matricular" abre o cadastro (door 9)
               <LeadsTable key={status ?? ''} leads={leads} canConvert={canWriteStudents(session.user.role)} />

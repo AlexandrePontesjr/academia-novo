@@ -1,11 +1,12 @@
 import { type Guardian, type Student, studentConsentsResponseSchema, studentSchema } from '@academia/contracts';
+import { ScreenHeader } from '@academia/ui';
 import { headers } from 'next/headers';
 import { Shell } from '../../../../components/shell.tsx';
+import { PAGE_BODY } from '../../../../components/page-body.ts';
 import { fetchApi, requireSession } from '../../../../lib/session.ts';
 import { canWriteStudents } from '../../../../lib/students.ts';
 import { StudentForm } from '../../student-form.tsx';
 import { StudentsLoadError } from '../../students-load-error.tsx';
-import { PAGE_BODY } from '../../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +43,8 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Editar aluno</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Editar aluno" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {student === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : student === 'failed' ? (

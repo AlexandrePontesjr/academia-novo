@@ -1,8 +1,18 @@
 import type { DashboardResponse } from '@academia/contracts';
-import { ArrowUpRightIcon, Gauge, MetricTile, Panel, PANEL_ARROW, StatPill, Table, TableCell, TableHead, TableRow, WeekBars } from '@academia/ui';
+import {
+  ArrowUpRightIcon,
+  Gauge,
+  ListOrTable,
+  MetricTile,
+  Panel,
+  PANEL_ARROW,
+  ScreenHeader,
+  StatPill,
+  WeekBars,
+} from '@academia/ui';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { Shell } from '../../components/shell.tsx';
+import { TEXT_LINK } from '../../components/link-class.ts';
 import { loadDashboard } from '../../lib/dashboard-server.ts';
 import { PERIOD_LABELS } from '../../lib/plans.ts';
 import { requireSession } from '../../lib/session.ts';
@@ -12,7 +22,7 @@ import { DashboardLoadError } from './dashboard-load-error.tsx';
 // A sessão é conferida a cada requisição, nunca no build.
 export const dynamic = 'force-dynamic';
 
-const LINK = 'text-primary underline underline-offset-4';
+const LINK = TEXT_LINK;
 
 /** O botão ↗ do canto do cartão, com o nome do link de texto que ele substitui (AC 13). */
 function Arrow({ href, label }: { href: string; label: string }) {
@@ -25,45 +35,6 @@ function Arrow({ href, label }: { href: string; label: string }) {
 
 type Plan = NonNullable<DashboardResponse['enrollments']>['byPlan'][number]['plan'];
 const planLabel = (plan: Plan) => `${plan.name} · ${PERIOD_LABELS[plan.period]}`;
-
-/** Uma lista do painel: linhas empilhadas no celular, a `Table` existente a partir de 768 px (AC 19). */
-function ListOrTable({ head, rows }: { head: string[]; rows: Array<{ key: string; cells: ReactNode[] }> }) {
-  return (
-    <>
-      <ul className="grid gap-2 md:hidden" data-slot="panel-rows">
-        {rows.map(({ key, cells }) => (
-          <li key={key} className="grid gap-1 rounded-xl bg-muted p-3 text-sm">
-            {cells.map((cell, index) => (
-              <span key={head[index]} className={index === 0 ? 'font-semibold' : 'text-muted-foreground'}>
-                {cell}
-              </span>
-            ))}
-          </li>
-        ))}
-      </ul>
-      <div className="hidden md:block">
-        <Table>
-          <thead>
-            <tr>
-              {head.map((title) => (
-                <TableHead key={title}>{title}</TableHead>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ key, cells }) => (
-              <TableRow key={key}>
-                {cells.map((cell, index) => (
-                  <TableCell key={head[index]}>{cell}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </tbody>
-        </Table>
-      </div>
-    </>
-  );
-}
 
 /** Os cards seguem as chaves da resposta, não o perfil da sessão: quem corta é a API (door 1). */
 function Cards({ dashboard }: { dashboard: DashboardResponse }) {
@@ -164,6 +135,7 @@ function Cards({ dashboard }: { dashboard: DashboardResponse }) {
           ) : (
             <ListOrTable
               head={['Plano', 'Matrículas ativas']}
+              numeric={[1]}
               rows={enrollments.byPlan.map(({ plan, active }) => ({ key: plan.id, cells: [planLabel(plan), active] }))}
             />
           )}
@@ -180,11 +152,11 @@ export default async function DashboardPage() {
 
   return (
     <Shell session={session} {...(overdue > 0 ? { alert: 'Há pagamentos atrasados' } : {})}>
-      <p>Olá, {session.user.name}.</p>
-      <div>
-        <h2 className="text-3xl font-medium">Painel</h2>
-        {dashboard && <p className="text-sm text-muted-foreground">Situação em {formatBirthDate(dashboard.today)}</p>}
-      </div>
+      <ScreenHeader
+        eyebrow={`Olá, ${session.user.name}.`}
+        title="Painel"
+        meta={dashboard ? `Situação em ${formatBirthDate(dashboard.today)}` : undefined}
+      />
       {dashboard ? <Cards dashboard={dashboard} /> : <DashboardLoadError />}
     </Shell>
   );

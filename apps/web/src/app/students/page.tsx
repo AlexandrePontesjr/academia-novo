@@ -1,14 +1,14 @@
 import { type StudentsResponse, studentsResponseSchema } from '@academia/contracts';
-import { Alert, Button } from '@academia/ui';
+import { Alert, Button, ScreenHeader } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { Shell } from '../../components/shell.tsx';
 import { ANONYMIZED_NOTICE } from '../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { canWriteStudents } from '../../lib/students.ts';
+import { PAGE_BODY } from '../../components/page-body.ts';
 import { StudentsList } from './students-list.tsx';
 import { StudentsLoadError } from './students-load-error.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +31,17 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <Shell session={session}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-medium">Alunos</h2>
-        {canWriteStudents(session.user.role) && (
-          <Button asChild>
-            <Link href="/students/new">Novo aluno</Link>
-          </Button>
-        )}
-      </div>
-      <div className={PAGE_BODY}>
+      <ScreenHeader
+        title="Alunos"
+        actions={
+          canWriteStudents(session.user.role) ? (
+            <Button asChild>
+              <Link href="/students/new">Novo aluno</Link>
+            </Button>
+          ) : undefined
+        }
+      />
+      <div className={PAGE_BODY} data-slot="page-body">
         {anonymized && <Alert>{ANONYMIZED_NOTICE}</Alert>}
         {page ? <StudentsList initial={page} role={session.user.role} /> : <StudentsLoadError />}
       </div>

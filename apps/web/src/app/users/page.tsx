@@ -1,10 +1,11 @@
 import { type User, usersResponseSchema } from '@academia/contracts';
+import { ScreenHeader } from '@academia/ui';
 import { headers } from 'next/headers';
 import { Shell } from '../../components/shell.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 import { fetchApi, requireSession } from '../../lib/session.ts';
 import { UsersLoadError } from './users-load-error.tsx';
 import { UsersPanel } from './users-panel.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +31,8 @@ export default async function UsersPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Usuários</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Usuários" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {users === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : users === 'failed' ? (

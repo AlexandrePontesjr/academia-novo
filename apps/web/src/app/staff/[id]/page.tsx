@@ -1,10 +1,11 @@
 import { type Staff, staffSchema, usersResponseSchema } from '@academia/contracts';
-import { Alert, Button } from '@academia/ui';
+import { Alert, Button, PANEL, ScreenHeader, StatusBadge } from '@academia/ui';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { PhotoBlock } from '../../../components/photo/photo-block.tsx';
 import { PrivacyBlock } from '../../../components/privacy/privacy-block.tsx';
 import { Shell } from '../../../components/shell.tsx';
+import { PAGE_BODY } from '../../../components/page-body.ts';
 import { ROLE_LABELS } from '../../../lib/roles.ts';
 import { canUsePrivacy } from '../../../lib/privacy.ts';
 import { fetchApi, requireSession } from '../../../lib/session.ts';
@@ -13,7 +14,6 @@ import { formatBirthDate, formatCpf, formatPhone, STATUS_LABELS } from '../../..
 import { StaffLoadError } from '../staff-load-error.tsx';
 import { StaffStatusActions } from './status-actions.tsx';
 import { type LinkableUser, UserLink } from './user-link.tsx';
-import { PAGE_BODY } from '../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +46,16 @@ async function loadUsers(): Promise<LinkableUser[] | 'failed'> {
   }
 }
 
+/** Um campo da ficha: o rótulo e o valor, como o `dt`/`dd` das outras fichas. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="break-words">{children}</dd>
+    </div>
+  );
+}
+
 export default async function StaffMemberPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   const { id } = await params;
@@ -57,92 +67,90 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
   return (
     <Shell session={session}>
       {staff === 'forbidden' ? (
-        <p>Você não tem permissão para acessar esta página.</p>
+        <>
+          <ScreenHeader title="Funcionário" />
+          <p>Você não tem permissão para acessar esta página.</p>
+        </>
       ) : staff === 'failed' ? (
-        <StaffLoadError />
+        <>
+          <ScreenHeader title="Funcionário" />
+          <StaffLoadError />
+        </>
       ) : staff === 'notfound' ? (
-        <p>Funcionário não encontrado.</p>
+        <>
+          <ScreenHeader title="Funcionário" />
+          <p>Funcionário não encontrado.</p>
+        </>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-3xl font-medium">{staff.name}</h2>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" asChild>
-                <Link href={`/staff/${staff.id}/edit`}>Editar</Link>
-              </Button>
-              <StaffStatusActions id={staff.id} name={staff.name} status={staff.status} />
-            </div>
-          </div>
+          <ScreenHeader
+            title={staff.name}
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" asChild>
+                  <Link href={`/staff/${staff.id}/edit`}>Editar</Link>
+                </Button>
+                <StaffStatusActions id={staff.id} name={staff.name} status={staff.status} />
+              </div>
+            }
+          />
           {staff.status === 'inactive' && staff.user?.active && (
             <Alert>Este funcionário está inativo e o usuário vinculado continua ativo.</Alert>
           )}
-          <div className={PAGE_BODY}>
-            <PhotoBlock
-              url={`/api/staff/${staff.id}/photo`}
-              conflict="Este funcionário já tem foto."
-              name={staff.name}
-              photoUrl={staff.photoUrl}
-              canWrite
-            />
-            <dl className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <dt className="text-sm text-muted-foreground">Situação</dt>
-                <dd>{STATUS_LABELS[staff.status]}</dd>
+          <div className={PAGE_BODY} data-slot="page-body">
+            <div className={`grid gap-6 ${PANEL}`} data-slot="identity">
+              <div className="flex flex-wrap items-start gap-6">
+                <PhotoBlock
+                  url={`/api/staff/${staff.id}/photo`}
+                  conflict="Este funcionário já tem foto."
+                  name={staff.name}
+                  photoUrl={staff.photoUrl}
+                  canWrite
+                />
+                <div className="grid content-start gap-3">
+                  <p className="text-xl font-medium" data-slot="identity-name">
+                    {staff.name}
+                  </p>
+                </div>
               </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">CPF</dt>
-                <dd>{formatCpf(staff.cpf)}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Cargo</dt>
-                <dd className="break-words">{staff.position}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Setor</dt>
-                <dd className="break-words">{staff.department ?? NONE}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Data de admissão</dt>
-                <dd>{formatBirthDate(staff.hiredAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Telefone</dt>
-                <dd>{formatPhone(staff.phone)}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">E-mail</dt>
-                <dd className="break-words">{staff.email ?? NONE}</dd>
-              </div>
-            </dl>
-          </div>
-          <section aria-labelledby="access-title" className="grid gap-3">
-            <h3 id="access-title" className="font-semibold">
-              Acesso ao sistema
-            </h3>
-            {staff.user ? (
               <dl className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm text-muted-foreground">E-mail do usuário</dt>
-                  <dd className="break-words">{staff.user.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Perfil</dt>
-                  <dd>{ROLE_LABELS[staff.user.role]}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Situação do usuário</dt>
-                  <dd>{staff.user.active ? 'Ativo' : 'Inativo'}</dd>
-                </div>
+                <Field label="Situação">
+                  <StatusBadge variant="staff" status={staff.status}>
+                    {STATUS_LABELS[staff.status]}
+                  </StatusBadge>
+                </Field>
+                <Field label="CPF">{formatCpf(staff.cpf)}</Field>
+                <Field label="Cargo">{staff.position}</Field>
+                <Field label="Setor">{staff.department ?? NONE}</Field>
+                <Field label="Data de admissão">{formatBirthDate(staff.hiredAt)}</Field>
+                <Field label="Telefone">{formatPhone(staff.phone)}</Field>
+                <Field label="E-mail">{staff.email ?? NONE}</Field>
               </dl>
-            ) : (
-              <p>Sem usuário vinculado</p>
-            )}
-            {users === 'failed' && <Alert variant="destructive">Não foi possível carregar os usuários.</Alert>}
-            {Array.isArray(users) && (
-              <UserLink key={staff.user?.id ?? 'none'} staffId={staff.id} current={staff.user?.id ?? null} users={users} />
-            )}
-          </section>
-          {canUsePrivacy(session.user.role) && <PrivacyBlock subject="staff" id={staff.id} name={staff.name} />}
+            </div>
+            <section aria-labelledby="access-title" className={`grid content-start gap-4 ${PANEL}`}>
+              <h3 id="access-title" className="text-lg font-semibold">
+                Acesso ao sistema
+              </h3>
+              {staff.user ? (
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  <Field label="E-mail do usuário">{staff.user.email}</Field>
+                  <Field label="Perfil">{ROLE_LABELS[staff.user.role]}</Field>
+                  <Field label="Situação do usuário">
+                    <StatusBadge variant="user" status={staff.user.active ? 'active' : 'inactive'}>
+                      {staff.user.active ? 'Ativo' : 'Inativo'}
+                    </StatusBadge>
+                  </Field>
+                </dl>
+              ) : (
+                <p>Sem usuário vinculado</p>
+              )}
+              {users === 'failed' && <Alert variant="destructive">Não foi possível carregar os usuários.</Alert>}
+              {Array.isArray(users) && (
+                <UserLink key={staff.user?.id ?? 'none'} staffId={staff.id} current={staff.user?.id ?? null} users={users} />
+              )}
+            </section>
+            {canUsePrivacy(session.user.role) && <PrivacyBlock subject="staff" id={staff.id} name={staff.name} />}
+          </div>
         </>
       )}
     </Shell>

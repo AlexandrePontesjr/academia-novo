@@ -1,11 +1,12 @@
-import { Button, StaggerCell, Table, TableHead, TableRow } from '@academia/ui';
+import { Button, EmptyState, ListOrTable, ScreenHeader, StatusBadge, LayersIcon } from '@academia/ui';
 import Link from 'next/link';
 import { Shell } from '../../components/shell.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
+import { TEXT_LINK } from '../../components/link-class.ts';
 import { loadPlans } from '../../lib/plans-server.ts';
 import { canReadPlans, canWritePlans, formatPrice, PERIOD_LABELS, PLAN_STATUS_LABELS } from '../../lib/plans.ts';
 import { requireSession } from '../../lib/session.ts';
 import { PlansLoadError } from './plans-load-error.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,59 +19,51 @@ export default async function PlansPage() {
 
   return (
     <Shell session={session}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-medium">Planos</h2>
-        {canWrite && (
-          <Button asChild>
-            <Link href="/plans/new" prefetch={false}>
-              Novo plano
-            </Link>
-          </Button>
-        )}
-      </div>
-      <div className={PAGE_BODY}>
+      <ScreenHeader
+        title="Planos"
+        actions={
+          canWrite ? (
+            <Button asChild>
+              <Link href="/plans/new" prefetch={false}>
+                Novo plano
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
+      <div className={PAGE_BODY} data-slot="page-body">
         {!allowed ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : !plans ? (
           <PlansLoadError />
         ) : plans.length === 0 ? (
-          <p>Nenhum plano cadastrado.</p>
+          <EmptyState icon={<LayersIcon />} title="Nenhum plano cadastrado." />
         ) : (
-          <Table>
-            <thead>
-              <tr>
-                <TableHead>Nome</TableHead>
-                <TableHead>Periodicidade</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Regras de acesso</TableHead>
-                <TableHead>Situação</TableHead>
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((plan, index) => (
-                <TableRow key={plan.id}>
-                  <StaggerCell index={index}>
-                    {canWrite ? (
-                      // a edição pede a lista de planos: nada de pré-carregar uma por linha
-                      <Link
-                        href={`/plans/${plan.id}/edit`}
-                        prefetch={false}
-                        className="text-primary underline underline-offset-4"
-                      >
-                        {plan.name}
-                      </Link>
-                    ) : (
-                      plan.name
-                    )}
-                  </StaggerCell>
-                  <StaggerCell index={index}>{PERIOD_LABELS[plan.period]}</StaggerCell>
-                  <StaggerCell index={index} className="whitespace-nowrap">{formatPrice(plan.priceCents)}</StaggerCell>
-                  <StaggerCell index={index} className="break-words whitespace-pre-wrap">{plan.rules ?? '—'}</StaggerCell>
-                  <StaggerCell index={index}>{PLAN_STATUS_LABELS[plan.status]}</StaggerCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
+          <ListOrTable
+            head={['Nome', 'Periodicidade', 'Valor', 'Regras de acesso', 'Situação']}
+            numeric={[2]}
+            rows={plans.map((plan) => ({
+              key: plan.id,
+              cells: [
+                canWrite ? (
+                  // a edição pede a lista de planos: nada de pré-carregar uma por linha
+                  <Link key="name" href={`/plans/${plan.id}/edit`} prefetch={false} className={TEXT_LINK}>
+                    {plan.name}
+                  </Link>
+                ) : (
+                  plan.name
+                ),
+                PERIOD_LABELS[plan.period],
+                formatPrice(plan.priceCents),
+                <span key="rules" className="line-clamp-2 break-words whitespace-pre-wrap">
+                  {plan.rules ?? '—'}
+                </span>,
+                <StatusBadge key="status" variant="plan" status={plan.status}>
+                  {PLAN_STATUS_LABELS[plan.status]}
+                </StatusBadge>,
+              ],
+            }))}
+          />
         )}
       </div>
     </Shell>

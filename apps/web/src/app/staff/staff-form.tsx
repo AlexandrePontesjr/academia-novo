@@ -2,7 +2,9 @@
 
 import { createStaffRequestSchema, type Staff, updateStaffRequestSchema } from '@academia/contracts';
 import { Alert, Button } from '@academia/ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { TextField } from '../../components/text-field.tsx';
@@ -52,6 +54,16 @@ function bodyOf(values: FormValues, initial: FormValues | undefined): Record<str
   return body;
 }
 
+/** A seção do formulário: um grupo de campos com o mesmo título, na mesma coluna (AC 55). */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-medium text-muted-foreground">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
 /** Formulário de cadastro (`/staff/new`) e de edição (`/staff/<id>/edit`) de funcionário. */
 export function StaffForm({ staff }: { staff?: Staff }) {
   const router = useRouter();
@@ -86,24 +98,38 @@ export function StaffForm({ staff }: { staff?: Staff }) {
   }
 
   return (
-    <form noValidate className="grid max-w-xl gap-4" onSubmit={form.handleSubmit(submit)}>
+    <form noValidate className="grid max-w-xl gap-6" onSubmit={form.handleSubmit(submit)}>
       {alert && <Alert variant="destructive">{alert}</Alert>}
-      <TextField label="Nome completo" autoComplete="off" error={errors.name?.message} registration={form.register('name')} />
-      <TextField label="CPF" inputMode="numeric" autoComplete="off" error={errors.cpf?.message} registration={form.register('cpf')} />
-      <TextField label="Cargo" autoComplete="off" error={errors.position?.message} registration={form.register('position')} />
-      <TextField label="Setor" autoComplete="off" error={errors.department?.message} registration={form.register('department')} />
-      <TextField
-        label="Data de admissão"
-        type="date"
-        error={errors.hiredAt?.message}
-        registration={form.register('hiredAt')}
-      />
-      <TextField label="Telefone" type="tel" autoComplete="off" error={errors.phone?.message} registration={form.register('phone')} />
-      <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
-      <div>
+      <Section title="Identificação">
+        <TextField label="Nome completo" autoComplete="off" required error={errors.name?.message} registration={form.register('name')} />
+        <TextField label="CPF" inputMode="numeric" autoComplete="off" required error={errors.cpf?.message} registration={form.register('cpf')} />
+      </Section>
+      <Section title="Vínculo">
+        <TextField label="Cargo" autoComplete="off" required error={errors.position?.message} registration={form.register('position')} />
+        <TextField label="Setor" autoComplete="off" error={errors.department?.message} registration={form.register('department')} />
+        <TextField
+          label="Data de admissão"
+          type="date"
+          required
+          error={errors.hiredAt?.message}
+          registration={form.register('hiredAt')}
+        />
+      </Section>
+      <Section title="Contato">
+        <TextField label="Telefone" type="tel" autoComplete="off" required error={errors.phone?.message} registration={form.register('phone')} />
+        <TextField label="E-mail" type="email" autoComplete="off" error={errors.email?.message} registration={form.register('email')} />
+      </Section>
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" busy={isSubmitting}>
           Salvar
         </Button>
+        {staff && (
+          <Button variant="outline" asChild>
+            <Link href={`/staff/${staff.id}`} prefetch={false}>
+              Cancelar
+            </Link>
+          </Button>
+        )}
       </div>
     </form>
   );

@@ -1,10 +1,11 @@
+import { ScreenHeader } from '@academia/ui';
 import { Shell } from '../../components/shell.tsx';
+import { PAGE_BODY } from '../../components/page-body.ts';
 import { canUsePrivacy } from '../../lib/privacy.ts';
 import { loadPrivacySettings } from '../../lib/privacy-server.ts';
 import { requireSession } from '../../lib/session.ts';
 import { PrivacyForm } from './privacy-form.tsx';
 import { PrivacyLoadError } from './privacy-load-error.tsx';
-import { PAGE_BODY } from '../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,8 @@ export default async function PrivacyPage() {
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Privacidade</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Privacidade" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {!allowed ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : settings === 'failed' || !settings ? (

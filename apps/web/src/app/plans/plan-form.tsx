@@ -1,11 +1,13 @@
 'use client';
 
 import { createPlanRequestSchema, PLAN_PERIODS, type Plan, updatePlanRequestSchema } from '@academia/contracts';
-import { Alert, Button, Label, Select } from '@academia/ui';
+import { Alert, Button, Select } from '@academia/ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { TextField } from '../../components/text-field.tsx';
+import { FieldLabel, TextField } from '../../components/text-field.tsx';
 import { callApi, showFieldErrors, UNAVAILABLE } from '../../lib/api.ts';
 import { parsePrice, PERIOD_LABELS, priceInputOf } from '../../lib/plans.ts';
 
@@ -44,6 +46,16 @@ function bodyOf(values: FormValues, priceCents: number | undefined, plan: Plan |
   };
 }
 
+/** A seção do formulário: um grupo de campos com o mesmo título, na mesma coluna (AC 55). */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="grid gap-4">
+      <legend className="text-sm font-medium text-muted-foreground">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
 /** Formulário de cadastro (`/plans/new`) e de edição (`/plans/<id>/edit`) de plano. */
 export function PlanForm({ plan }: { plan?: Plan }) {
   const router = useRouter();
@@ -79,59 +91,74 @@ export function PlanForm({ plan }: { plan?: Plan }) {
   }
 
   return (
-    <form noValidate className="grid max-w-xl gap-4" onSubmit={form.handleSubmit(submit)}>
+    <form noValidate className="grid max-w-xl gap-6" onSubmit={form.handleSubmit(submit)}>
       {alert && <Alert variant="destructive">{alert}</Alert>}
-      <TextField label="Nome" autoComplete="off" error={errors.name?.message} registration={form.register('name')} />
-      <div className="grid gap-1.5">
-        <Label htmlFor={periodId}>Periodicidade</Label>
-        {/* a periodicidade não muda depois do cadastro: mudar é criar outro plano (door 1) */}
-        <Select
-          id={periodId}
-          disabled={plan !== undefined}
-          aria-invalid={errors.period ? true : undefined}
-          aria-describedby={errors.period ? `${periodId}-error` : undefined}
-          {...form.register('period')}
-        >
-          <option value=""></option>
-          {PLAN_PERIODS.map((period) => (
-            <option key={period} value={period}>
-              {PERIOD_LABELS[period]}
-            </option>
-          ))}
-        </Select>
-        {errors.period && (
-          <p id={`${periodId}-error`} className="text-sm text-status-bad">
-            {errors.period.message}
-          </p>
-        )}
-      </div>
-      <TextField
-        label="Valor (R$)"
-        inputMode="decimal"
-        autoComplete="off"
-        error={errors.priceCents?.message}
-        registration={form.register('priceCents')}
-      />
-      <div className="grid gap-1.5">
-        <Label htmlFor={rulesId}>Regras de acesso</Label>
-        <textarea
-          id={rulesId}
-          rows={4}
-          aria-invalid={errors.rules ? true : undefined}
-          aria-describedby={errors.rules ? `${rulesId}-error` : undefined}
-          className="w-full rounded-xl border border-border-control bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-status-bad"
-          {...form.register('rules')}
+      <Section title="Dados do plano">
+        <TextField label="Nome" autoComplete="off" required error={errors.name?.message} registration={form.register('name')} />
+        <div className="grid gap-1.5">
+          <FieldLabel htmlFor={periodId} required>
+            Periodicidade
+          </FieldLabel>
+          {/* a periodicidade não muda depois do cadastro: mudar é criar outro plano (door 1) */}
+          <Select
+            id={periodId}
+            required
+            disabled={plan !== undefined}
+            aria-invalid={errors.period ? true : undefined}
+            aria-describedby={errors.period ? `${periodId}-error` : undefined}
+            {...form.register('period')}
+          >
+            <option value=""></option>
+            {PLAN_PERIODS.map((period) => (
+              <option key={period} value={period}>
+                {PERIOD_LABELS[period]}
+              </option>
+            ))}
+          </Select>
+          {errors.period && (
+            <p id={`${periodId}-error`} className="text-sm text-status-bad">
+              {errors.period.message}
+            </p>
+          )}
+        </div>
+        <TextField
+          label="Valor (R$)"
+          inputMode="decimal"
+          autoComplete="off"
+          required
+          error={errors.priceCents?.message}
+          registration={form.register('priceCents')}
         />
-        {errors.rules && (
-          <p id={`${rulesId}-error`} className="text-sm text-status-bad">
-            {errors.rules.message}
-          </p>
-        )}
-      </div>
-      <div>
+      </Section>
+      <Section title="Regras de acesso">
+        <div className="grid gap-1.5">
+          <FieldLabel htmlFor={rulesId}>Regras de acesso</FieldLabel>
+          <textarea
+            id={rulesId}
+            rows={4}
+            aria-invalid={errors.rules ? true : undefined}
+            aria-describedby={errors.rules ? `${rulesId}-error` : undefined}
+            className="w-full rounded-xl border border-border-control bg-card px-4 py-2.5 text-sm text-foreground aria-invalid:border-status-bad"
+            {...form.register('rules')}
+          />
+          {errors.rules && (
+            <p id={`${rulesId}-error`} className="text-sm text-status-bad">
+              {errors.rules.message}
+            </p>
+          )}
+        </div>
+      </Section>
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" busy={isSubmitting}>
           Salvar
         </Button>
+        {plan && (
+          <Button variant="outline" asChild>
+            <Link href="/plans" prefetch={false}>
+              Cancelar
+            </Link>
+          </Button>
+        )}
       </div>
     </form>
   );

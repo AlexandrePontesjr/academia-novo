@@ -24,6 +24,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  StatusBadge,
 } from '@academia/ui';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
@@ -115,16 +116,16 @@ export function EnrollmentsBlock({
                 <TableCell>{formatBirthDate(item.endsAt)}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatPrice(item.priceCents)}</TableCell>
                 <TableCell>
-                  {canWrite && item.status !== 'cancelled' ? (
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span>{ENROLLMENT_STATUS_LABELS[item.status]}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <StatusBadge variant="enrollment" status={item.status}>
+                      {ENROLLMENT_STATUS_LABELS[item.status]}
+                    </StatusBadge>
+                    {canWrite && item.status !== 'cancelled' && (
                       <Button variant="outline" size="sm" onClick={() => setCancelling(item)}>
                         Cancelar
                       </Button>
-                    </div>
-                  ) : (
-                    ENROLLMENT_STATUS_LABELS[item.status]
-                  )}
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

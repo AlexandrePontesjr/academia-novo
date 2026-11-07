@@ -259,3 +259,59 @@
     color: #000000;
   }
 }
+
+/* Refino visual (AC 23 e AC 9): a resposta ao ponteiro das peças do app - a régua que o link de
+   texto desenha, o cartão linkado que sobe 2 px, o botão que sobe 1 px - e o repouso de tudo com
+   movimento reduzido, sem tocar no bloco de movimento da `motion`. */
+.link-rule {
+  position: relative;
+}
+
+.link-rule::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.25rem;
+  height: 1px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 150ms var(--motion-ease);
+}
+
+.link-rule:hover::after {
+  transform: scaleX(1);
+}
+
+.lift {
+  transition: transform 150ms var(--motion-ease);
+}
+
+.lift:hover {
+  transform: translateY(-2px);
+}
+
+/* O botão do tema (Button): sobe 1 px no hover e encolhe a 0.98 no :active, pelo .pressable. */
+.button-lift {
+  transition:
+    transform 150ms var(--motion-ease),
+    background-color 150ms var(--motion-ease);
+}
+
+.button-lift:hover:not(:active) {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-rule::after {
+    transition: none;
+  }
+
+  .lift,
+  .lift:hover,
+  .button-lift,
+  .button-lift:hover:not(:active) {
+    transition: none;
+    transform: none;
+  }
+}

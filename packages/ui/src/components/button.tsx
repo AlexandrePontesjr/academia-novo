@@ -5,7 +5,7 @@ import { cn } from '../cn.ts';
 
 const buttonVariants = cva(
   // `pressable`: o toque encolhe o botão a 0,98 em 150 ms, pelo CSS do tema (motion, door 5)
-  'pressable inline-flex items-center justify-center gap-2 rounded-[9999px] text-sm font-medium whitespace-nowrap disabled:pointer-events-none disabled:opacity-50',
+  'pressable button-lift inline-flex items-center justify-center gap-2 rounded-[9999px] text-sm font-medium whitespace-nowrap disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {

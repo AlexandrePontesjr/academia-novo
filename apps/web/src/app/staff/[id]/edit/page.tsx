@@ -1,11 +1,12 @@
 import { type Staff, staffSchema } from '@academia/contracts';
+import { ScreenHeader } from '@academia/ui';
 import { headers } from 'next/headers';
 import { Shell } from '../../../../components/shell.tsx';
+import { PAGE_BODY } from '../../../../components/page-body.ts';
 import { fetchApi, requireSession } from '../../../../lib/session.ts';
 import { canAccessStaff } from '../../../../lib/staff.ts';
 import { StaffForm } from '../../staff-form.tsx';
 import { StaffLoadError } from '../../staff-load-error.tsx';
-import { PAGE_BODY } from '../../../../components/page-body.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,8 +30,8 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
 
   return (
     <Shell session={session}>
-      <h2 className="text-3xl font-medium">Editar funcionário</h2>
-      <div className={PAGE_BODY}>
+      <ScreenHeader title="Editar funcionário" />
+      <div className={PAGE_BODY} data-slot="page-body">
         {staff === 'forbidden' ? (
           <p>Você não tem permissão para acessar esta página.</p>
         ) : staff === 'failed' ? (

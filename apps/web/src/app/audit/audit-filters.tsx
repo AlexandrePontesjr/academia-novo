@@ -1,9 +1,10 @@
 'use client';
 
 import { AUDIT_ACTIONS } from '@academia/contracts';
-import { Button, Input, Label, Select } from '@academia/ui';
+import { Input, Label, Select } from '@academia/ui';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, type ReactNode, useId } from 'react';
+import { FilterActions, FilterToolbar } from '../../components/filter-toolbar.tsx';
 import { ACTION_LABELS, AUDIT_FILTERS, type AuditFilterValues } from '../../lib/audit.ts';
 
 interface AuditFiltersProps {
@@ -11,6 +12,8 @@ interface AuditFiltersProps {
   users: Array<{ id: string; name: string }>;
   /** As mensagens do `422` da API, pelo nome do filtro. */
   errors: Partial<Record<keyof AuditFilterValues, string>>;
+  /** quantos registros a página devolveu; sem a resposta, a contagem não aparece. */
+  count?: number;
 }
 
 function Field({
@@ -40,8 +43,11 @@ function Field({
   );
 }
 
-/** Os filtros acima da tabela. Filtrar leva os preenchidos para a query string; limpar, nenhum. */
-export function AuditFilters({ values, users, errors }: AuditFiltersProps) {
+/**
+ * A toolbar da trilha: os filtros acima da tabela e o par "Filtrar"/"Limpar". Filtrar leva os
+ * preenchidos para a query string; limpar, nenhum.
+ */
+export function AuditFilters({ values, users, errors, count }: AuditFiltersProps) {
   const router = useRouter();
 
   function filter(event: FormEvent<HTMLFormElement>) {
@@ -56,49 +62,46 @@ export function AuditFilters({ values, users, errors }: AuditFiltersProps) {
   }
 
   return (
-    // a chave refaz o formulário quando os filtros da URL mudam: os campos voltam ao que ela diz
-    <form key={JSON.stringify(values)} onSubmit={filter} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Field label="De" error={errors.from}>
-          {(props) => <Input type="date" name="from" defaultValue={values.from} {...props} />}
-        </Field>
-        <Field label="Até" error={errors.to}>
-          {(props) => <Input type="date" name="to" defaultValue={values.to} {...props} />}
-        </Field>
-        <Field label="Usuário" error={errors.userId}>
-          {(props) => (
-            <Select name="userId" defaultValue={values.userId} {...props}>
-              <option value="">Todos</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
-        <Field label="Ação" error={errors.action}>
-          {(props) => (
-            <Select name="action" defaultValue={values.action} {...props}>
-              <option value="">Todas</option>
-              {AUDIT_ACTIONS.map((action) => (
-                <option key={action} value={action}>
-                  {ACTION_LABELS[action]}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
-        <Field label="IP" error={errors.ip}>
-          {(props) => <Input type="text" name="ip" defaultValue={values.ip} {...props} />}
-        </Field>
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button variant="outline" onClick={() => router.push('/audit')}>
-          Limpar filtros
-        </Button>
-      </div>
-    </form>
+    <FilterToolbar {...(count === undefined ? {} : { count })}>
+      {/* a chave refaz o formulário quando os filtros da URL mudam: os campos voltam ao que ela diz */}
+      <form key={JSON.stringify(values)} onSubmit={filter} className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <Field label="De" error={errors.from}>
+            {(props) => <Input type="date" name="from" defaultValue={values.from} {...props} />}
+          </Field>
+          <Field label="Até" error={errors.to}>
+            {(props) => <Input type="date" name="to" defaultValue={values.to} {...props} />}
+          </Field>
+          <Field label="Usuário" error={errors.userId}>
+            {(props) => (
+              <Select name="userId" defaultValue={values.userId} {...props}>
+                <option value="">Todos</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="Ação" error={errors.action}>
+            {(props) => (
+              <Select name="action" defaultValue={values.action} {...props}>
+                <option value="">Todas</option>
+                {AUDIT_ACTIONS.map((action) => (
+                  <option key={action} value={action}>
+                    {ACTION_LABELS[action]}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="IP" error={errors.ip}>
+            {(props) => <Input type="text" name="ip" defaultValue={values.ip} {...props} />}
+          </Field>
+        </div>
+        <FilterActions onClear={() => router.push('/audit')} />
+      </form>
+    </FilterToolbar>
   );
 }
