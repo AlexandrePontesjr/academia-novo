@@ -113,10 +113,11 @@ export async function animationOf(locator: Locator) {
 // C39 - o baseline de cópia, nomes e foco, gravado em `7471232` antes de qualquer código da feature
 
 /**
- * O que fica de fora do baseline da landing: o cabeçalho (antes no hero, depois o `site-header`), o
- * menu e a seção Planos, que mudou por decisão do usuário depois do Build da `motion` (AD-106).
+ * O que fica de fora do baseline da landing: o cabeçalho flutuante (a `motion` o provou em separado), o
+ * menu do celular, que só existe aberto, e a barra de ação fixa, cuja presença depende da rolagem e é
+ * provada pela C28 do refino visual. A seção Planos entrou no baseline no refino visual.
  */
-const LANDING_EXCLUDED = 'header, [data-slot="site-header"], #site-menu, #planos';
+const LANDING_EXCLUDED = 'header, [data-slot="site-header"], #site-menu, [data-slot="action-bar"]';
 
 export interface Baseline {
   text: string;

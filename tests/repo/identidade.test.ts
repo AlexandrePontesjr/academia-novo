@@ -90,9 +90,9 @@ const LANDING = 'apps/web/src/app/page.tsx';
 
 test('site_content_is_the_only_source_of_landing_copy', () => {
   const content = read(SITE_CONTENT);
-  // a forma da door 3 da dukfit-landing, que supersede a lista de chaves da dukfit-app
-  const keys = ['name', 'legalName', 'eyebrow', 'tagline', 'intro', 'proof', 'about', 'structure', 'gallery', 'hours'];
-  for (const key of [...keys, 'address', 'neighborhood', 'routes', 'instagram', 'logo', 'hero']) {
+  // a forma da door 2 do refino visual, que supersede a da door 3 da dukfit-landing
+  const keys = ['kind', 'name', 'legalName', 'logo', 'instagram', 'footer', 'rights', 'hours', 'address', 'neighborhood'];
+  for (const key of [...keys, 'routes', 'routeLabels', 'labels', 'nav', 'hero', 'visit', 'about', 'structure', 'why', 'plans', 'sections', 'closing']) {
     expect(content, key).toMatch(new RegExp(`^  ${key}: `, 'm'));
   }
   // o texto de exemplo saiu, e a academia não tem telefone nem WhatsApp no conteúdo (AC 11, AC 12)
@@ -171,26 +171,46 @@ test('landing_page_has_no_literal_text_in_jsx', () => {
   expect(landing).not.toMatch(/(?:alt|aria-label|title|placeholder)="[^"]+"/);
 });
 
-test('site_content_has_the_door_five_shape', async () => {
+test('site_content_has_the_door_two_shape', async () => {
   const { SITE } = await import('../../apps/web/src/app/site-content.ts');
   const keysOf = (value: object) => Object.keys(value).sort();
   expect(keysOf(SITE)).toEqual(
     [
-      'about', 'address', 'closing', 'cta', 'eyebrow', 'footer', 'gallery', 'galleryLabels', 'hero', 'hours',
-      'instagram', 'intro', 'labels', 'legalName', 'logo', 'matricula', 'menu', 'name', 'nav', 'neighborhood', 'newsletter', 'plans',
-      'proof', 'rights', 'routeLabels', 'routes', 'scroll', 'sections', 'structure', 'tagline', 'why',
+      'about', 'address', 'closing', 'footer', 'hero', 'hours', 'instagram', 'kind', 'labels', 'legalName',
+      'logo', 'matricula', 'menu', 'name', 'nav', 'neighborhood', 'newsletter', 'plans', 'rights',
+      'routeLabels', 'routes', 'sections', 'structure', 'visit', 'why',
     ].sort(),
   );
-  expect(keysOf(SITE.sections)).toEqual(['about', 'gallery', 'hours', 'location', 'plans', 'structure', 'why']);
-  for (const section of Object.values(SITE.sections)) expect(keysOf(section)).toEqual(['eyebrow', 'title']);
+  // o tipo do lugar e as seções na ordem literal do plano: visita, academia, estrutura, planos e fecho
+  expect(SITE.kind).toBe('place');
+  expect(Object.keys(SITE.sections)).toEqual(['visit', 'about', 'structure', 'plans', 'closing']);
+  expect(keysOf(SITE.hero)).toEqual(['alt', 'cta', 'height', 'src', 'subline', 'title', 'width']);
+  expect(keysOf(SITE.hero.cta)).toEqual(['href', 'label']);
+  expect(keysOf(SITE.visit)).toEqual(['eyebrow', 'hoursLabel', 'routesLabel', 'title']);
+  expect(keysOf(SITE.about)).toEqual(['eyebrow', 'highlight', 'lead', 'listTitle', 'photo', 'proof', 'text', 'title']);
+  expect(keysOf(SITE.structure)).toEqual(['eyebrow', 'items', 'photos', 'title']);
+  expect(keysOf(SITE.plans)).toEqual(['eyebrow', 'featuresLabel', 'items', 'price', 'title']);
+  expect(keysOf(SITE.closing)).toEqual(['text', 'title']);
+  // a navegação tem as quatro palavras da door 2, na ordem das seções
+  expect(SITE.nav).toEqual([
+    { href: '#academia', label: 'Academia' },
+    { href: '#estrutura', label: 'Estrutura' },
+    { href: '#planos', label: 'Planos' },
+    { href: '#visita', label: 'Visita' },
+  ]);
   expect(keysOf(SITE.address)).toEqual(['district', 'street']);
-  expect(keysOf(SITE.about)).toEqual(['badge', 'highlight', 'lead', 'photo', 'text']);
   expect(keysOf(SITE.logo)).toEqual(['alt', 'small', 'src']);
   expect(keysOf(SITE.routes)).toEqual(['google', 'uber', 'waze']);
   expect(keysOf(SITE.routeLabels)).toEqual(['google', 'uber', 'waze']);
-  expect(keysOf(SITE.cta)).toEqual(['guest', 'join', 'member', 'visit']);
   expect(keysOf(SITE.hours)).toEqual(['closes', 'days', 'opens']);
   // o menu do celular do cabeçalho flutuante (motion, door 7)
   expect(SITE.menu).toEqual({ open: 'Abrir menu', close: 'Fechar menu', title: 'Menu' });
-  for (const photo of [...SITE.gallery, SITE.about.photo, SITE.why.photo]) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
+  // saíram o slogan como `h1`, a dica de rolagem e o carrossel da galeria
+  const content = read(SITE_CONTENT);
+  expect(content).not.toMatch(/^ {2}tagline: /m);
+  expect(content).not.toMatch(/^ {2}scroll: /m);
+  expect(content).not.toMatch(/^ {2}gallery: /m);
+  expect(content).not.toMatch(/^ {2}galleryLabels: /m);
+  const photos = [SITE.hero, SITE.about.photo, ...SITE.structure.photos];
+  for (const photo of photos) expect(keysOf(photo)).toEqual(expect.arrayContaining(['alt', 'height', 'src', 'width']));
 });

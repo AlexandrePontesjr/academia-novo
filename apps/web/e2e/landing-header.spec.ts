@@ -21,7 +21,6 @@ const header = (page: Page) => page.locator('[data-slot="site-header"]');
 const menuButton = (page: Page) => page.getByRole('button', { name: SITE.menu.open, exact: true });
 const menu = (page: Page) => page.locator('#site-menu');
 const desktopNav = (page: Page) => header(page).getByRole('navigation', { name: SITE.labels.nav, exact: true });
-const NAV_HREFS = SITE.nav.map((item) => item.href);
 
 /** Rola a página até `y` e espera o quadro seguinte. */
 async function scrollToY(page: Page, y: number) {
@@ -115,7 +114,7 @@ test('header_turns_solid_after_24px_in_200ms', async ({ page }) => {
   }
 });
 
-test('desktop_header_has_logo_nav_and_session_cta', async ({ page, api }) => {
+test('desktop_header_has_logo_four_section_links_and_session_cta', async ({ page, api }) => {
   for (const size of [{ width: 1024, height: 800 }, DESKTOP]) {
     await page.setViewportSize(size);
     for (const signedIn of [false, true]) {
@@ -125,8 +124,13 @@ test('desktop_header_has_logo_nav_and_session_cta', async ({ page, api }) => {
       await expect(header(page).getByRole('img', { name: SITE.logo.alt, exact: true }), label).toBeVisible();
       await expect(desktopNav(page), label).toBeVisible();
       const links = desktopNav(page).getByRole('link');
-      expect(await links.allTextContents(), label).toEqual(SITE.nav.map((item) => item.label));
-      expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute('href'))), label).toEqual(NAV_HREFS);
+      expect(await links.allTextContents(), label).toEqual(['Academia', 'Estrutura', 'Planos', 'Visita']);
+      expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute('href'))), label).toEqual([
+        '#academia',
+        '#estrutura',
+        '#planos',
+        '#visita',
+      ]);
       const cta = header(page).getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true });
       await expect(cta, label).toBeVisible();
       await expect(cta, label).toHaveAttribute('href', signedIn ? '/dashboard' : '/login');
@@ -135,13 +139,15 @@ test('desktop_header_has_logo_nav_and_session_cta', async ({ page, api }) => {
   }
 });
 
-test('mobile_header_has_logo_cta_and_menu_button', async ({ page }) => {
+test('mobile_header_has_logo_menu_button_and_session_cta_in_menu', async ({ page, api }) => {
   for (const size of [NARROW, MOBILE, { width: 768, height: 1024 }, { width: 1023, height: 800 }]) {
     await page.setViewportSize(size);
     await page.goto('/');
     const label = `${size.width}`;
     await expect(header(page).getByRole('img', { name: SITE.logo.alt, exact: true }), label).toBeVisible();
-    await expect(header(page).getByRole('link', { name: 'Acesso da equipe', exact: true }), label).toBeVisible();
+    // a ação principal do cabeçalho de celular saiu: só o logo e o "Abrir menu"
+    await expect(header(page).getByRole('link', { name: 'Acesso da equipe', exact: true }), label).toHaveCount(0);
+    await expect(header(page).getByRole('link', { name: 'Ir para o painel', exact: true }), label).toHaveCount(0);
     const button = menuButton(page);
     await expect(button, label).toBeVisible();
     const box = (await button.boundingBox())!;
@@ -149,6 +155,19 @@ test('mobile_header_has_logo_cta_and_menu_button', async ({ page }) => {
     await expect(button, label).toHaveAttribute('aria-expanded', 'false');
     await expect(button, label).toHaveAttribute('aria-controls', 'site-menu');
     await expect(desktopNav(page), label).toBeHidden();
+
+    // o menu guarda o CTA da sessão (refino visual, door 5)
+    for (const signedIn of [false, true]) {
+      api.session = signedIn ? sessionOf('admin') : undefined;
+      await page.goto('/');
+      await menuButton(page).click();
+      const dialog = page.getByRole('dialog', { name: SITE.menu.title, exact: true });
+      await expect(dialog, label).toBeVisible();
+      const cta = dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true });
+      await expect(cta, `${label} ${signedIn ? 'com sessão' : 'sem sessão'}`).toBeVisible();
+      await expect(cta).toHaveAttribute('href', signedIn ? '/dashboard' : '/login');
+      await page.keyboard.press('Escape');
+    }
   }
 });
 
@@ -173,7 +192,7 @@ test('menu_opens_full_screen_with_focus_links_and_ctas', async ({ page, api }) =
     for (const style of await sections.evaluateAll((links) => links.map((link) => [getComputedStyle(link).fontSize, getComputedStyle(link).textTransform]))) {
       expect(style).toEqual(['36px', 'uppercase']);
     }
-    await expect(dialog.getByRole('link', { name: SITE.cta.join, exact: true })).toHaveAttribute('href', '#planos');
+    await expect(dialog.getByRole('link', { name: SITE.hero.cta.label, exact: true })).toHaveAttribute('href', SITE.hero.cta.href);
     await expect(dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true })).toHaveAttribute(
       'href',
       signedIn ? '/dashboard' : '/login',
@@ -192,7 +211,7 @@ test('menu_animates_overlay_panel_and_stagger_and_not_when_reduced', async ({ pa
   const items = await framesOf(page);
   expect(await page.locator('[data-slot="dialog-overlay"]').evaluate((element) => [getComputedStyle(element).animationName, getComputedStyle(element).animationDuration])).toEqual(['overlay-in', '0.15s']);
   expect(await menu(page).evaluate((element) => [getComputedStyle(element).animationName, getComputedStyle(element).animationDuration])).toEqual(['dialog-in', '0.2s']);
-  const times = Array.from({ length: 5 }, (_, index) => items.find((frame) => Number(frame.targets[index]?.opacity ?? 0) > 0)?.t);
+  const times = Array.from({ length: SITE.nav.length }, (_, index) => items.find((frame) => Number(frame.targets[index]?.opacity ?? 0) > 0)?.t);
   for (const time of times) expect(time).toBeDefined();
   for (const [index, time] of times.entries()) expect(Math.abs(time! - times[0]! - index * 40), `link ${index}`).toBeLessThanOrEqual(17);
   expect(Number(items[0]!.targets[0]!.opacity)).toBeLessThan(1);
@@ -208,7 +227,7 @@ test('menu_animates_overlay_panel_and_stagger_and_not_when_reduced', async ({ pa
   expect(await menu(page).evaluate((element) => getComputedStyle(element).animationName)).toBe('none');
   expect(still.length).toBeGreaterThan(20);
   for (const frame of still) {
-    expect(frame.targets).toHaveLength(5);
+    expect(frame.targets).toHaveLength(SITE.nav.length);
     for (const target of frame.targets) expect(target).toMatchObject({ opacity: '1', transform: 'none' });
   }
 });

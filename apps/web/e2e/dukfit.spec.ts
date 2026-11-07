@@ -32,7 +32,7 @@ const namesOf = (scope: Locator) =>
 const SHELL_SCREENS = SCREENS.filter((screen) => screen.shell);
 
 /** O slogan da landing, as três linhas lidas como um nome só (dukfit-landing, door 3). */
-const TAGLINE = SITE.tagline.join(' ');
+const HERO = SITE.hero.title;
 
 const dashboardWith = (checkIns: DashboardResponse['checkIns'], overrides: Partial<DashboardResponse> = {}) =>
   dashboardOf({ checkIns, ...overrides });
@@ -555,37 +555,40 @@ test('landing_is_public_200_without_redirect', async ({ page, api }) => {
   expect(response?.status()).toBe(200);
   expect(response?.request().redirectedFrom()).toBeNull();
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { level: 1, name: TAGLINE })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: HERO })).toBeVisible();
 });
 
 test('landing_sections_in_order_from_site_content', async ({ page }) => {
   await page.goto('/');
   const main = page.getByRole('main');
 
-  // as seções da landing com o conteúdo real da academia (dukfit-landing, AC 3), cada uma nomeada pelo rótulo
-  const regions = await main.locator('section[aria-labelledby]').evaluateAll((sections) =>
-    sections.map((section) => document.getElementById(section.getAttribute('aria-labelledby')!)!.textContent!.trim()),
-  );
-  expect(regions).toEqual([
-    TAGLINE,
-    'Sobre a Dukfit',
-    'O que você encontra',
-    'Por que a Dukfit',
-    'Nossa estrutura',
-    'Planos',
-    'Onde estamos',
-    'Horário',
+  // a ordem literal da door 2 do refino visual (AC 16): o herói, a visita, a academia, a estrutura,
+  // os planos e o fecho, e o footer depois do `main`
+  const order = await main.locator(':scope > section').evaluateAll((sections) => sections.map((section) => section.id || section.getAttribute('data-slot')));
+  expect(order).toEqual([
+    'hero',
+    SITE.sections.visit,
+    SITE.sections.about,
+    SITE.sections.structure,
+    SITE.sections.plans,
+    SITE.sections.closing,
   ]);
+  const footerAfterMain = await page.evaluate(() => {
+    const mainElement = document.querySelector('main')!;
+    const footer = document.querySelector('footer')!;
+    return Boolean(mainElement.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect(footerAfterMain).toBe(true);
 
-  const cards = main.getByRole('region', { name: 'O que você encontra' }).locator('[data-slot="highlights"] > li');
-  await expect(cards).toHaveCount(SITE.structure.length);
-  for (const [index, item] of SITE.structure.entries()) {
-    await expect(cards.nth(index).getByRole('heading', { name: item.title })).toBeVisible();
-    await expect(cards.nth(index)).toContainText(item.text);
+  const modalities = main.locator(`#${SITE.sections.structure} li`);
+  await expect(modalities).toHaveCount(SITE.structure.items.length);
+  for (const [index, item] of SITE.structure.items.entries()) {
+    await expect(modalities.nth(index).getByRole('heading', { name: item.title })).toBeVisible();
+    await expect(modalities.nth(index)).toContainText(item.text);
   }
-  const location = main.getByRole('region', { name: 'Onde estamos' });
-  await expect(location.locator('address')).toContainText(SITE.address.street);
-  await expect(location.locator('address')).toContainText(SITE.address.district);
+  const visit = main.locator(`#${SITE.sections.visit}`);
+  await expect(visit).toContainText(SITE.address.street);
+  await expect(visit).toContainText(SITE.address.district);
   await expect(page.locator('footer')).toBeVisible();
 });
 
@@ -660,7 +663,7 @@ test('pending_two_factor_sees_landing_and_is_sent_to_setup_from_dashboard', asyn
 
   await page.goto('/');
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { level: 1, name: TAGLINE })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: HERO })).toBeVisible();
 
   await page.goto('/dashboard');
   await expect(page).toHaveURL('/two-factor/setup');
