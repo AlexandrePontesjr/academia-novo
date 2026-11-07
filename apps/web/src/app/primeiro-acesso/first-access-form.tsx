@@ -5,6 +5,7 @@ import { Alert, Button, MailIcon } from '@academia/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AuthSuccess } from '../../components/auth-success.tsx';
 import { TextField } from '../../components/text-field.tsx';
 import { callApi, showFieldErrors, tooManyAttempts, UNAVAILABLE } from '../../lib/api.ts';
 
@@ -32,11 +33,7 @@ export function FirstAccessForm() {
   }
 
   if (sent) {
-    return (
-      <p role="status" className="text-lg">
-        {SENT}
-      </p>
-    );
+    return <AuthSuccess title="Pedido enviado">{SENT}</AuthSuccess>;
   }
   return (
     <form noValidate className="grid gap-4" onSubmit={form.handleSubmit(submit)}>

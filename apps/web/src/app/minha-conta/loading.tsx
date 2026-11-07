@@ -1,1 +1,1 @@
-export { AppLoading as default } from '../../components/app-loading.tsx';
+export { PortalLoading as default } from '../../components/portal-loading.tsx';

@@ -90,7 +90,7 @@ export function PhotoEditor({
   return (
     <>
       <DialogTitle>Ajustar foto</DialogTitle>
-      <div className="relative mx-auto h-80 w-60 overflow-hidden rounded-md bg-muted">
+      <div className="relative mx-auto h-80 w-60 overflow-hidden rounded-md bg-muted" data-slot="crop-frame">
         <Cropper
           image={image.src}
           crop={crop}

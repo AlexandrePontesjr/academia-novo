@@ -51,7 +51,7 @@ export function PersonPhoto({
       src={photoUrl}
       alt={shape === 'ficha' ? `Foto de ${name}` : ''}
       onError={() => setBroken(true)}
-      className={shape === 'thumb' ? 'size-8 shrink-0 rounded-full object-cover' : 'h-40 w-30 rounded-md object-cover'}
+      className={shape === 'thumb' ? 'size-8 shrink-0 rounded-full object-cover' : 'h-32 w-24 shrink-0 rounded-md object-cover md:h-40 md:w-30'}
     />
   );
 }

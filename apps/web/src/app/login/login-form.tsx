@@ -56,7 +56,7 @@ export function LoginForm() {
         error={errors.password?.message}
         registration={form.register('password')}
       />
-      <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
+      <Button type="submit" className="h-12 w-full" busy={isSubmitting}>
         Entrar
       </Button>
     </form>

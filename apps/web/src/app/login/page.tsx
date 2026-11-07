@@ -1,3 +1,4 @@
+import { Alert } from '@academia/ui';
 import Link from 'next/link';
 import { AuthFrame } from '../../components/auth-frame.tsx';
 import { Brand } from '../../components/brand.tsx';
@@ -17,20 +18,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="grid gap-3">
           <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <span aria-hidden="true" className="size-2 rounded-full bg-primary" data-slot="eyebrow-dot" />
-            Acesso da equipe
+            Acesso ao sistema
           </p>
           <h1 className="text-4xl font-medium">Bem-vindo de volta</h1>
           <p className="text-sm text-muted-foreground">Entre para acompanhar alunos, matrículas e presenças da DukFit.</p>
         </div>
-        {senha === 'definida' && (
-          <p role="status" className="text-sm">
-            Senha definida. Entre com seu e-mail e a nova senha.
-          </p>
-        )}
+        {senha === 'definida' && <Alert>Senha definida. Entre com seu e-mail e a nova senha.</Alert>}
         <LoginForm />
         <nav aria-label="Portal do aluno" className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <Link href="/primeiro-acesso" className="text-primary underline underline-offset-4">
-            Primeiro acesso
+            Sou aluno
           </Link>
           <Link href="/esqueci-senha" className="text-primary underline underline-offset-4">
             Esqueci minha senha

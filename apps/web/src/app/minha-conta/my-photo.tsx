@@ -41,7 +41,7 @@ export function MyPhoto({ name, photoUrl, pending }: { name: string; photoUrl: s
         <PersonPhoto name={name} photoUrl={photoUrl} shape="ficha" />
         {pending && (
           <div className="grid justify-items-start gap-2">
-            {pending.url && <img src={pending.url} alt="Foto aguardando aprovação" className="h-40 w-30 rounded-md object-cover" />}
+            {pending.url && <img src={pending.url} alt="Foto aguardando aprovação" className="h-32 w-24 rounded-md object-cover md:h-40 md:w-30" />}
             <p className="text-sm text-muted-foreground">Aguardando aprovação da recepção.</p>
           </div>
         )}

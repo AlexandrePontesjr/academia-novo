@@ -66,9 +66,11 @@ export function ContactForm({ profile }: { profile: MyProfile }) {
           <dd>{formatCpf(profile.cpf)}</dd>
         </div>
       </dl>
-      {FIELDS.map(({ key, label, ...input }) => (
-        <TextField key={key} label={label} error={errors[key]?.message} registration={form.register(key)} {...input} />
-      ))}
+      <div className="grid gap-4 md:grid-cols-2">
+        {FIELDS.map(({ key, label, ...input }) => (
+          <TextField key={key} label={label} error={errors[key]?.message} registration={form.register(key)} {...input} />
+        ))}
+      </div>
       {alert && <Alert variant="destructive">{alert}</Alert>}
       {saved && <p role="status">Dados atualizados.</p>}
       <div>
