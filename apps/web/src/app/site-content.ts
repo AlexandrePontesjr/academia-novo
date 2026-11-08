@@ -35,7 +35,7 @@ export const SITE = {
     address: 'Endereço',
     nav: 'Seções',
     footerNav: 'Rodapé',
-    guest: 'Acesso da equipe',
+    guest: 'Acesso ao sistema',
     member: 'Ir para o painel',
   },
   // a navegação tem as quatro palavras da door 2, na ordem das seções

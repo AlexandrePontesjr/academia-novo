@@ -131,7 +131,7 @@ test('desktop_header_has_logo_four_section_links_and_session_cta', async ({ page
         '#planos',
         '#visita',
       ]);
-      const cta = header(page).getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true });
+      const cta = header(page).getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso ao sistema', exact: true });
       await expect(cta, label).toBeVisible();
       await expect(cta, label).toHaveAttribute('href', signedIn ? '/dashboard' : '/login');
       await expect(menuButton(page), label).toBeHidden();
@@ -146,7 +146,7 @@ test('mobile_header_has_logo_menu_button_and_session_cta_in_menu', async ({ page
     const label = `${size.width}`;
     await expect(header(page).getByRole('img', { name: SITE.logo.alt, exact: true }), label).toBeVisible();
     // a ação principal do cabeçalho de celular saiu: só o logo e o "Abrir menu"
-    await expect(header(page).getByRole('link', { name: 'Acesso da equipe', exact: true }), label).toHaveCount(0);
+    await expect(header(page).getByRole('link', { name: 'Acesso ao sistema', exact: true }), label).toHaveCount(0);
     await expect(header(page).getByRole('link', { name: 'Ir para o painel', exact: true }), label).toHaveCount(0);
     const button = menuButton(page);
     await expect(button, label).toBeVisible();
@@ -163,7 +163,7 @@ test('mobile_header_has_logo_menu_button_and_session_cta_in_menu', async ({ page
       await menuButton(page).click();
       const dialog = page.getByRole('dialog', { name: SITE.menu.title, exact: true });
       await expect(dialog, label).toBeVisible();
-      const cta = dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true });
+      const cta = dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso ao sistema', exact: true });
       await expect(cta, `${label} ${signedIn ? 'com sessão' : 'sem sessão'}`).toBeVisible();
       await expect(cta).toHaveAttribute('href', signedIn ? '/dashboard' : '/login');
       await page.keyboard.press('Escape');
@@ -193,7 +193,7 @@ test('menu_opens_full_screen_with_focus_links_and_ctas', async ({ page, api }) =
       expect(style).toEqual(['36px', 'uppercase']);
     }
     await expect(dialog.getByRole('link', { name: SITE.hero.cta.label, exact: true })).toHaveAttribute('href', SITE.hero.cta.href);
-    await expect(dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso da equipe', exact: true })).toHaveAttribute(
+    await expect(dialog.getByRole('link', { name: signedIn ? 'Ir para o painel' : 'Acesso ao sistema', exact: true })).toHaveAttribute(
       'href',
       signedIn ? '/dashboard' : '/login',
     );

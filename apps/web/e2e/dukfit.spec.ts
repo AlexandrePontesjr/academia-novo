@@ -595,7 +595,7 @@ test('landing_sections_in_order_from_site_content', async ({ page }) => {
 
 test('landing_cta_depends_on_session', async ({ page, api }) => {
   await page.goto('/');
-  const enter = page.getByRole('link', { name: 'Acesso da equipe', exact: true });
+  const enter = page.getByRole('link', { name: 'Acesso ao sistema', exact: true });
   await expect(enter).toHaveAttribute('href', '/login');
   expect((await styleOf(enter, 'background-color')).rgb).toBe(LIME);
   await expect(page.getByRole('link', { name: 'Ir para o painel' })).toHaveCount(0);
@@ -605,7 +605,7 @@ test('landing_cta_depends_on_session', async ({ page, api }) => {
   const go = page.getByRole('link', { name: 'Ir para o painel', exact: true });
   await expect(go).toHaveAttribute('href', '/dashboard');
   expect((await styleOf(go, 'background-color')).rgb).toBe(LIME);
-  await expect(page.getByRole('link', { name: 'Acesso da equipe' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Acesso ao sistema' })).toHaveCount(0);
 });
 
 test('landing_has_no_shell_no_external_request_and_no_csp_violation', async ({ page, baseURL }) => {
