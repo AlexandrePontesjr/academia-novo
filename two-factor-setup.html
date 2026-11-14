@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Configurar 2FA</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('account.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Segurança</div>
+          <h1 class="screen-title">Configurar 2FA</h1>
+          <p class="screen-meta">Escaneie o QR Code no Google Authenticator, Authy ou 1Password.</p>
+        </div>
+        <a href="account.html" class="btn btn-secondary">← Voltar</a>
+      </div>
+
+      <section class="panel" style="max-width:34rem;display:grid;gap:1.25rem;">
+        <div style="display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap;">
+          <div style="background:#fff;padding:0.75rem;border-radius:0.85rem;width:9rem;height:9rem;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 100 100" width="120" height="120" aria-label="QR Code 2FA simulado">
+              <rect width="100" height="100" fill="#fff"/>
+              <path fill="#111" d="M8 8h28v28H8zm6 6v16h16V14zm4 4h8v8h-8zM64 8h28v28H64zm6 6v16h16V14zm4 4h8v8h-8zM8 64h28v28H8zm6 6v16h16V70zm4 4h8v8h-8zM44 10h6v6h-6zm8 8h6v6h-6zm-8 8h6v6h-6zm10 10h8v8h-8zm-14 6h8v8h-8zm20 6h10v6H60zm-16 8h6v10h-6zm12 4h8v8h-8zm16-12h6v14h-6zm8 8h6v6h-6zM44 74h10v6H44zm16 4h8v10h-8zm16-6h12v6H76zm-6 14h10v6H70z"/>
+            </svg>
+          </div>
+          <div style="flex:1 1 12rem;min-width:0;display:grid;gap:0.4rem;">
+            <div style="font-size:0.82rem;color:var(--muted-foreground);">Chave secreta manual:</div>
+            <code style="background:var(--muted);padding:0.45rem 0.7rem;border-radius:0.5rem;border:1px solid var(--border);font-size:0.82rem;">JBSW Y3DP EHPK 3PXP</code>
+          </div>
+        </div>
+
+        <form onsubmit="event.preventDefault(); window.demoToast('2FA confirmado e ativado!'); setTimeout(()=>location.href='account.html', 900);" style="display:grid;gap:0.9rem;">
+          <div class="field">
+            <label class="label" for="totp-code">Código de 6 dígitos</label>
+            <input class="input" id="totp-code" value="519204" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Confirmar e ativar 2FA</button>
+        </form>
+      </section>
+    `);
+  </script>
+</body>
+</html>

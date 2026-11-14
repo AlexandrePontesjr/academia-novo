@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Verificação em 2 Etapas</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="brand-link" style="margin-bottom:1.5rem;">
+        <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+        <span>DukFit</span>
+      </a>
+      <div class="eyebrow">Segurança</div>
+      <h1 class="screen-title" style="font-size:1.6rem;">Verificação em duas etapas</h1>
+      <p class="screen-meta" style="margin-bottom:1.35rem;">Digite o código de 6 dígitos do seu aplicativo autenticador ou um código de recuperação.</p>
+
+      <form onsubmit="event.preventDefault(); window.location.href='dashboard.html';" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="totp">Código de verificação</label>
+          <input class="input" id="totp" value="482 910" maxlength="10" style="text-align:center;font-size:1.25rem;letter-spacing:0.2em;font-weight:700;" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Confirmar e entrar</button>
+        <a href="login.html" class="btn btn-ghost btn-sm">Voltar ao login</a>
+      </form>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

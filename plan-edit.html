@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Editar Plano</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('plans.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Planos</div>
+          <h1 class="screen-title">Editar: Plano Constância 3M</h1>
+          <p class="screen-meta">Ajuste valores ou desative o plano para novas matrículas.</p>
+        </div>
+        <a href="plans.html" class="btn btn-secondary">← Voltar</a>
+      </div>
+
+      <section class="panel" style="max-width:36rem;display:grid;gap:1.25rem;">
+        <form onsubmit="event.preventDefault(); window.demoToast('Plano atualizado!'); setTimeout(()=>location.href='plans.html', 800);" style="display:grid;gap:1rem;">
+          <div class="field">
+            <label class="label" for="pe-nome">Nome do plano</label>
+            <input class="input" id="pe-nome" value="Plano Constância 3M" required />
+          </div>
+          <div class="grid-cards-2">
+            <div class="field">
+              <label class="label" for="pe-per">Periodicidade</label>
+              <select class="select" id="pe-per">
+                <option>Mensal</option>
+                <option selected>Trimestral</option>
+                <option>Semestral</option>
+                <option>Anual</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="pe-val">Valor mensal (R$)</label>
+              <input class="input" id="pe-val" value="95,00" required />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.75rem;justify-content:space-between;align-items:center;padding-top:0.5rem;border-top:1px solid var(--border);">
+            <button type="button" class="btn btn-danger btn-sm" onclick="window.demoToast('Plano arquivado (simulado).')">Desativar plano</button>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+          </div>
+        </form>
+      </section>
+    `);
+  </script>
+</body>
+</html>

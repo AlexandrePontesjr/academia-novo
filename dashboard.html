@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Início (Painel)</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('dashboard.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Visão geral · Unidade Flores</div>
+          <h1 class="screen-title">Painel da Academia</h1>
+          <p class="screen-meta">Resumo operacional e financeiro · Sexta-feira, 13 de novembro de 2026</p>
+        </div>
+        <div style="display:flex;gap:0.55rem;flex-wrap:wrap;">
+          <a href="check-in.html" class="btn btn-primary">Abrir Check-in</a>
+          <a href="students-new.html" class="btn btn-secondary">Novo Aluno</a>
+        </div>
+      </div>
+
+      <!-- Faixa executiva de KPIs -->
+      <section class="kpi-strip" aria-label="Indicadores principais">
+        <a href="students.html" class="kpi-card panel">
+          <div class="kpi-card-head">
+            <span class="kpi-card-title">Alunos ativos</span>
+            <span class="badge badge-ok">+12 no mês</span>
+          </div>
+          <div class="tabular-nums kpi-card-value">148</div>
+          <div class="kpi-card-sub">24 inativos · 3 suspensos</div>
+        </a>
+
+        <a href="check-ins.html" class="kpi-card panel">
+          <div class="kpi-card-head">
+            <span class="kpi-card-title">Check-ins hoje</span>
+            <span class="badge badge-ok">72% do pico</span>
+          </div>
+          <div class="tabular-nums kpi-card-value" style="color:var(--primary);">64</div>
+          <div class="kpi-card-sub">Média da semana: 72/dia</div>
+        </a>
+
+        <a href="payments.html" class="kpi-card panel">
+          <div class="kpi-card-head">
+            <span class="kpi-card-title">Recebido no mês</span>
+            <span class="badge badge-ok">89% quitado</span>
+          </div>
+          <div class="tabular-nums kpi-card-value">R$ 12.480</div>
+          <div class="kpi-card-sub">Previsto: R$ 14.760</div>
+        </a>
+
+        <a href="leads.html" class="kpi-card panel">
+          <div class="kpi-card-head">
+            <span class="kpi-card-title">Interessados</span>
+            <span class="badge badge-warn">Pendente</span>
+          </div>
+          <div class="tabular-nums kpi-card-value">5</div>
+          <div class="kpi-card-sub">Leads aguardando contato</div>
+        </a>
+      </section>
+
+      <div class="grid-cards-3">
+        <!-- Gauge Circular de Check-ins Hoje -->
+        <section class="panel" style="display:grid;gap:0.85rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Fluxo de hoje</h2>
+            <a href="check-ins.html" class="panel-arrow" aria-label="Ver presenças">↗</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <svg viewBox="0 0 100 100" width="92" height="92" style="flex-shrink:0;" aria-label="64 de 89 check-ins">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--muted)" stroke-width="10" />
+              <circle
+                cx="50" cy="50" r="40" fill="none"
+                stroke="var(--primary)" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="251.3" stroke-dashoffset="70.4"
+                transform="rotate(-90 50 50)"
+              />
+              <text x="50" y="53" text-anchor="middle" fill="var(--foreground)" font-size="22" font-weight="700">64</text>
+            </svg>
+            <div style="display:grid;gap:0.35rem;font-size:0.82rem;min-width:0;">
+              <div><strong>Pico semanal:</strong> 89 alunos</div>
+              <div style="color:var(--muted-foreground);">Manhã (06h–10h): <strong style="color:var(--foreground);">28</strong></div>
+              <div style="color:var(--muted-foreground);">Tarde/Noite: <strong style="color:var(--foreground);">36</strong></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <span class="stat-pill">Foto pendente <strong>2</strong></span>
+            <span class="stat-pill">Matrículas agendadas <strong>6</strong></span>
+          </div>
+        </section>
+
+        <!-- Check-ins da semana -->
+        <section class="panel" style="display:grid;gap:0.75rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Frequência da semana</h2>
+            <span class="badge badge-idle">Últimos 7 dias</span>
+          </div>
+          <div class="week-bars" aria-label="Últimos 7 dias">
+            <div class="week-bar-col"><span class="week-bar-val">71</span><div class="week-bar-fill muted" style="height:68%;"></div><span class="week-bar-label">Sáb</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">34</span><div class="week-bar-fill muted" style="height:34%;"></div><span class="week-bar-label">Dom</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">89</span><div class="week-bar-fill" style="height:90%;"></div><span class="week-bar-label">Seg</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">82</span><div class="week-bar-fill" style="height:82%;"></div><span class="week-bar-label">Ter</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">78</span><div class="week-bar-fill" style="height:78%;"></div><span class="week-bar-label">Qua</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">85</span><div class="week-bar-fill" style="height:85%;"></div><span class="week-bar-label">Qui</span></div>
+            <div class="week-bar-col"><span class="week-bar-val">64</span><div class="week-bar-fill" style="height:64%;"></div><span class="week-bar-label">Hoje</span></div>
+          </div>
+        </section>
+
+        <!-- Saúde Financeira & Planos -->
+        <section class="panel" style="display:grid;gap:0.85rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Saúde financeira · Nov/26</h2>
+            <a href="payments.html" class="panel-arrow" aria-label="Ver pagamentos">↗</a>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.35rem;">
+              <span style="color:var(--muted-foreground);">Meta mensal atingida</span>
+              <strong class="tabular-nums" style="color:var(--primary);">89%</strong>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:89%;"></div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
+            <div class="metric-tile" style="padding:0.7rem 0.85rem;">
+              <div class="metric-label">A vencer</div>
+              <div class="tabular-nums" style="font-size:1.15rem;font-weight:700;">R$ 1.840</div>
+            </div>
+            <div class="metric-tile" style="padding:0.7rem 0.85rem;">
+              <div class="metric-label">Em atraso</div>
+              <div class="tabular-nums" style="font-size:1.15rem;font-weight:700;color:var(--status-bad);">R$ 440</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Últimos Check-ins + Distribuição de Planos -->
+        <section class="panel" style="display:grid;gap:0.75rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Últimas entradas</h2>
+            <a href="check-in.html" class="panel-arrow" aria-label="Abrir balcão">↗</a>
+          </div>
+          <div>
+            <div class="feed-item">
+              <div style="display:flex;align-items:center;gap:0.65rem;">
+                <span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.72rem;">LA</span>
+                <div>
+                  <div style="font-weight:600;font-size:0.85rem;">Lucas Andrade</div>
+                  <div style="font-size:0.74rem;color:var(--muted-foreground);">Constância 3M</div>
+                </div>
+              </div>
+              <span class="badge badge-ok tabular-nums">08:14</span>
+            </div>
+            <div class="feed-item">
+              <div style="display:flex;align-items:center;gap:0.65rem;">
+                <span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.72rem;">FM</span>
+                <div>
+                  <div style="font-weight:600;font-size:0.85rem;">Fernanda Maia</div>
+                  <div style="font-size:0.74rem;color:var(--muted-foreground);">Bairro Mensal</div>
+                </div>
+              </div>
+              <span class="badge badge-ok tabular-nums">07:45</span>
+            </div>
+            <div class="feed-item">
+              <div style="display:flex;align-items:center;gap:0.65rem;">
+                <span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.72rem;">PS</span>
+                <div>
+                  <div style="font-weight:600;font-size:0.85rem;">Pedro Souza</div>
+                  <div style="font-size:0.74rem;color:var(--muted-foreground);">Veterano Anual</div>
+                </div>
+              </div>
+              <span class="badge badge-ok tabular-nums">06:34</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Vencimentos próximos -->
+        <section class="panel col-span-2-md">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Vencimentos nos próximos 7 dias</h2>
+              <div style="font-size:0.78rem;color:var(--muted-foreground);">Acompanhamento rápido de renovações e cobranças</div>
+            </div>
+            <a href="payments.html" class="panel-arrow" aria-label="Ver pagamentos">↗</a>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Aluno</th>
+                  <th>Plano</th>
+                  <th>Vence em</th>
+                  <th>Valor</th>
+                  <th>Situação</th>
+                  <th style="text-align:right;">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Lucas Andrade</a></td>
+                  <td>Plano Constância 3M · Trimestral</td>
+                  <td class="tabular-nums">15/11/2026</td>
+                  <td class="tabular-nums">R$ 95,00</td>
+                  <td><span class="badge badge-warn">Pendente</span></td>
+                  <td style="text-align:right;"><a href="payments.html" class="btn btn-secondary btn-sm">Receber</a></td>
+                </tr>
+                <tr>
+                  <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Fernanda Maia</a></td>
+                  <td>Plano Bairro Mensal · Mensal</td>
+                  <td class="tabular-nums">16/11/2026</td>
+                  <td class="tabular-nums">R$ 110,00</td>
+                  <td><span class="badge badge-warn">Pendente</span></td>
+                  <td style="text-align:right;"><a href="payments.html" class="btn btn-secondary btn-sm">Receber</a></td>
+                </tr>
+                <tr>
+                  <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Beatriz Lima</a></td>
+                  <td>Plano Bairro Mensal · Mensal</td>
+                  <td class="tabular-nums">10/11/2026</td>
+                  <td class="tabular-nums">R$ 110,00</td>
+                  <td><span class="badge badge-bad">Atrasado</span></td>
+                  <td style="text-align:right;"><a href="payments.html" class="btn btn-primary btn-sm">Regularizar</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    `);
+  </script>
+</body>
+</html>

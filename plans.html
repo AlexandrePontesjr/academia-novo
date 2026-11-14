@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Planos</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('plans.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Catálogo</div>
+          <h1 class="screen-title">Planos</h1>
+          <p class="screen-meta">Planos disponíveis para novas matrículas e renovações.</p>
+        </div>
+        <a href="plans-new.html" class="btn btn-primary">Novo plano</a>
+      </div>
+
+      <div class="grid-cards-3">
+        <section class="panel" style="display:grid;gap:0.85rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="badge badge-ok">Ativo</span>
+            <span style="font-size:0.78rem;color:var(--muted-foreground);">Mensal</span>
+          </div>
+          <div>
+            <h2 style="margin:0;font-size:1.2rem;">Plano Bairro Mensal</h2>
+            <div class="tabular-nums" style="font-size:1.85rem;font-weight:700;margin-top:0.35rem;">R$ 110,00<span style="font-size:0.85rem;color:var(--muted-foreground);font-weight:400;">/mês</span></div>
+          </div>
+          <p style="margin:0;font-size:0.85rem;color:var(--muted-foreground);">58 alunos ativos · Acesso diário das 06h às 22h.</p>
+          <a href="plan-edit.html" class="btn btn-secondary btn-sm">Editar plano</a>
+        </section>
+
+        <section class="panel" style="display:grid;gap:0.85rem;border-color:var(--primary);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="badge badge-ok">Ativo</span>
+            <span style="font-size:0.78rem;color:var(--primary);">Trimestral</span>
+          </div>
+          <div>
+            <h2 style="margin:0;font-size:1.2rem;">Plano Constância 3M</h2>
+            <div class="tabular-nums" style="font-size:1.85rem;font-weight:700;margin-top:0.35rem;">R$ 95,00<span style="font-size:0.85rem;color:var(--muted-foreground);font-weight:400;">/mês</span></div>
+          </div>
+          <p style="margin:0;font-size:0.85rem;color:var(--muted-foreground);">64 alunos ativos · Acompanhamento a cada 45 dias.</p>
+          <a href="plan-edit.html" class="btn btn-secondary btn-sm">Editar plano</a>
+        </section>
+
+        <section class="panel" style="display:grid;gap:0.85rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="badge badge-ok">Ativo</span>
+            <span style="font-size:0.78rem;color:var(--muted-foreground);">Anual</span>
+          </div>
+          <div>
+            <h2 style="margin:0;font-size:1.2rem;">Plano Veterano Anual</h2>
+            <div class="tabular-nums" style="font-size:1.85rem;font-weight:700;margin-top:0.35rem;">R$ 85,00<span style="font-size:0.85rem;color:var(--muted-foreground);font-weight:400;">/mês</span></div>
+          </div>
+          <p style="margin:0;font-size:0.85rem;color:var(--muted-foreground);">26 alunos ativos · Melhor valor mensal da academia.</p>
+          <a href="plan-edit.html" class="btn btn-secondary btn-sm">Editar plano</a>
+        </section>
+      </div>
+    `);
+  </script>
+</body>
+</html>

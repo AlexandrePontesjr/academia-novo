@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Alunos</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('students.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Cadastro</div>
+          <h1 class="screen-title">Alunos</h1>
+          <p class="screen-meta">175 alunos cadastrados · 148 ativos</p>
+        </div>
+        <a href="students-new.html" class="btn btn-primary">Novo aluno</a>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button type="button" class="filter-pill active" onclick="filterStudents('all', this)">Todos</button>
+          <button type="button" class="filter-pill" onclick="filterStudents('active', this)">Ativos</button>
+          <button type="button" class="filter-pill" onclick="filterStudents('suspended', this)">Suspensos</button>
+          <button type="button" class="filter-pill" onclick="filterStudents('inactive', this)">Inativos</button>
+        </div>
+        <input id="student-search" class="input" style="max-width:18rem;" placeholder="Buscar por nome ou CPF..." oninput="renderStudentsTable()" />
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>CPF</th>
+                <th>Plano atual</th>
+                <th>Situação</th>
+                <th style="text-align:right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="students-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    `);
+
+    const STUDENTS = [
+      { id: '1', name: 'Lucas Andrade', cpf: '321.654.987-00', plan: 'Plano Constância 3M', status: 'active', label: 'Ativo', badge: 'badge-ok' },
+      { id: '2', name: 'Fernanda Maia', cpf: '112.233.445-55', plan: 'Plano Bairro Mensal', status: 'active', label: 'Ativo', badge: 'badge-ok' },
+      { id: '3', name: 'Beatriz Lima', cpf: '456.789.123-11', plan: 'Plano Bairro Mensal', status: 'suspended', label: 'Suspenso', badge: 'badge-warn' },
+      { id: '4', name: 'Pedro Henrique Souza', cpf: '789.123.456-22', plan: 'Plano Veterano Anual', status: 'active', label: 'Ativo', badge: 'badge-ok' },
+      { id: '5', name: 'Carla Mendes', cpf: '654.321.987-33', plan: 'Plano Constância 3M', status: 'active', label: 'Ativo', badge: 'badge-ok' },
+      { id: '6', name: 'Rodrigo Albuquerque', cpf: '998.877.665-44', plan: 'Plano Bairro Mensal', status: 'inactive', label: 'Inativo', badge: 'badge-idle' },
+    ];
+
+    let currentStatus = 'all';
+
+    window.filterStudents = function (status, btn) {
+      currentStatus = status;
+      document.querySelectorAll('.filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderStudentsTable();
+    };
+
+    window.renderStudentsTable = function () {
+      const q = (document.getElementById('student-search').value || '').toLowerCase();
+      const rows = STUDENTS.filter((s) => {
+        const matchStatus = currentStatus === 'all' || s.status === currentStatus;
+        const matchQ = !q || s.name.toLowerCase().includes(q) || s.cpf.includes(q);
+        return matchStatus && matchQ;
+      });
+      document.getElementById('students-tbody').innerHTML = rows.length
+        ? rows
+            .map(
+              (s) => `
+          <tr>
+            <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">${s.name}</a></td>
+            <td class="tabular-nums">${s.cpf}</td>
+            <td>${s.plan}</td>
+            <td><span class="badge ${s.badge}">${s.label}</span></td>
+            <td style="text-align:right;">
+              <a href="student-detail.html" class="btn btn-secondary btn-sm">Ficha</a>
+            </td>
+          </tr>`
+            )
+            .join('')
+        : '<tr><td colspan="5" style="text-align:center;color:var(--muted-foreground);">Nenhum aluno encontrado.</td></tr>';
+    };
+
+    renderStudentsTable();
+  </script>
+</body>
+</html>

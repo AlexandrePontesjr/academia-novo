@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Definir Nova Senha</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="brand-link" style="margin-bottom:1.5rem;">
+        <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+        <span>DukFit</span>
+      </a>
+      <div class="eyebrow">Redefinição</div>
+      <h1 class="screen-title" style="font-size:1.6rem;">Definir nova senha</h1>
+      <p class="screen-meta" style="margin-bottom:1.35rem;">Escolha uma senha forte com pelo menos 8 caracteres.</p>
+
+      <form onsubmit="event.preventDefault(); window.demoToast('Senha atualizada com sucesso!'); setTimeout(()=>location.href='login.html', 900);" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="np-1">Nova senha</label>
+          <input class="input" id="np-1" type="password" value="DukFit@2026" required />
+        </div>
+        <div class="field">
+          <label class="label" for="np-2">Confirmar nova senha</label>
+          <input class="input" id="np-2" type="password" value="DukFit@2026" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Salvar nova senha</button>
+      </form>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Minha Conta (Equipe)</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('account.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Preferências</div>
+          <h1 class="screen-title">Minha conta</h1>
+          <p class="screen-meta">Gerencie sua senha e autenticação em duas etapas (2FA).</p>
+        </div>
+      </div>
+
+      <div class="grid-cards-2">
+        <section class="panel" style="display:grid;gap:1rem;">
+          <h2 class="panel-title">Alterar senha</h2>
+          <form onsubmit="event.preventDefault(); window.demoToast('Senha alterada com sucesso!');" style="display:grid;gap:0.85rem;">
+            <div class="field">
+              <label class="label" for="ac-atual">Senha atual</label>
+              <input class="input" id="ac-atual" type="password" value="••••••••" required />
+            </div>
+            <div class="field">
+              <label class="label" for="ac-nova">Nova senha</label>
+              <input class="input" id="ac-nova" type="password" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Atualizar senha</button>
+          </form>
+        </section>
+
+        <section class="panel" style="display:grid;gap:1rem;align-content:start;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Autenticação em duas etapas (2FA)</h2>
+            <span class="badge badge-ok">Ativa</span>
+          </div>
+          <p style="margin:0;font-size:0.875rem;color:var(--muted-foreground);">
+            Sua conta está protegida com código TOTP via aplicativo autenticador.
+          </p>
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+            <a href="two-factor-setup.html" class="btn btn-secondary">Reconfigurar 2FA</a>
+            <button type="button" class="btn btn-danger btn-sm" onclick="window.demoToast('2FA desativado (simulado).')">Desativar</button>
+          </div>
+        </section>
+      </div>
+    `);
+  </script>
+</body>
+</html>
