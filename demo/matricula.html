@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Quero Treinar (Matrícula)</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card" style="max-width:32rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <a href="index.html" class="brand-link">
+          <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+          <span>DukFit</span>
+        </a>
+        <a href="index.html" class="btn btn-ghost btn-sm">← Voltar ao site</a>
+      </div>
+      <div class="eyebrow">Pré-matrícula online</div>
+      <h1 class="screen-title" style="font-size:1.65rem;">Quero treinar na DukFit</h1>
+      <p class="screen-meta" style="margin-bottom:1.5rem;">Preencha seus dados para agendar sua visita ou iniciar sua matrícula em Flores.</p>
+
+      <form onsubmit="event.preventDefault(); window.location.href='matricula-confirmar.html';" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="m-nome">Nome completo</label>
+          <input class="input" id="m-nome" value="Mariana Oliveira Santos" required />
+        </div>
+        <div class="grid-cards-2">
+          <div class="field">
+            <label class="label" for="m-tel">WhatsApp</label>
+            <input class="input" id="m-tel" value="(92) 99142-3810" required />
+          </div>
+          <div class="field">
+            <label class="label" for="m-email">E-mail</label>
+            <input class="input" id="m-email" type="email" value="mariana.santos@email.com" required />
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="m-plano">Plano de interesse</label>
+          <select class="select" id="m-plano">
+            <option>Plano Constância 3M — R$ 95/mês</option>
+            <option>Plano Bairro Mensal — R$ 110/mês</option>
+            <option>Plano Veterano Anual — R$ 85/mês</option>
+            <option>Quero fazer uma aula experimental primeiro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="m-obs">Horário preferido / observação</label>
+          <textarea class="textarea" id="m-obs" rows="2">Costumo treinar às 07h da manhã antes do trabalho.</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Continuar para confirmação</button>
+      </form>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

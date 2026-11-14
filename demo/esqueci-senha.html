@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Esqueci a Senha</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="brand-link" style="margin-bottom:1.5rem;">
+        <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+        <span>DukFit</span>
+      </a>
+      <div class="eyebrow">Recuperação de acesso</div>
+      <h1 class="screen-title" style="font-size:1.6rem;">Esqueci minha senha</h1>
+      <p class="screen-meta" style="margin-bottom:1.35rem;">Informe seu e-mail cadastrado para receber um link de redefinição.</p>
+
+      <form onsubmit="event.preventDefault(); document.getElementById('forgot-ok').style.display='block'; window.demoToast('Link de recuperação enviado (simulado).');" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="f-email">E-mail</label>
+          <input class="input" id="f-email" type="email" value="camila@dukfit.com.br" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Enviar link de recuperação</button>
+      </form>
+
+      <div id="forgot-ok" class="alert alert-ok" style="display:none;margin-top:1rem;">
+        Se existir uma conta com este e-mail, enviamos as instruções. <a href="definir-senha.html" style="text-decoration:underline;color:var(--primary);">Abrir tela de definir senha →</a>
+      </div>
+
+      <div style="margin-top:1rem;text-align:center;">
+        <a href="login.html" class="btn btn-ghost btn-sm">Voltar para o login</a>
+      </div>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

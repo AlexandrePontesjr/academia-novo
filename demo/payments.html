@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Pagamentos</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('payments.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Financeiro</div>
+          <h1 class="screen-title">Pagamentos</h1>
+          <p class="screen-meta">Controle de mensalidades, vencimentos e recebimentos no balcão.</p>
+        </div>
+      </div>
+
+      <div class="grid-cards-3" style="margin-bottom:1.25rem;">
+        <div class="metric-tile"><div class="metric-label">Recebido no mês</div><div class="metric-value" style="color:var(--primary);">R$ 12.480</div></div>
+        <div class="metric-tile"><div class="metric-label">Pendentes</div><div class="metric-value">R$ 1.840</div></div>
+        <div class="metric-tile"><div class="metric-label">Em atraso</div><div class="metric-value" style="color:var(--status-bad);">R$ 440</div></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button type="button" class="filter-pill active" onclick="filterPay('all', this)">Todos</button>
+          <button type="button" class="filter-pill" onclick="filterPay('overdue', this)">Atrasados</button>
+          <button type="button" class="filter-pill" onclick="filterPay('pending', this)">Pendentes</button>
+          <button type="button" class="filter-pill" onclick="filterPay('paid', this)">Pagos</button>
+        </div>
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Plano</th>
+                <th>Vencimento</th>
+                <th>Valor</th>
+                <th>Situação</th>
+                <th style="text-align:right;">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="pay-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    `);
+
+    const PAYMENTS = [
+      { id: 1, student: 'Beatriz Lima', plan: 'Plano Bairro Mensal', due: '10/11/2026', amount: 'R$ 110,00', status: 'overdue', label: 'Atrasado', badge: 'badge-bad' },
+      { id: 2, student: 'Lucas Andrade', plan: 'Plano Constância 3M', due: '15/11/2026', amount: 'R$ 95,00', status: 'pending', label: 'Pendente', badge: 'badge-warn' },
+      { id: 3, student: 'Fernanda Maia', plan: 'Plano Bairro Mensal', due: '16/11/2026', amount: 'R$ 110,00', status: 'pending', label: 'Pendente', badge: 'badge-warn' },
+      { id: 4, student: 'Pedro Henrique Souza', plan: 'Plano Veterano Anual', due: '05/11/2026', amount: 'R$ 85,00', status: 'paid', label: 'Pago (Pix)', badge: 'badge-ok' },
+      { id: 5, student: 'Carla Mendes', plan: 'Plano Constância 3M', due: '08/11/2026', amount: 'R$ 95,00', status: 'paid', label: 'Pago (Cartão)', badge: 'badge-ok' },
+    ];
+
+    let payFilter = 'all';
+
+    window.filterPay = function (status, btn) {
+      payFilter = status;
+      document.querySelectorAll('.filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPay();
+    };
+
+    window.markPaid = function (id) {
+      const p = PAYMENTS.find((x) => x.id === id);
+      if (p) {
+        p.status = 'paid';
+        p.label = 'Pago agora';
+        p.badge = 'badge-ok';
+        renderPay();
+        window.demoToast('Pagamento de ' + p.student + ' registrado!');
+      }
+    };
+
+    window.renderPay = function () {
+      const rows = PAYMENTS.filter((p) => payFilter === 'all' || p.status === payFilter);
+      document.getElementById('pay-tbody').innerHTML = rows
+        .map(
+          (p) => `
+        <tr>
+          <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">${p.student}</a></td>
+          <td>${p.plan}</td>
+          <td class="tabular-nums">${p.due}</td>
+          <td class="tabular-nums">${p.amount}</td>
+          <td><span class="badge ${p.badge}">${p.label}</span></td>
+          <td style="text-align:right;">
+            ${
+              p.status !== 'paid'
+                ? `<button type="button" class="btn btn-primary btn-sm" onclick="markPaid(${p.id})">Registrar pagamento</button>`
+                : `<span style="font-size:0.78rem;color:var(--muted-foreground);">Quitado</span>`
+            }
+          </td>
+        </tr>`
+        )
+        .join('');
+    };
+
+    renderPay();
+  </script>
+</body>
+</html>

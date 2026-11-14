@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Presenças (Relatório)</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('check-ins.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Frequência</div>
+          <h1 class="screen-title">Presenças</h1>
+          <p class="screen-meta">Histórico de entradas registradas na recepção.</p>
+        </div>
+        <a href="check-in.html" class="btn btn-primary">Novo check-in</a>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button type="button" class="filter-pill active" onclick="filterPeriod(this, 'Hoje (64)')">Hoje</button>
+          <button type="button" class="filter-pill" onclick="filterPeriod(this, 'Últimos 7 dias (507)')">Últimos 7 dias</button>
+          <button type="button" class="filter-pill" onclick="filterPeriod(this, 'Últimos 30 dias (2.140)')">Últimos 30 dias</button>
+        </div>
+        <span id="period-summary" class="stat-pill">Total no período: <strong>Hoje (64)</strong></span>
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Aluno</th>
+                <th>Plano</th>
+                <th>Registrado por</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="tabular-nums">13/11/2026 · 08:14</td>
+                <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Lucas Andrade</a></td>
+                <td>Plano Constância 3M</td>
+                <td>Camila Ferreira (Recepção)</td>
+              </tr>
+              <tr>
+                <td class="tabular-nums">13/11/2026 · 07:45</td>
+                <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Fernanda Maia</a></td>
+                <td>Plano Bairro Mensal</td>
+                <td>Camila Ferreira (Recepção)</td>
+              </tr>
+              <tr>
+                <td class="tabular-nums">13/11/2026 · 06:34</td>
+                <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Pedro Henrique Souza</a></td>
+                <td>Plano Veterano Anual</td>
+                <td>Marcos Duque (Admin)</td>
+              </tr>
+              <tr>
+                <td class="tabular-nums">13/11/2026 · 06:12</td>
+                <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Carla Mendes</a></td>
+                <td>Plano Constância 3M</td>
+                <td>Marcos Duque (Admin)</td>
+              </tr>
+              <tr>
+                <td class="tabular-nums">12/11/2026 · 19:20</td>
+                <td><a href="student-detail.html" style="font-weight:600;color:var(--primary);">Thiago Vasconcelos</a></td>
+                <td>Plano Bairro Mensal</td>
+                <td>Camila Ferreira (Recepção)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `);
+
+    window.filterPeriod = function (btn, label) {
+      document.querySelectorAll('.filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('period-summary').innerHTML = 'Total no período: <strong>' + label + '</strong>';
+    };
+  </script>
+</body>
+</html>

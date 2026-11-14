@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Qualidade de Vida &amp; Visão de Negócio</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+  <style>
+    .doc-meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem 1.25rem;
+      padding: 0.85rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      font-size: 0.8rem;
+      color: var(--muted-foreground);
+      margin-bottom: 1.25rem;
+    }
+    .doc-meta-bar strong {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .doc-toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 1.5rem;
+    }
+    .doc-toc a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.38rem 0.78rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted-foreground);
+      transition: border-color var(--duration-quick) var(--ease-smooth-out), color var(--duration-quick) var(--ease-smooth-out), background-color var(--duration-quick) var(--ease-smooth-out);
+    }
+    .doc-toc a:hover {
+      border-color: var(--primary);
+      color: var(--foreground);
+      background: var(--status-ok-surface);
+    }
+    .doc-section {
+      margin-bottom: 1.75rem;
+      scroll-margin-top: 1.25rem;
+    }
+    .doc-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-section-title {
+      margin: 0.15rem 0 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .doc-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.85rem;
+    }
+    .doc-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .doc-card-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+    .doc-card-title {
+      margin: 0.2rem 0 0;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .doc-card-body {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--muted-foreground);
+      line-height: 1.6;
+    }
+    .doc-card-body strong {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .doc-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted-foreground);
+    }
+    .doc-card-foot a {
+      color: var(--primary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .doc-card-foot a:hover {
+      text-decoration: underline;
+    }
+    .doc-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+    }
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      text-align: left;
+    }
+    .doc-table th {
+      padding: 0.78rem 1rem;
+      font-size: 0.73rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted-foreground);
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      white-space: nowrap;
+    }
+    .doc-table td {
+      padding: 0.82rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .doc-table tr:last-child td {
+      border-bottom: none;
+    }
+    .doc-quote {
+      border-left: 3px solid var(--primary);
+      padding: 0.9rem 1.15rem;
+      background: var(--card);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-quote p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .doc-roadmap {
+      display: grid;
+      gap: 0.85rem;
+    }
+    @media (min-width: 768px) {
+      .doc-roadmap {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+    .doc-step {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      display: grid;
+      gap: 0.45rem;
+      align-content: start;
+    }
+    .doc-step-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--primary);
+    }
+    .doc-step h3 {
+      margin: 0;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+    .doc-step p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted-foreground);
+      line-height: 1.5;
+    }
+
+    @media print {
+      .side-nav,
+      .app-topbar,
+      .bottom-nav,
+      .fab-checkin,
+      .no-print {
+        display: none !important;
+      }
+      .app-shell {
+        padding-left: 0 !important;
+      }
+      .container-app {
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      .panel,
+      .doc-meta-bar,
+      .doc-table-wrap,
+      .doc-step,
+      .doc-quote {
+        background: #ffffff !important;
+        color: #111111 !important;
+        border-color: #d4d4d8 !important;
+        break-inside: avoid;
+      }
+      .doc-card-body,
+      .doc-meta-bar,
+      .doc-step p,
+      .screen-meta,
+      .kpi-card-sub,
+      .doc-table th {
+        color: #444444 !important;
+      }
+      .eyebrow,
+      .doc-card-num,
+      .doc-step-tag {
+        color: #7c5b28 !important;
+      }
+      .badge {
+        border: 1px solid #d4d4d8 !important;
+        background: #f4f4f5 !important;
+        color: #111111 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('visao-negocio.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Documento Executivo · Proposta de Valor para o Dono</div>
+          <h1 class="screen-title">Qualidade de Vida &amp; Visão de Negócio</h1>
+          <p class="screen-meta">Como o DukFit reduz a sobrecarga diária da gestão, blinda a operação e transforma a academia em um negócio previsível e escalável.</p>
+        </div>
+        <div class="no-print" style="display:flex;gap:0.55rem;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Salvar PDF</button>
+          <a href="dashboard.html" class="btn btn-secondary">Abrir Painel</a>
+          <a href="mapa.html" class="btn btn-ghost">Mapa de Telas</a>
+        </div>
+      </div>
+
+      <div class="doc-meta-bar">
+        <div><strong>Documento:</strong> Visão Estratégica &amp; Operacional</div>
+        <div><strong>Público:</strong> Proprietário / Direção</div>
+        <div><strong>Versão:</strong> 1.0 · Novembro/2026</div>
+        <div><strong>Escopo:</strong> Operação diária, receita, segurança e conformidade LGPD</div>
+      </div>
+
+      <nav class="doc-toc no-print" aria-label="Índice do documento">
+        <a href="#resumo">1. Resumo Executivo</a>
+        <a href="#qualidade-vida">2. Qualidade de Vida do Dono</a>
+        <a href="#visao-negocio">3. Visão de Negócio</a>
+        <a href="#antes-depois">4. Antes vs. Com o DukFit</a>
+        <a href="#mapa-valor">5. Mapa de Valor por Módulo</a>
+        <a href="#implantacao">6. Plano de 30 Dias</a>
+      </nav>
+
+      <!-- 1. RESUMO EXECUTIVO -->
+      <section id="resumo" class="doc-section">
+        <div class="doc-quote" style="margin-bottom:1rem;">
+          <p>
+            O objetivo do <strong style="color:var(--primary);">DukFit</strong> não é apenas substituir planilhas: é devolver <strong class="font-editorial" style="font-size:1.12rem;">tempo, tranquilidade e clareza financeira</strong> para o dono da academia, garantindo que o balcão funcione com padrão profissional mesmo quando ele não está presente.
+          </p>
+        </div>
+
+        <div class="kpi-strip">
+          <div class="kpi-card panel">
+            <div class="kpi-card-head">
+              <span class="kpi-card-title">Tempo Livre</span>
+              <span class="badge badge-ok">Autoatendimento</span>
+            </div>
+            <div class="kpi-card-value" style="font-size:1.35rem;">Menos balcão</div>
+            <div class="kpi-card-sub">Portal do aluno e pré-matrícula online tiram fila e WhatsApp da recepção.</div>
+          </div>
+
+          <div class="kpi-card panel">
+            <div class="kpi-card-head">
+              <span class="kpi-card-title">Delegação Segura</span>
+              <span class="badge badge-ok">RBAC + Auditoria</span>
+            </div>
+            <div class="kpi-card-value" style="font-size:1.35rem;">Controle total</div>
+            <div class="kpi-card-sub">Cada perfil vê só o necessário e toda ação sensível fica registrada.</div>
+          </div>
+
+          <div class="kpi-card panel">
+            <div class="kpi-card-head">
+              <span class="kpi-card-title">Receita Protegida</span>
+              <span class="badge badge-ok">Check-in Visual</span>
+            </div>
+            <div class="kpi-card-value" style="font-size:1.35rem;">Zero "carona"</div>
+            <div class="kpi-card-sub">Foto 3×4 + status financeiro na entrada evitam empréstimo de matrícula.</div>
+          </div>
+
+          <div class="kpi-card panel">
+            <div class="kpi-card-head">
+              <span class="kpi-card-title">Risco Jurídico</span>
+              <span class="badge badge-ok">LGPD Nativa</span>
+            </div>
+            <div class="kpi-card-value" style="font-size:1.35rem;">Conformidade</div>
+            <div class="kpi-card-sub">Consentimento versionado, bucket privado de fotos e exportação em cliques.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. QUALIDADE DE VIDA DO DONO -->
+      <section id="qualidade-vida" class="doc-section">
+        <div class="doc-section-head">
+          <div>
+            <div class="eyebrow">Pilar 01 · Rotina &amp; Bem-estar</div>
+            <h2 class="doc-section-title">Melhorias de Qualidade de Vida para o Dono</h2>
+          </div>
+          <span class="badge badge-idle">4 ganhos diretos no dia a dia</span>
+        </div>
+
+        <div class="grid-cards-2">
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Ganho 01</span>
+                  <h3 class="doc-card-title">Fim do "apagar incêndios" no balcão e no WhatsApp</h3>
+                </div>
+                <span class="badge badge-ok">Rotina leve</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                Consultas de vencimento, atualização de telefone e envio de foto deixam de depender do dono ou da recepcionista parando o atendimento. O <strong>Portal do Aluno</strong> entrega autoatendimento direto, e qualquer busca por nome ou CPF na recepção responde em menos de 1 segundo.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Impacto: menos interrupções fora do horário</span>
+              <a href="minha-conta.html" class="no-print">Ver Portal do Aluno →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Ganho 02</span>
+                  <h3 class="doc-card-title">Tranquilidade para viajar ou focar na estratégia</h3>
+                </div>
+                <span class="badge badge-ok">Delegação</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                Com <strong>perfis de acesso separados</strong> (Administrador, Recepção, Professor), a equipe opera sem ver dados confidenciais de funcionários ou financeiro global. E se algo mudar em um cadastro ou pagamento, a <strong>Auditoria imutável</strong> registra quem fez, quando e de qual IP.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Impacto: confiança para delegar sem perder visão</span>
+              <a href="audit.html" class="no-print">Ver Auditoria →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Ganho 03</span>
+                  <h3 class="doc-card-title">Matrículas e fotos 3×4 sem papelada nem retrabalho</h3>
+                </div>
+                <span class="badge badge-ok">Agilidade</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                O interessado preenche a <strong>pré-matrícula online</strong> pelo celular e já chega pronto para conferência. Na recepção, a foto 3×4 é capturada pela webcam ou tablet com recorte padronizado — eliminando fotos em celulares pessoais e digitação dupla de fichas.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Impacto: cadastro completo em segundos</span>
+              <a href="matricula.html" class="no-print">Ver Pré-matrícula →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Ganho 04</span>
+                  <h3 class="doc-card-title">Menos estresse com fiscalização e privacidade (LGPD)</h3>
+                </div>
+                <span class="badge badge-ok">Paz jurídica</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                Fotos ficam em armazenamento privado com URL temporária, dados de saúde são protegidos e o aceite do termo de uso de imagem fica versionado por data. Se um ex-aluno solicitar portabilidade ou anonimização, o dono resolve em poucos cliques.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Impacto: proteção contra passivos e vazamentos</span>
+              <a href="privacy.html" class="no-print">Ver Privacidade &amp; LGPD →</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 3. VISÃO DE NEGÓCIO -->
+      <section id="visao-negocio" class="doc-section">
+        <div class="doc-section-head">
+          <div>
+            <div class="eyebrow">Pilar 02 · Receita, Retenção &amp; Marca</div>
+            <h2 class="doc-section-title">Visão de Negócio &amp; Crescimento Sustentável</h2>
+          </div>
+          <span class="badge badge-idle">4 alavancas de resultado</span>
+        </div>
+
+        <div class="grid-cards-2">
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Alavanca 01</span>
+                  <h3 class="doc-card-title">Captação ativa e funil de interessados organizado</h3>
+                </div>
+                <span class="badge badge-warn">Conversão</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                O site institucional capta visitantes 24h por dia e envia direto para a fila de <strong>Interessados (Leads)</strong>. A recepção acompanha quem pediu aula experimental ou contato e converte em aluno ativo sem perder mensagens perdidas no WhatsApp.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Resultado: mais matrículas com o mesmo tráfego</span>
+              <a href="leads.html" class="no-print">Ver Interessados →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Alavanca 02</span>
+                  <h3 class="doc-card-title">Redução de inadimplência e bloqueio de uso indevido</h3>
+                </div>
+                <span class="badge badge-ok">Caixa saudável</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                No <strong>Balcão de Check-in</strong>, a foto 3×4 aparece junto ao status do plano (Liberado, Pendente ou Bloqueado). Isso impede que terceiros usem a matrícula de outro aluno e cria o momento ideal para renovar planos vencidos na hora.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Resultado: proteção direta da margem mensal</span>
+              <a href="check-in.html" class="no-print">Simular Check-in →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Alavanca 03</span>
+                  <h3 class="doc-card-title">Decisões orientadas por dados reais da unidade</h3>
+                </div>
+                <span class="badge badge-ok">Previsibilidade</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                O <strong>Painel da Academia</strong> mostra faturamento recebido vs. previsto, distribuição por plano, frequência dos últimos 7 dias e horários de pico (manhã vs. tarde/noite) — base concreta para escalar professores e criar promoções em horários ociosos.
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Resultado: gestão profissional sem "achismo"</span>
+              <a href="dashboard.html" class="no-print">Ver Painel →</a>
+            </div>
+          </article>
+
+          <article class="panel doc-card">
+            <div>
+              <div class="doc-card-head">
+                <div>
+                  <span class="doc-card-num">Alavanca 04</span>
+                  <h3 class="doc-card-title">Posicionamento premium e base pronta para escalar</h3>
+                </div>
+                <span class="badge badge-idle">Expansão</span>
+              </div>
+              <p class="doc-card-body" style="margin-top:0.55rem;">
+                Experiência visual coesa do site público ao portal do aluno eleva a percepção de valor da academia de bairro, sustentando ticket médio e retenção. A arquitetura modular já nasce pronta para evoluir para cobrança recorrente (Fase 2) e novas unidades (Fase 3).
+              </p>
+            </div>
+            <div class="doc-card-foot">
+              <span>Resultado: ativo tecnológico valoriza o negócio</span>
+              <a href="index.html" class="no-print">Ver Site Público →</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 4. ANTES VS DEPOIS -->
+      <section id="antes-depois" class="doc-section">
+        <div class="doc-section-head">
+          <div>
+            <div class="eyebrow">Comparativo Prático</div>
+            <h2 class="doc-section-title">Operação Manual vs. Operação com DukFit</h2>
+          </div>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th>Situação do dia a dia</th>
+                <th>Sem sistema (Planilha / Papel)</th>
+                <th>Com o DukFit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Entrada do aluno na recepção</strong></td>
+                <td style="color:var(--muted-foreground);">Conferência por nome de memória ou lista impressa; risco de terceiros treinarem sem pagar.</td>
+                <td>Check-in em segundos com <strong>foto 3×4</strong> e alerta imediato de matrícula liberada ou bloqueada.</td>
+              </tr>
+              <tr>
+                <td><strong>Controle de mensalidades</strong></td>
+                <td style="color:var(--muted-foreground);">Cobrança reativa e esquecimentos; dono descobre atraso semanas depois.</td>
+                <td>Painel mostra recebido vs. previsto em tempo real, com baixa rápida e histórico por aluno.</td>
+              </tr>
+              <tr>
+                <td><strong>Interessados pelo Instagram / Site</strong></td>
+                <td style="color:var(--muted-foreground);">Conversas perdidas no WhatsApp sem responsável nem acompanhamento.</td>
+                <td>Captura automática na aba <strong>Interessados (Leads)</strong> com status e conversão em 1 clique.</td>
+              </tr>
+              <tr>
+                <td><strong>Alteração de telefone ou foto</strong></td>
+                <td style="color:var(--muted-foreground);">Aluno manda mensagem para o dono ou ocupa a recepção no horário de pico.</td>
+                <td>Aluno atualiza seus dados no <strong>Portal do Aluno</strong> e envia foto para aprovação simples.</td>
+              </tr>
+              <tr>
+                <td><strong>Delegação para equipe</strong></td>
+                <td style="color:var(--muted-foreground);">Acesso irrestrito à planilha ou receio de exclusão acidental sem rastro.</td>
+                <td>Perfis por função (Admin, Recepção, Professor) + <strong>Auditoria imutável</strong> de cada ação.</td>
+              </tr>
+              <tr>
+                <td><strong>Privacidade e LGPD</strong></td>
+                <td style="color:var(--muted-foreground);">Fotos em celular pessoal, fichas em gaveta, zero registro de consentimento.</td>
+                <td>Termo versionado, bucket privado com URL temporária e fluxo pronto para portabilidade/exclusão.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5. MAPA DE VALOR POR MÓDULO -->
+      <section id="mapa-valor" class="doc-section">
+        <div class="doc-section-head">
+          <div>
+            <div class="eyebrow">Rastreabilidade na Demo</div>
+            <h2 class="doc-section-title">Onde cada benefício acontece no sistema</h2>
+          </div>
+          <span class="badge badge-idle">Clique para testar ao vivo</span>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Qualidade de Vida (Dono / Equipe)</th>
+                <th>Impacto no Negócio</th>
+                <th class="no-print">Demo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Painel da Academia</strong></td>
+                <td>Visão do dia em 10 segundos sem pedir relatório para ninguém.</td>
+                <td>Identifica queda de frequência e meta mensal antes do mês fechar.</td>
+                <td class="no-print"><a href="dashboard.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Site + Pré-matrícula</strong></td>
+                <td>Menos digitação manual na recepção; aluno já chega pré-cadastrado.</td>
+                <td>Aumenta conversão de visitantes locais em matrículas pagas.</td>
+                <td class="no-print"><a href="matricula.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Interessados (Leads)</strong></td>
+                <td>Lista única de follow-up para a equipe de atendimento.</td>
+                <td>Recupera contatos mornos e eleva taxa de fechamento.</td>
+                <td class="no-print"><a href="leads.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Balcão de Check-in</strong></td>
+                <td>Conferência visual instantânea mesmo com recepcionista nova.</td>
+                <td>Combate evasão e inadimplência na porta da academia.</td>
+                <td class="no-print"><a href="check-in.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Planos &amp; Pagamentos</strong></td>
+                <td>Fim das dúvidas sobre vencimento, trocas e baixas manuais.</td>
+                <td>Previsibilidade de receita recorrente e clareza de fluxo de caixa.</td>
+                <td class="no-print"><a href="payments.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Portal do Aluno</strong></td>
+                <td>Menos pedidos repetitivos no balcão e no WhatsApp do dono.</td>
+                <td>Experiência moderna que aumenta percepção de valor e retenção.</td>
+                <td class="no-print"><a href="minha-conta.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+              <tr>
+                <td><strong>Equipe, Auditoria &amp; LGPD</strong></td>
+                <td>Segurança para delegar operação mantendo governança total.</td>
+                <td>Protege a marca e evita riscos trabalhistas e regulatórios.</td>
+                <td class="no-print"><a href="users.html" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6. PLANO DE IMPLANTAÇÃO -->
+      <section id="implantacao" class="doc-section">
+        <div class="doc-section-head">
+          <div>
+            <div class="eyebrow">Adoção Sem Trauma</div>
+            <h2 class="doc-section-title">Roteiro sugerido para os primeiros 30 dias</h2>
+          </div>
+          <span class="badge badge-ok">Entrada gradual</span>
+        </div>
+
+        <div class="doc-roadmap">
+          <div class="doc-step">
+            <span class="doc-step-tag">Semana 1</span>
+            <h3>Base &amp; Planos</h3>
+            <p>Cadastro dos planos vigentes, equipe com perfis (Admin, Recepção, Professor) e importação dos alunos ativos.</p>
+          </div>
+          <div class="doc-step">
+            <span class="doc-step-tag">Semana 2</span>
+            <h3>Fotos 3×4 &amp; Check-in</h3>
+            <p>Captura rápida das fotos na chegada dos alunos e início da conferência visual no balcão de entrada.</p>
+          </div>
+          <div class="doc-step">
+            <span class="doc-step-tag">Semana 3</span>
+            <h3>Portal &amp; Leads</h3>
+            <p>Liberação do Portal do Aluno para autoatendimento e ativação da fila de Interessados vinda do site.</p>
+          </div>
+          <div class="doc-step">
+            <span class="doc-step-tag">Semana 4</span>
+            <h3>Rotina Executiva</h3>
+            <p>Dono passa a acompanhar metas financeiras, picos de presença e auditoria direto pelo Painel semanalmente.</p>
+          </div>
+        </div>
+      </section>
+    `);
+  </script>
+</body>
+</html>

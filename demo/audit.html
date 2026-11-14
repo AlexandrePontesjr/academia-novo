@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Auditoria</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('audit.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Rastreabilidade</div>
+          <h1 class="screen-title">Auditoria</h1>
+          <p class="screen-meta">Registro de leituras sensíveis, alterações cadastrais e eventos de segurança.</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button type="button" class="filter-pill active" onclick="filterAudit('all', this)">Todos</button>
+          <button type="button" class="filter-pill" onclick="filterAudit('auth', this)">Autenticação</button>
+          <button type="button" class="filter-pill" onclick="filterAudit('payment', this)">Pagamentos</button>
+          <button type="button" class="filter-pill" onclick="filterAudit('privacy', this)">LGPD / Fichas</button>
+        </div>
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data / Hora</th>
+                <th>Usuário</th>
+                <th>Evento</th>
+                <th>Alvo</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    `);
+
+    const LOGS = [
+      { ts: '13/11/2026 08:15:02', user: 'camila@dukfit.com.br', event: 'Check-in registrado', target: 'Aluno: Lucas Andrade', cat: 'auth' },
+      { ts: '13/11/2026 08:02:41', user: 'marcos@dukfit.com.br', event: 'Pagamento confirmado (Pix)', target: 'Pedro Henrique Souza · R$ 85,00', cat: 'payment' },
+      { ts: '12/11/2026 18:44:10', user: 'marcos@dukfit.com.br', event: 'Leitura de ficha de funcionário', target: 'Rafael Costa', cat: 'privacy' },
+      { ts: '12/11/2026 17:19:55', user: 'marcos@dukfit.com.br', event: 'Exportação de dados LGPD', target: 'Titular #104', cat: 'privacy' },
+      { ts: '12/11/2026 06:05:12', user: 'camila@dukfit.com.br', event: 'Login com 2FA verificado', target: 'IP 177.22.xx.xx', cat: 'auth' },
+    ];
+
+    window.filterAudit = function (cat, btn) {
+      document.querySelectorAll('.filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const rows = LOGS.filter((l) => cat === 'all' || l.cat === cat);
+      document.getElementById('audit-tbody').innerHTML = rows
+        .map(
+          (l) => `
+        <tr>
+          <td class="tabular-nums">${l.ts}</td>
+          <td>${l.user}</td>
+          <td><span class="badge badge-idle">${l.event}</span></td>
+          <td>${l.target}</td>
+        </tr>`
+        )
+        .join('');
+    };
+
+    filterAudit('all', document.querySelector('.filter-pill'));
+  </script>
+</body>
+</html>

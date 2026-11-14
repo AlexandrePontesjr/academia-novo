@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Primeiro Acesso</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="brand-link" style="margin-bottom:1.5rem;">
+        <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+        <span>DukFit</span>
+      </a>
+      <div class="eyebrow">Ativação de conta</div>
+      <h1 class="screen-title" style="font-size:1.6rem;">Primeiro acesso</h1>
+      <p class="screen-meta" style="margin-bottom:1.35rem;">Informe seu CPF e e-mail cadastrados na recepção para criar sua senha do Portal do Aluno.</p>
+
+      <form onsubmit="event.preventDefault(); window.demoToast('Acesso ativado! Entrando no Portal do Aluno...'); setTimeout(()=>location.href='minha-conta.html', 900);" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="pa-cpf">CPF</label>
+          <input class="input" id="pa-cpf" value="321.654.987-00" required />
+        </div>
+        <div class="field">
+          <label class="label" for="pa-email">E-mail</label>
+          <input class="input" id="pa-email" type="email" value="lucas.andrade@email.com" required />
+        </div>
+        <div class="field">
+          <label class="label" for="pa-pass">Criar senha</label>
+          <input class="input" id="pa-pass" type="password" value="MinhaSenha123" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Ativar minha conta</button>
+        <a href="login.html" class="btn btn-ghost btn-sm">Já tenho senha</a>
+      </form>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

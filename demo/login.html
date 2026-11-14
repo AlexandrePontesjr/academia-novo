@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Entrar no Sistema</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="auth-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <a href="index.html" class="brand-link">
+          <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+          <span>DukFit</span>
+        </a>
+        <a href="index.html" class="btn btn-ghost btn-sm">Site</a>
+      </div>
+
+      <div class="eyebrow">Acesso ao sistema</div>
+      <h1 class="screen-title" style="font-size:1.65rem;">Entrar</h1>
+      <p class="screen-meta" style="margin-bottom:1.35rem;">Use seu e-mail e senha para acessar o painel ou sua área de aluno.</p>
+
+      <form onsubmit="event.preventDefault(); window.location.href='dashboard.html';" style="display:grid;gap:1rem;">
+        <div class="field">
+          <label class="label" for="email">E-mail</label>
+          <input class="input" id="email" type="email" value="marcos@dukfit.com.br" required />
+        </div>
+        <div class="field">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <label class="label" for="password">Senha</label>
+            <a href="esqueci-senha.html" style="font-size:0.78rem;color:var(--primary);">Esqueci a senha</a>
+          </div>
+          <input class="input" id="password" type="password" value="••••••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar como Admin</button>
+      </form>
+
+      <div style="margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid var(--border);display:grid;gap:0.5rem;">
+        <div style="font-size:0.75rem;color:var(--muted-foreground);">Atalhos de demonstração:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+          <a href="login-two-factor.html" class="btn btn-secondary btn-sm">Testar tela 2FA</a>
+          <a href="minha-conta.html" class="btn btn-secondary btn-sm">Entrar como Aluno</a>
+        </div>
+        <a href="primeiro-acesso.html" class="btn btn-ghost btn-sm">Primeiro acesso do aluno</a>
+      </div>
+    </div>
+  </main>
+  <script src="assets/demo.js"></script>
+</body>
+</html>

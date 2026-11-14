@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Funcionários</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('staff.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Equipe</div>
+          <h1 class="screen-title">Funcionários</h1>
+          <p class="screen-meta">Professores, recepção e administração da academia.</p>
+        </div>
+        <a href="staff-new.html" class="btn btn-primary">Novo funcionário</a>
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Cargo / Turno</th>
+                <th>CREF</th>
+                <th>Acesso ao sistema</th>
+                <th>Situação</th>
+                <th style="text-align:right;">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="staff-detail.html" style="font-weight:600;color:var(--primary);">Rafael Costa</a></td>
+                <td>Educador Físico · Manhã</td>
+                <td class="tabular-nums">004821-G/AM</td>
+                <td><span class="badge badge-ok">Vinculado (Professor)</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+                <td style="text-align:right;"><a href="staff-detail.html" class="btn btn-secondary btn-sm">Ficha</a></td>
+              </tr>
+              <tr>
+                <td><a href="staff-detail.html" style="font-weight:600;color:var(--primary);">Camila Ferreira</a></td>
+                <td>Recepção · Manhã/Tarde</td>
+                <td>—</td>
+                <td><span class="badge badge-ok">Vinculado (Recepção)</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+                <td style="text-align:right;"><a href="staff-detail.html" class="btn btn-secondary btn-sm">Ficha</a></td>
+              </tr>
+              <tr>
+                <td><a href="staff-detail.html" style="font-weight:600;color:var(--primary);">Juliana Nogueira</a></td>
+                <td>Educadora Física · Tarde</td>
+                <td class="tabular-nums">005190-G/AM</td>
+                <td><span class="badge badge-idle">Sem usuário</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+                <td style="text-align:right;"><a href="staff-detail.html" class="btn btn-secondary btn-sm">Ficha</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `);
+  </script>
+</body>
+</html>

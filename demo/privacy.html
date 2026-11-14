@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Privacidade &amp; LGPD</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('privacy.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Conformidade</div>
+          <h1 class="screen-title">Privacidade &amp; LGPD</h1>
+          <p class="screen-meta">Atendimento a solicitações de titulares, portabilidade e anonimização.</p>
+        </div>
+      </div>
+
+      <div class="grid-cards-2">
+        <section class="panel" style="display:grid;gap:1rem;">
+          <h2 class="panel-title">Solicitação de titular</h2>
+          <form onsubmit="event.preventDefault(); window.demoToast('Relatório de dados do titular gerado com sucesso!');" style="display:grid;gap:0.85rem;">
+            <div class="field">
+              <label class="label" for="lgpd-cpf">CPF do titular</label>
+              <input class="input" id="lgpd-cpf" value="321.654.987-00" required />
+            </div>
+            <div class="field">
+              <label class="label" for="lgpd-tipo">Tipo de solicitação</label>
+              <select class="select" id="lgpd-tipo">
+                <option>Exportar cópia completa dos dados (Portabilidade)</option>
+                <option>Revogar consentimento de imagem</option>
+                <option>Anonimizar cadastro (Direito ao esquecimento)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Executar solicitação</button>
+          </form>
+        </section>
+
+        <section class="panel" style="display:grid;gap:0.75rem;">
+          <h2 class="panel-title">Políticas ativas</h2>
+          <div class="metric-tile">
+            <div class="metric-label">Retenção de logs de auditoria</div>
+            <div style="font-weight:700;margin-top:0.2rem;">5 anos · Imutável</div>
+          </div>
+          <div class="metric-tile">
+            <div class="metric-label">Termo de consentimento vigente</div>
+            <div style="font-weight:700;margin-top:0.2rem;">Versão 2.1 (Atualizado em 2026)</div>
+          </div>
+        </section>
+      </div>
+    `);
+  </script>
+</body>
+</html>

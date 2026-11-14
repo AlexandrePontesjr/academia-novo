@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Mapa de Telas da Demonstração</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="brand-link">
+        <img src="assets/dukfit/logo-dukfit-96.webp" alt="DukFit" />
+        <span>DukFit <span style="color:var(--muted-foreground);font-weight:400;">· Demonstração</span></span>
+      </a>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <a href="index.html" class="btn btn-secondary btn-sm">Site Público</a>
+        <a href="dashboard.html" class="btn btn-primary btn-sm">Abrir Painel Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container-app" style="padding-top:2.5rem;">
+    <section class="screen-header">
+      <div>
+        <div class="eyebrow">Apresentação para Cliente · Ambiente Mock Estático</div>
+        <h1 class="screen-title">Mapa completo do sistema DukFit</h1>
+        <p class="screen-meta">Todas as 34 telas do sistema navegáveis sem banco de dados, prontas para demonstração.</p>
+      </div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <a href="index.html" class="btn btn-secondary">1. Site Público</a>
+        <a href="login.html" class="btn btn-secondary">2. Login</a>
+        <a href="dashboard.html" class="btn btn-primary">3. Painel Interno</a>
+        <a href="minha-conta.html" class="btn btn-secondary">4. Portal do Aluno</a>
+        <a href="visao-negocio.html" class="btn btn-secondary">5. Visão do Dono (Doc)</a>
+      </div>
+    </section>
+
+    <div class="alert alert-ok" style="margin-bottom:1.5rem;">
+      <strong>Dica para demonstração:</strong> Em qualquer página do sistema, você pode usar o botão flutuante <strong>"Telas"</strong> no canto inferior esquerdo para pular diretamente para qualquer módulo, ou trocar o perfil simulado (Administrador, Recepção, Professor ou Aluno) no topo do painel.
+    </div>
+
+    <div id="mapa-sections" style="display:grid;gap:1.5rem;"></div>
+  </main>
+
+  <script src="assets/demo.js"></script>
+  <script>
+    (function () {
+      const container = document.getElementById('mapa-sections');
+      const groups = {};
+      window.DUKFIT_PAGES.forEach((p) => {
+        if (!groups[p.group]) groups[p.group] = [];
+        groups[p.group].push(p);
+      });
+      container.innerHTML = Object.entries(groups)
+        .map(
+          ([group, items]) => `
+          <section class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">${group}</h2>
+              <span class="badge badge-idle">${items.length} ${items.length === 1 ? 'tela' : 'telas'}</span>
+            </div>
+            <div class="demo-page-grid">
+              ${items
+                .map(
+                  (p) => `
+                <a href="${p.file}" class="demo-page-link">
+                  <span style="font-weight:600;">${p.title}</span>
+                  <span class="route-tag">${p.route} → ${p.file}</span>
+                </a>`
+                )
+                .join('')}
+            </div>
+          </section>`
+        )
+        .join('');
+    })();
+  </script>
+</body>
+</html>

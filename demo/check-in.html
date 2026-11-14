@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Balcão de Check-in</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('check-in.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Recepção</div>
+          <h1 class="screen-title">Balcão de Check-in</h1>
+          <p class="screen-meta">Busque o aluno por nome ou CPF para conferir a situação e registrar a presença.</p>
+        </div>
+        <a href="check-ins.html" class="btn btn-secondary">Ver presenças de hoje</a>
+      </div>
+
+      <section class="panel" style="margin-bottom:1.25rem;">
+        <form id="ci-form" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <input id="ci-q" class="input" style="flex:1 1 14rem;min-width:0;" placeholder="Digite o nome ou CPF do aluno (ex: Lucas, Beatriz, Pedro)..." />
+          <button type="submit" class="btn btn-primary">Buscar aluno</button>
+        </form>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.85rem;align-items:center;">
+          <span style="font-size:0.78rem;color:var(--muted-foreground);">Testar cenários:</span>
+          <button type="button" class="filter-pill" onclick="selectStudent('lucas')">Lucas Andrade (Liberado)</button>
+          <button type="button" class="filter-pill" onclick="selectStudent('beatriz')">Beatriz Lima (Inadimplente)</button>
+          <button type="button" class="filter-pill" onclick="selectStudent('pedro')">Pedro Souza (Já entrou hoje)</button>
+        </div>
+      </section>
+
+      <div id="ci-result"></div>
+    `);
+
+    const MOCK_CI = {
+      lucas: {
+        id: '1', name: 'Lucas Andrade', cpf: '321.654.987-00', plan: 'Plano Constância 3M · Trimestral',
+        access: 'allowed', badge: 'badge-ok', statusText: 'Acesso liberado',
+        detail: 'Matrícula ativa até 15/01/2027 · Última presença: ontem às 07:12',
+        photo: 'assets/dukfit/trainer-1.jpg'
+      },
+      beatriz: {
+        id: '2', name: 'Beatriz Lima', cpf: '456.789.123-11', plan: 'Plano Bairro Mensal · Mensal',
+        access: 'blocked', badge: 'badge-bad', statusText: 'Acesso bloqueado',
+        detail: 'Mensalidade vencida em 10/11/2026 (3 dias em atraso).',
+        photo: 'assets/dukfit/trainer-2.jpg'
+      },
+      pedro: {
+        id: '3', name: 'Pedro Henrique Souza', cpf: '789.123.456-22', plan: 'Plano Veterano Anual · Anual',
+        access: 'already', badge: 'badge-warn', statusText: 'Presença já registrada hoje',
+        detail: 'Entrada confirmada hoje às 06:34.',
+        photo: 'assets/dukfit/trainer-3.jpg'
+      }
+    };
+
+    window.selectStudent = function (key) {
+      const s = MOCK_CI[key] || MOCK_CI.lucas;
+      const box = document.getElementById('ci-result');
+      box.innerHTML = `
+        <section class="panel" style="display:grid;gap:1.25rem;max-width:40rem;">
+          <div style="display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap;">
+            <img src="${s.photo}" alt="${s.name}" style="width:5.5rem;height:5.5rem;border-radius:1rem;object-fit:cover;border:1px solid var(--border);" />
+            <div style="flex:1 1 12rem;min-width:0;">
+              <span class="badge ${s.badge}" style="margin-bottom:0.4rem;">${s.statusText}</span>
+              <h2 style="margin:0;font-size:1.35rem;">${s.name}</h2>
+              <div style="font-size:0.85rem;color:var(--muted-foreground);">CPF ${s.cpf} · ${s.plan}</div>
+            </div>
+          </div>
+          <div class="alert ${s.access === 'allowed' ? 'alert-ok' : s.access === 'blocked' ? 'alert-bad' : 'alert-warn'}">
+            ${s.detail}
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            ${
+              s.access === 'allowed'
+                ? `<button type="button" class="btn btn-primary" onclick="confirmCheckIn('${s.name}')">Registrar presença agora</button>`
+                : s.access === 'blocked'
+                ? `<a href="payments.html" class="btn btn-primary">Regularizar pagamento</a>`
+                : `<button type="button" class="btn btn-secondary" disabled>Já registrado hoje</button>`
+            }
+            <a href="student-detail.html" class="btn btn-secondary">Abrir ficha do aluno</a>
+          </div>
+        </section>
+      `;
+    };
+
+    window.confirmCheckIn = function (name) {
+      window.demoToast('Presença registrada para ' + name + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '!');
+      MOCK_CI.lucas.access = 'already';
+      MOCK_CI.lucas.badge = 'badge-ok';
+      MOCK_CI.lucas.statusText = 'Presença confirmada agora';
+      MOCK_CI.lucas.detail = 'Entrada liberada e registrada no histórico de hoje.';
+      selectStudent('lucas');
+    };
+
+    document.getElementById('ci-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = (document.getElementById('ci-q').value || '').toLowerCase();
+      if (q.includes('beatriz')) selectStudent('beatriz');
+      else if (q.includes('pedro')) selectStudent('pedro');
+      else selectStudent('lucas');
+    });
+
+    selectStudent('lucas');
+  </script>
+</body>
+</html>

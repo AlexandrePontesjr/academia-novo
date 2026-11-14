@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Usuários e Perfis</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('users.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Segurança</div>
+          <h1 class="screen-title">Usuários</h1>
+          <p class="screen-meta">Contas de acesso ao painel administrativo e operacional.</p>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="window.demoToast('Convite de novo usuário enviado (simulado).')">Convidar usuário</button>
+      </div>
+
+      <section class="panel" style="padding:0;">
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Perfil</th>
+                <th>2FA</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600;">Marcos Duque</td>
+                <td>marcos@dukfit.com.br</td>
+                <td><span class="badge badge-ok">Administrador</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;">Camila Ferreira</td>
+                <td>camila@dukfit.com.br</td>
+                <td><span class="badge badge-idle">Recepção</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;">Rafael Costa</td>
+                <td>rafael@dukfit.com.br</td>
+                <td><span class="badge badge-idle">Professor</span></td>
+                <td><span class="badge badge-warn">Pendente</span></td>
+                <td><span class="badge badge-ok">Ativo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `);
+  </script>
+</body>
+</html>

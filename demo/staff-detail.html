@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Ficha do Funcionário</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('staff.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Ficha da equipe</div>
+          <h1 class="screen-title">Rafael Costa</h1>
+          <p class="screen-meta">Educador Físico · CREF 004821-G/AM · Turno Manhã</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+          <span class="badge badge-ok">Ativo</span>
+          <a href="staff-edit.html" class="btn btn-secondary btn-sm">Editar</a>
+          <a href="staff-print.html" class="btn btn-secondary btn-sm">Imprimir ficha</a>
+        </div>
+      </div>
+
+      <div class="grid-cards-2">
+        <section class="panel" style="display:grid;gap:0.75rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Dados pessoais</h2>
+          </div>
+          <div style="display:flex;gap:1rem;align-items:center;">
+            <img src="assets/dukfit/trainer-1.jpg" alt="Rafael Costa" style="width:4.5rem;height:4.5rem;border-radius:1rem;object-fit:cover;border:1px solid var(--border);" />
+            <div style="font-size:0.875rem;display:grid;gap:0.25rem;">
+              <div><strong>CPF:</strong> 234.567.890-12</div>
+              <div><strong>Telefone:</strong> (92) 99100-4455</div>
+              <div><strong>Admissão:</strong> 03/02/2025</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.25rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="window.demoToast('Situação atualizada (simulado).')">Inativar cadastro</button>
+          </div>
+        </section>
+
+        <section class="panel" style="display:grid;gap:0.75rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Vínculo de usuário</h2>
+            <span class="badge badge-ok">Vinculado</span>
+          </div>
+          <div style="font-size:0.875rem;display:grid;gap:0.35rem;">
+            <div><strong>E-mail de acesso:</strong> rafael@dukfit.com.br</div>
+            <div><strong>Perfil:</strong> Professor</div>
+            <div><strong>2FA:</strong> Ativo</div>
+          </div>
+          <div>
+            <a href="users.html" class="btn btn-secondary btn-sm">Gerenciar usuários</a>
+          </div>
+        </section>
+      </div>
+    `);
+  </script>
+</body>
+</html>

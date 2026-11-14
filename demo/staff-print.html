@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Ficha para Impressão (Funcionário)</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div class="no-print" style="max-width:48rem;margin:1.5rem auto 0;padding:0 1rem;display:flex;justify-content:space-between;align-items:center;">
+    <a href="staff-detail.html" class="btn btn-secondary btn-sm">← Voltar para a ficha</a>
+    <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">Imprimir / Salvar PDF</button>
+  </div>
+
+  <article class="print-sheet">
+    <header style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:1.25rem;border-bottom:2px solid #111;">
+      <div>
+        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.12em;" class="muted-print">DUK FIT Academia · Ficha de Colaborador</div>
+        <h1 style="margin:0.25rem 0 0;font-size:1.75rem;">Rafael Costa</h1>
+      </div>
+      <div style="text-align:right;font-size:0.8rem;" class="muted-print">
+        <div>Emitido em 13/11/2026</div>
+        <div>Conjunto Flores, Manaus–AM</div>
+      </div>
+    </header>
+
+    <section style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin:1.5rem 0;font-size:0.9rem;">
+      <div><strong>CPF:</strong> 234.567.890-12</div>
+      <div><strong>Função:</strong> Educador Físico (Manhã)</div>
+      <div><strong>CREF:</strong> 004821-G/AM</div>
+      <div><strong>Telefone:</strong> (92) 99100-4455</div>
+      <div><strong>Admissão:</strong> 03/02/2025</div>
+      <div><strong>Situação:</strong> Ativo</div>
+    </section>
+
+    <footer style="margin-top:3rem;padding-top:1rem;border-top:1px solid #d4d4d8;display:flex;justify-content:space-between;font-size:0.8rem;" class="muted-print">
+      <span>Assinatura do Colaborador: _________________________</span>
+      <span>DukFit Academia</span>
+    </footer>
+  </article>
+
+  <script src="assets/demo.js"></script>
+</body>
+</html>

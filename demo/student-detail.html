@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DukFit — Ficha do Aluno</title>
+  <link rel="stylesheet" href="assets/demo.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="assets/demo.js"></script>
+  <script>
+    renderAppShell('students.html', `
+      <div class="screen-header">
+        <div>
+          <div class="eyebrow">Ficha do aluno</div>
+          <h1 class="screen-title">Lucas Andrade</h1>
+          <p class="screen-meta">CPF 321.654.987-00 · Nascimento 14/06/1994 · (92) 99123-4567</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+          <span class="badge badge-ok">Ativo</span>
+          <a href="student-edit.html" class="btn btn-secondary btn-sm">Editar</a>
+          <a href="student-print.html" class="btn btn-secondary btn-sm">Imprimir ficha</a>
+          <a href="check-in.html" class="btn btn-primary btn-sm">Check-in</a>
+        </div>
+      </div>
+
+      <div class="grid-cards-2" style="margin-bottom:1.25rem;">
+        <section class="panel" style="display:grid;gap:1rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Foto &amp; Identificação</h2>
+            <span class="badge badge-warn" id="photo-badge">Nova foto pendente</span>
+          </div>
+          <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+            <img src="assets/dukfit/trainer-1.jpg" alt="Lucas Andrade" style="width:5.5rem;height:5.5rem;border-radius:1rem;object-fit:cover;border:1px solid var(--border);" />
+            <div style="display:grid;gap:0.5rem;">
+              <div style="font-size:0.85rem;color:var(--muted-foreground);">O aluno enviou uma nova foto pelo portal.</div>
+              <div style="display:flex;gap:0.5rem;" id="photo-actions">
+                <button type="button" class="btn btn-primary btn-sm" onclick="approvePhoto()">Aprovar foto</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="rejectPhoto()">Recusar</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" style="display:grid;gap:0.65rem;">
+          <div class="panel-header" style="margin-bottom:0;">
+            <h2 class="panel-title">Dados cadastrais</h2>
+          </div>
+          <div style="font-size:0.875rem;display:grid;gap:0.4rem;">
+            <div><span style="color:var(--muted-foreground);">E-mail:</span> lucas.andrade@email.com</div>
+            <div><span style="color:var(--muted-foreground);">Endereço:</span> Av. Timbiras, 412 · Cidade Nova, Manaus–AM</div>
+            <div><span style="color:var(--muted-foreground);">Portal do aluno:</span> <span class="badge badge-ok">Acesso ativo</span></div>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.25rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="window.demoToast('Situação alterada para Suspenso (simulado).')">Suspender aluno</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="window.demoToast('Link de redefinição enviado ao aluno.')">Reenviar acesso</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid-cards-2">
+        <section class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Matrículas</h2>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="window.demoToast('Modal de nova matrícula aberto (simulado).')">Nova matrícula</button>
+          </div>
+          <div style="display:grid;gap:0.6rem;">
+            <div class="metric-tile">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>Plano Constância 3M · Trimestral</strong>
+                <span class="badge badge-ok">Ativa</span>
+              </div>
+              <div style="font-size:0.8rem;color:var(--muted-foreground);margin-top:0.3rem;">Vigência: 15/10/2026 até 15/01/2027 · R$ 95,00/mês</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Pagamentos</h2>
+            <a href="payments.html" class="panel-arrow">↗</a>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Período</th><th>Valor</th><th>Situação</th></tr></thead>
+              <tbody>
+                <tr><td>Nov/2026</td><td class="tabular-nums">R$ 95,00</td><td><span class="badge badge-warn">Pendente (15/11)</span></td></tr>
+                <tr><td>Out/2026</td><td class="tabular-nums">R$ 95,00</td><td><span class="badge badge-ok">Pago em 14/10</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Últimas presenças</h2>
+            <a href="check-ins.html" class="panel-arrow">↗</a>
+          </div>
+          <ul style="margin:0;padding-left:1.1rem;display:grid;gap:0.4rem;font-size:0.875rem;">
+            <li>13/11/2026 às 08:14 · Recepção</li>
+            <li>12/11/2026 às 07:12 · Recepção</li>
+            <li>10/11/2026 às 07:05 · Recepção</li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Privacidade &amp; Consentimentos (LGPD)</h2>
+          </div>
+          <div style="display:grid;gap:0.5rem;font-size:0.85rem;">
+            <div><span class="badge badge-ok">Aceito</span> Termo de uso e tratamento de dados (15/10/2026)</div>
+            <div><span class="badge badge-ok">Aceito</span> Uso de imagem para controle de acesso na recepção</div>
+            <div style="margin-top:0.4rem;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.demoToast('Pacote JSON de dados do titular gerado (LGPD).')">Exportar dados (LGPD)</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    `);
+
+    window.approvePhoto = function () {
+      document.getElementById('photo-badge').className = 'badge badge-ok';
+      document.getElementById('photo-badge').textContent = 'Foto aprovada';
+      document.getElementById('photo-actions').innerHTML = '<span style="font-size:0.8rem;color:var(--primary);">Foto oficial atualizada.</span>';
+      window.demoToast('Foto do aluno aprovada!');
+    };
+    window.rejectPhoto = function () {
+      document.getElementById('photo-badge').className = 'badge badge-bad';
+      document.getElementById('photo-badge').textContent = 'Foto recusada';
+      window.demoToast('Foto recusada.');
+    };
+  </script>
+</body>
+</html>
